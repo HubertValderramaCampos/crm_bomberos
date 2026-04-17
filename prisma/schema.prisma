@@ -1,0 +1,413 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  rol       String
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  bombero   Bombero?
+
+  @@map("users")
+}
+
+model Bombero {
+  id               String   @id @default(cuid())
+  cip              String   @unique
+  dni              String   @unique
+  nombres          String
+  apellidos        String
+  grado            String
+  estado           String   @default("ACTIVO")
+  fechaIngreso     DateTime
+  fechaNacimiento  DateTime
+  telefono         String?
+  direccion        String?
+  grupoSanguineo   String?
+  fotografia       String?
+  areaPrincipal    String?
+  userId           String?  @unique
+  user             User?    @relation(fields: [userId], references: [id])
+
+  emergencias      EmergenciaBombero[]
+  guardias         GuardiaBombero[]
+  matriculas       Matricula[]
+  certificaciones  Certificacion[]
+  fichaMedica      FichaMedica?
+  evaluacionesSalud EvaluacionSalud[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("bomberos")
+}
+
+model Documento {
+  id           String   @id @default(cuid())
+  titulo       String
+  tipo         String
+  numero       String?
+  descripcion  String?
+  archivoUrl   String?
+  estado       String   @default("BORRADOR")
+  fechaEmision DateTime @default(now())
+  creadoPorId  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("documentos")
+}
+
+model PartidaPresupuestal {
+  id             String   @id @default(cuid())
+  anio           Int
+  descripcion    String
+  categoria      String
+  montoAprobado  Float
+  montoEjecutado Float     @default(0)
+  observaciones  String?
+  transacciones  TransaccionPresupuestal[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("partidas_presupuestales")
+}
+
+model TransaccionPresupuestal {
+  id          String              @id @default(cuid())
+  partidaId   String
+  partida     PartidaPresupuestal @relation(fields: [partidaId], references: [id])
+  monto       Float
+  descripcion String
+  fecha       DateTime            @default(now())
+  comprobante String?
+
+  @@map("transacciones_presupuestales")
+}
+
+model Vehiculo {
+  id              String   @id @default(cuid())
+  placa           String   @unique
+  nombre          String
+  tipo            String
+  marca           String
+  modelo          String
+  anio            Int
+  estado          String   @default("OPERATIVO")
+  kilometraje     Int      @default(0)
+  ultimaRevision  DateTime?
+  proximaRevision DateTime?
+  observaciones   String?
+  fotografia      String?
+
+  mantenimientos   Mantenimiento[]
+  emergencias      EmergenciaVehiculo[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("vehiculos")
+}
+
+model Equipo {
+  id               String   @id @default(cuid())
+  codigo           String   @unique
+  nombre           String
+  categoria        String
+  marca            String?
+  modelo           String?
+  numeroSerie      String?
+  estado           String   @default("OPERATIVO")
+  ubicacion        String?
+  fechaAdquisicion DateTime?
+  valorAdquisicion Float?
+  observaciones    String?
+
+  mantenimientos Mantenimiento[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("equipos")
+}
+
+model Mantenimiento {
+  id              String   @id @default(cuid())
+  tipo            String
+  estado          String   @default("PENDIENTE")
+  descripcion     String
+  fechaProgramada DateTime
+  fechaRealizada  DateTime?
+  costo           Float?
+  proveedor       String?
+  observaciones   String?
+  vehiculoId      String?
+  vehiculo        Vehiculo? @relation(fields: [vehiculoId], references: [id])
+  equipoId        String?
+  equipo          Equipo?   @relation(fields: [equipoId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("mantenimientos")
+}
+
+model ItemInventario {
+  id            String   @id @default(cuid())
+  codigo        String   @unique
+  nombre        String
+  categoria     String
+  unidad        String
+  stock         Int      @default(0)
+  stockMinimo   Int      @default(0)
+  ubicacion     String?
+  observaciones String?
+
+  movimientos MovimientoInventario[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("items_inventario")
+}
+
+model MovimientoInventario {
+  id              String         @id @default(cuid())
+  itemId          String
+  item            ItemInventario @relation(fields: [itemId], references: [id])
+  tipo            String
+  cantidad        Int
+  motivo          String
+  fecha           DateTime       @default(now())
+  registradoPorId String?
+
+  @@map("movimientos_inventario")
+}
+
+model Curso {
+  id          String   @id @default(cuid())
+  nombre      String
+  tipo        String
+  descripcion String?
+  instructor  String?
+  entidad     String?
+  fechaInicio DateTime
+  fechaFin    DateTime
+  horas       Int
+  lugar       String?
+  cupoMaximo  Int?
+  activo      Boolean  @default(true)
+
+  matriculas   Matricula[]
+  evaluaciones EvaluacionInstruccion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cursos")
+}
+
+model Matricula {
+  id             String   @id @default(cuid())
+  cursoId        String
+  curso          Curso    @relation(fields: [cursoId], references: [id])
+  bomberoId      String
+  bombero        Bombero  @relation(fields: [bomberoId], references: [id])
+  estado         String   @default("MATRICULADO")
+  notaFinal      Float?
+  fechaMatricula DateTime @default(now())
+
+  @@unique([cursoId, bomberoId])
+  @@map("matriculas")
+}
+
+model EvaluacionInstruccion {
+  id            String   @id @default(cuid())
+  cursoId       String
+  curso         Curso    @relation(fields: [cursoId], references: [id])
+  bomberoId     String
+  fecha         DateTime
+  nota          Float
+  observaciones String?
+
+  @@map("evaluaciones_instruccion")
+}
+
+model Certificacion {
+  id                 String   @id @default(cuid())
+  bomberoId          String
+  bombero            Bombero  @relation(fields: [bomberoId], references: [id])
+  nombre             String
+  entidadEmisora     String
+  fechaEmision       DateTime
+  fechaVencimiento   DateTime?
+  codigoVerificacion String?
+  archivoUrl         String?
+  createdAt          DateTime @default(now())
+
+  @@map("certificaciones")
+}
+
+model FichaMedica {
+  id                   String   @id @default(cuid())
+  bomberoId            String   @unique
+  bombero              Bombero  @relation(fields: [bomberoId], references: [id])
+  grupoSanguineo       String
+  alergias             String?
+  enfermedadesCronicas String?
+  medicamentosActuales String?
+  contactoEmergencia   String?
+  telefonoEmergencia   String?
+  observaciones        String?
+  aptitudOperativa     Boolean  @default(true)
+  updatedAt            DateTime @updatedAt
+  createdAt            DateTime @default(now())
+
+  @@map("fichas_medicas")
+}
+
+model EvaluacionSalud {
+  id                 String   @id @default(cuid())
+  bomberoId          String
+  bombero            Bombero  @relation(fields: [bomberoId], references: [id])
+  fecha              DateTime @default(now())
+  tipo               String
+  medicoEvaluador    String?
+  presionArterial    String?
+  frecuenciaCardiaca Int?
+  peso               Float?
+  talla              Float?
+  resultado          String
+  observaciones      String?
+  proximaEval        DateTime?
+
+  @@map("evaluaciones_salud")
+}
+
+model ItemBotiquin {
+  id               String   @id @default(cuid())
+  nombre           String
+  categoria        String
+  cantidad         Int      @default(0)
+  cantidadMinima   Int      @default(0)
+  unidad           String
+  lote             String?
+  fechaVencimiento DateTime?
+  ubicacion        String?
+  observaciones    String?
+  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now())
+
+  @@map("items_botiquin")
+}
+
+model Emergencia {
+  id               String   @id @default(cuid())
+  codigoEmergencia String   @unique
+  tipo             String
+  nivel            String   @default("PRIMERA_ALARMA")
+  estado           String   @default("EN_CURSO")
+  direccion        String
+  distrito         String
+  referencia       String?
+  coordenadasLat   Float?
+  coordenadasLng   Float?
+  fechaHoraAlerta  DateTime
+  fechaHoraLlegada DateTime?
+  fechaHoraControl DateTime?
+  fechaHoraCierre  DateTime?
+  descripcion      String?
+  observaciones    String?
+  bajas            Int      @default(0)
+  heridos          Int      @default(0)
+  danos            String?
+
+  vehiculos  EmergenciaVehiculo[]
+  bomberos   EmergenciaBombero[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("emergencias")
+}
+
+model EmergenciaVehiculo {
+  emergenciaId String
+  emergencia   Emergencia @relation(fields: [emergenciaId], references: [id])
+  vehiculoId   String
+  vehiculo     Vehiculo   @relation(fields: [vehiculoId], references: [id])
+
+  @@id([emergenciaId, vehiculoId])
+  @@map("emergencias_vehiculos")
+}
+
+model EmergenciaBombero {
+  emergenciaId String
+  emergencia   Emergencia @relation(fields: [emergenciaId], references: [id])
+  bomberoId    String
+  bombero      Bombero    @relation(fields: [bomberoId], references: [id])
+  rol          String?
+
+  @@id([emergenciaId, bomberoId])
+  @@map("emergencias_bomberos")
+}
+
+model Guardia {
+  id            String   @id @default(cuid())
+  fecha         DateTime
+  turno         String
+  observaciones String?
+  bomberos      GuardiaBombero[]
+  createdAt     DateTime @default(now())
+
+  @@map("guardias")
+}
+
+model GuardiaBombero {
+  guardiaId String
+  guardia   Guardia @relation(fields: [guardiaId], references: [id])
+  bomberoId String
+  bombero   Bombero @relation(fields: [bomberoId], references: [id])
+  asistio   Boolean @default(false)
+
+  @@id([guardiaId, bomberoId])
+  @@map("guardias_bomberos")
+}
+
+model Comunicado {
+  id               String   @id @default(cuid())
+  titulo           String
+  contenido        String
+  tipo             String
+  estado           String   @default("BORRADOR")
+  fechaPublicacion DateTime?
+  imagenUrl        String?
+  autorId          String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("comunicados")
+}
+
+model Evento {
+  id          String   @id @default(cuid())
+  titulo      String
+  descripcion String?
+  lugar       String?
+  fechaInicio DateTime
+  fechaFin    DateTime?
+  publico     Boolean  @default(false)
+  imagenUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("eventos")
+}
