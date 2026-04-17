@@ -2,7 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 const DEMO_USERS = [
-  { id: "1", email: "jefe@bomberos.pe",      password: "demo1234", rol: "JEFE_COMPANIA",       nombres: "Carlos Quispe Mamani",    cip: "B-001" },
+  { id: "1", email: "jefe@bomberos.pe",      password: "demo1234", rol: "JEFE_COMPANIA",       nombres: "Christian Pool Zamudio Lara", cip: "B-001" },
   { id: "2", email: "admin@bomberos.pe",     password: "demo1234", rol: "ADMINISTRACION",       nombres: "Ana Mendoza Vargas",      cip: "B-004" },
   { id: "3", email: "ops@bomberos.pe",       password: "demo1234", rol: "OPERACIONES",          nombres: "Juan Torres Huanca",      cip: "B-003" },
   { id: "4", email: "servicios@bomberos.pe", password: "demo1234", rol: "SERVICIOS_GENERALES",  nombres: "Lucia Rojas Soto",        cip: "B-006" },
