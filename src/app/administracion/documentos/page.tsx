@@ -29,7 +29,7 @@ export default async function DocumentosPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {docs.map((d) => (
+              {docs.map((d: (typeof docs)[0]) => (
                 <tr key={d.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-3.5 font-mono text-xs text-gray-500">{d.numero ?? "—"}</td>
                   <td className="px-5 py-3.5">
