@@ -1,7 +1,15 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
+
+const DEMO_USERS = [
+  { id: "1", email: "jefe@bomberos.pe",      password: "demo1234", rol: "JEFE_COMPANIA",       nombres: "Carlos Quispe Mamani",    cip: "B-001" },
+  { id: "2", email: "admin@bomberos.pe",     password: "demo1234", rol: "ADMINISTRACION",       nombres: "Ana Mendoza Vargas",      cip: "B-004" },
+  { id: "3", email: "ops@bomberos.pe",       password: "demo1234", rol: "OPERACIONES",          nombres: "Juan Torres Huanca",      cip: "B-003" },
+  { id: "4", email: "servicios@bomberos.pe", password: "demo1234", rol: "SERVICIOS_GENERALES",  nombres: "Lucia Rojas Soto",        cip: "B-006" },
+  { id: "5", email: "instruccion@bomberos.pe", password: "demo1234", rol: "INSTRUCCION",        nombres: "Miguel Paredes Cruz",     cip: "B-007" },
+  { id: "6", email: "sanidad@bomberos.pe",   password: "demo1234", rol: "SANIDAD",              nombres: "María Flores Ramos",      cip: "B-002" },
+  { id: "7", email: "imagen@bomberos.pe",    password: "demo1234", rol: "IMAGEN",               nombres: "Sandra Vega Castillo",    cip: "B-008" },
+];
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -14,27 +22,17 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-          include: { bombero: true },
-        });
-
-        if (!user || !user.activo) return null;
-
-        const passwordMatch = await bcrypt.compare(
-          credentials.password,
-          user.password
+        const user = DEMO_USERS.find(
+          (u) => u.email === credentials.email && u.password === credentials.password
         );
-        if (!passwordMatch) return null;
+        if (!user) return null;
 
         return {
           id: user.id,
           email: user.email,
           rol: user.rol,
-          nombres: user.bombero
-            ? `${user.bombero.nombres} ${user.bombero.apellidos}`
-            : user.email.split("@")[0],
-          cip: user.bombero?.cip ?? null,
+          nombres: user.nombres,
+          cip: user.cip,
         };
       },
     }),
