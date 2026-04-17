@@ -1,9 +1,20 @@
-import { prisma } from "@/lib/prisma";
 import { Package, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/ui-custom/PageHeader";
 
-export default async function InventarioPage() {
-  const items = await prisma.itemInventario.findMany({ orderBy: [{ categoria: "asc" }, { nombre: "asc" }] });
+const items = [
+  { id: "1", codigo: "INV-001", nombre: "Manguera presurizada 45mm x 20m", categoria: "MANGUERAS", stock: 8, stockMinimo: 6, unidad: "rollos", ubicacion: "Almacén A" },
+  { id: "2", codigo: "INV-002", nombre: "Manguera presurizada 70mm x 20m", categoria: "MANGUERAS", stock: 4, stockMinimo: 4, unidad: "rollos", ubicacion: "Almacén A" },
+  { id: "3", codigo: "INV-003", nombre: "Lanzas de agua tipo pistola", categoria: "ACCESORIOS", stock: 6, stockMinimo: 4, unidad: "unidades", ubicacion: "Almacén A" },
+  { id: "4", codigo: "INV-004", nombre: "Espuma AFFF 6% (bidones)", categoria: "AGENTES EXTINTORES", stock: 2, stockMinimo: 4, unidad: "bidones 20L", ubicacion: "Almacén B" },
+  { id: "5", codigo: "INV-005", nombre: "Extintores PQS 10kg", categoria: "AGENTES EXTINTORES", stock: 5, stockMinimo: 4, unidad: "unidades", ubicacion: "Almacén B" },
+  { id: "6", codigo: "INV-006", nombre: "Combustible Diesel (reserva)", categoria: "COMBUSTIBLES", stock: 80, stockMinimo: 100, unidad: "litros", ubicacion: "Cisterna" },
+  { id: "7", codigo: "INV-007", nombre: "Aceite de motor 15W40", categoria: "LUBRICANTES", stock: 12, stockMinimo: 8, unidad: "litros", ubicacion: "Taller" },
+  { id: "8", codigo: "INV-008", nombre: "Cascos de bombero", categoria: "EPP", stock: 10, stockMinimo: 8, unidad: "unidades", ubicacion: "Almacén EPP" },
+  { id: "9", codigo: "INV-009", nombre: "Guantes de combate", categoria: "EPP", stock: 3, stockMinimo: 8, unidad: "pares", ubicacion: "Almacén EPP" },
+  { id: "10", codigo: "INV-010", nombre: "Botas de seguridad", categoria: "EPP", stock: 6, stockMinimo: 6, unidad: "pares", ubicacion: "Almacén EPP" },
+];
+
+export default function InventarioPage() {
   const bajosStock = items.filter((i) => i.stock <= i.stockMinimo);
 
   return (

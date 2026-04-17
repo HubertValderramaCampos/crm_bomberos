@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/prisma";
 import { Users } from "lucide-react";
 import { PageHeader } from "@/components/ui-custom/PageHeader";
 import { StatusBadge } from "@/components/ui-custom/StatusBadge";
@@ -14,10 +13,20 @@ const ESTADO_COLOR: Record<string, "green"|"gray"|"red"|"yellow"> = {
   BAJA_TEMPORAL: "yellow", BAJA_DEFINITIVA: "red",
 };
 
-export default async function PersonalPage() {
-  const bomberos = await prisma.bombero.findMany({
-    orderBy: [{ estado: "asc" }, { apellidos: "asc" }],
-  });
+const bomberos = [
+  { id: "1", cip: "B-001", apellidos: "Quispe Mamani", nombres: "Carlos Alberto", grado: "CAPITAN", areaPrincipal: "OPERACIONES", fechaIngreso: "2010-03-15", estado: "ACTIVO", telefono: "987654321" },
+  { id: "2", cip: "B-002", apellidos: "Flores Ramos", nombres: "María Elena", grado: "TENIENTE", areaPrincipal: "SANIDAD", fechaIngreso: "2013-07-20", estado: "ACTIVO", telefono: "976543210" },
+  { id: "3", cip: "B-003", apellidos: "Torres Huanca", nombres: "Juan Pablo", grado: "SARGENTO_PRIMERO", areaPrincipal: "INSTRUCCION", fechaIngreso: "2015-01-10", estado: "ACTIVO", telefono: "965432109" },
+  { id: "4", cip: "B-004", apellidos: "Mendoza Vargas", nombres: "Ana Lucía", grado: "CABO", areaPrincipal: "ADMINISTRACION", fechaIngreso: "2018-06-05", estado: "ACTIVO", telefono: null },
+  { id: "5", cip: "B-005", apellidos: "Chávez León", nombres: "Roberto Jesús", grado: "BOMBERO_PRIMERO", areaPrincipal: "OPERACIONES", fechaIngreso: "2019-09-12", estado: "ACTIVO", telefono: "954321098" },
+  { id: "6", cip: "B-006", apellidos: "Rojas Soto", nombres: "Lucia Fernanda", grado: "BOMBERO_RASO", areaPrincipal: "SERVICIOS_GENERALES", fechaIngreso: "2021-02-28", estado: "ACTIVO", telefono: "943210987" },
+  { id: "7", cip: "B-007", apellidos: "Paredes Cruz", nombres: "Miguel Ángel", grado: "SARGENTO_SEGUNDO", areaPrincipal: "OPERACIONES", fechaIngreso: "2016-11-03", estado: "ACTIVO", telefono: "932109876" },
+  { id: "8", cip: "B-008", apellidos: "Vega Castillo", nombres: "Sandra Patricia", grado: "ALFEREZ", areaPrincipal: "IMAGEN", fechaIngreso: "2017-04-18", estado: "ACTIVO", telefono: "921098765" },
+  { id: "9", cip: "B-009", apellidos: "Salazar Pino", nombres: "Diego Armando", grado: "BOMBERO_PRIMERO", areaPrincipal: "OPERACIONES", fechaIngreso: "2020-08-22", estado: "INACTIVO", telefono: null },
+  { id: "10", cip: "B-010", apellidos: "Gutiérrez Mora", nombres: "Patricia Rosa", grado: "CABO", areaPrincipal: "SANIDAD", fechaIngreso: "2019-03-14", estado: "BAJA_TEMPORAL", telefono: "910987654" },
+];
+
+export default function PersonalPage() {
   const activos = bomberos.filter((b) => b.estado === "ACTIVO").length;
 
   return (
@@ -27,16 +36,13 @@ export default async function PersonalPage() {
         title="Personal"
         subtitle={`${activos} bomberos activos · ${bomberos.length} registros totales`}
       />
-
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 {["CIP", "Apellidos y Nombres", "Grado", "Área Principal", "Ingreso", "Estado"].map((h) => (
-                  <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    {h}
-                  </th>
+                  <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -54,10 +60,7 @@ export default async function PersonalPage() {
                     {new Date(b.fechaIngreso).toLocaleDateString("es-PE", { year: "numeric", month: "short" })}
                   </td>
                   <td className="px-5 py-3.5">
-                    <StatusBadge
-                      label={b.estado.replace(/_/g, " ")}
-                      color={ESTADO_COLOR[b.estado] ?? "gray"}
-                    />
+                    <StatusBadge label={b.estado.replace(/_/g, " ")} color={ESTADO_COLOR[b.estado] ?? "gray"} />
                   </td>
                 </tr>
               ))}

@@ -1,14 +1,18 @@
-import { prisma } from "@/lib/prisma";
 import { DollarSign } from "lucide-react";
 import { PageHeader } from "@/components/ui-custom/PageHeader";
 import { StatCard } from "@/components/ui-custom/StatCard";
 
-export default async function PresupuestoPage() {
-  const partidas = await prisma.partidaPresupuestal.findMany({
-    where: { anio: 2026 },
-    orderBy: { categoria: "asc" },
-  });
+const partidas = [
+  { id: "1", descripcion: "Remuneraciones y beneficios", categoria: "PERSONAL", montoAprobado: 480000, montoEjecutado: 156000 },
+  { id: "2", descripcion: "Combustibles y lubricantes", categoria: "BIENES", montoAprobado: 85000, montoEjecutado: 62400 },
+  { id: "3", descripcion: "Mantenimiento de vehículos", categoria: "SERVICIOS", montoAprobado: 120000, montoEjecutado: 89500 },
+  { id: "4", descripcion: "Equipos de protección personal", categoria: "BIENES", montoAprobado: 65000, montoEjecutado: 48000 },
+  { id: "5", descripcion: "Capacitación y formación", categoria: "SERVICIOS", montoAprobado: 30000, montoEjecutado: 12500 },
+  { id: "6", descripcion: "Material médico y botiquín", categoria: "BIENES", montoAprobado: 20000, montoEjecutado: 8900 },
+  { id: "7", descripcion: "Servicios básicos (agua, luz, internet)", categoria: "SERVICIOS", montoAprobado: 18000, montoEjecutado: 6200 },
+];
 
+export default function PresupuestoPage() {
   const totalAprobado = partidas.reduce((s, p) => s + p.montoAprobado, 0);
   const totalEjecutado = partidas.reduce((s, p) => s + p.montoEjecutado, 0);
   const totalSaldo = totalAprobado - totalEjecutado;
@@ -18,14 +22,12 @@ export default async function PresupuestoPage() {
     <div className="space-y-6">
       <PageHeader icon={DollarSign} title="Presupuesto 2026" subtitle="Ejecución presupuestal por partida" />
 
-      {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard icon={DollarSign} label="Presupuesto Aprobado" value={`S/ ${totalAprobado.toLocaleString("es-PE")}`} accent="slate" />
         <StatCard icon={DollarSign} label="Monto Ejecutado" value={`S/ ${totalEjecutado.toLocaleString("es-PE")}`} accent="green" sub={`${pct}% del total`} />
         <StatCard icon={DollarSign} label="Saldo Disponible" value={`S/ ${totalSaldo.toLocaleString("es-PE")}`} accent={totalSaldo < 0 ? "red" : "blue"} />
       </div>
 
-      {/* Barra general */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="flex items-center justify-between mb-2">
           <p className="text-sm font-medium text-gray-700">Ejecución global</p>
@@ -39,7 +41,6 @@ export default async function PresupuestoPage() {
         </div>
       </div>
 
-      {/* Partidas */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
           <h2 className="font-semibold text-gray-900">Partidas Presupuestales</h2>

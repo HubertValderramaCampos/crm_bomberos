@@ -1,8 +1,6 @@
-import { prisma } from "@/lib/prisma";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Siren, Clock, AlertTriangle, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui-custom/PageHeader";
 import { StatCard } from "@/components/ui-custom/StatCard";
-import { Siren, Clock, AlertTriangle, Users } from "lucide-react";
 
 const TIPO_LABELS: Record<string, string> = {
   INCENDIO_URBANO: "Incendio Urbano", INCENDIO_FORESTAL: "Incendio Forestal",
@@ -12,40 +10,33 @@ const TIPO_LABELS: Record<string, string> = {
 };
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-export default async function EstadisticasPage() {
-  const emergencias = await prisma.emergencia.findMany({ orderBy: { fechaHoraAlerta: "asc" } });
+const porMes: Record<number, number> = { 0: 4, 1: 6, 2: 8, 3: 6 };
+const porTipo: Record<string, number> = {
+  INCENDIO_URBANO: 8, RESCATE_VEHICULAR: 6, EMERGENCIA_MEDICA: 4,
+  INCENDIO_FORESTAL: 2, MATERIALES_PELIGROSOS: 2, FALSA_ALARMA: 2,
+};
+const totalEmergencias = 24;
+const promedioRespuesta = 14;
+const totalHeridos = 6;
+const totalBajas = 0;
 
-  const porTipo: Record<string, number> = {};
-  emergencias.forEach((e) => { porTipo[e.tipo] = (porTipo[e.tipo] ?? 0) + 1; });
+const sortedTipos = Object.entries(porTipo).sort((a, b) => b[1] - a[1]);
+const maxMes = Math.max(...Object.values(porMes), 1);
+const maxTipo = Math.max(...Object.values(porTipo), 1);
 
-  const porMes: Record<number, number> = {};
-  emergencias.forEach((e) => {
-    const m = new Date(e.fechaHoraAlerta).getMonth();
-    porMes[m] = (porMes[m] ?? 0) + 1;
-  });
-
-  const tiempos = emergencias
-    .filter((e) => e.fechaHoraLlegada)
-    .map((e) => (new Date(e.fechaHoraLlegada!).getTime() - new Date(e.fechaHoraAlerta).getTime()) / 60000);
-  const promedioRespuesta = tiempos.length > 0 ? Math.round(tiempos.reduce((a, b) => a + b, 0) / tiempos.length) : 0;
-
-  const maxMes = Math.max(...Object.values(porMes), 1);
-  const maxTipo = Math.max(...Object.values(porTipo), 1);
-  const sortedTipos = Object.entries(porTipo).sort((a, b) => b[1] - a[1]);
-
+export default function EstadisticasPage() {
   return (
     <div className="space-y-6">
       <PageHeader icon={BarChart3} title="Estadísticas Operacionales" subtitle="Análisis de emergencias atendidas — 2026" />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Siren}         label="Total Emergencias"       value={emergencias.length}                        accent="slate"  />
-        <StatCard icon={Clock}         label="Tiempo prom. respuesta"  value={`${promedioRespuesta} min`}                accent="blue"   />
-        <StatCard icon={AlertTriangle} label="Total Heridos"           value={emergencias.reduce((s, e) => s + e.heridos, 0)} accent="yellow" />
-        <StatCard icon={Users}         label="Total Bajas"             value={emergencias.reduce((s, e) => s + e.bajas, 0)}  accent="red"    />
+        <StatCard icon={Siren}         label="Total Emergencias"       value={totalEmergencias}       accent="slate"  />
+        <StatCard icon={Clock}         label="Tiempo prom. respuesta"  value={`${promedioRespuesta} min`} accent="blue" />
+        <StatCard icon={AlertTriangle} label="Total Heridos"           value={totalHeridos}           accent="yellow" />
+        <StatCard icon={Users}         label="Total Bajas"             value={totalBajas}             accent="red"    />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Por mes */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="font-semibold text-gray-900 mb-5">Emergencias por Mes</h2>
           <div className="space-y-3">
@@ -57,10 +48,7 @@ export default async function EstadisticasPage() {
                   <span className="w-20 text-xs text-gray-500 shrink-0 font-medium">{mes}</span>
                   <div className="flex-1 h-7 bg-gray-100 rounded overflow-hidden">
                     {count > 0 && (
-                      <div
-                        className="h-7 bg-red-700 rounded flex items-center justify-end pr-2.5 transition-all"
-                        style={{ width: `${Math.max(pct, 8)}%` }}
-                      >
+                      <div className="h-7 bg-red-700 rounded flex items-center justify-end pr-2.5 transition-all" style={{ width: `${Math.max(pct, 8)}%` }}>
                         <span className="text-white text-xs font-bold">{count}</span>
                       </div>
                     )}
@@ -72,7 +60,6 @@ export default async function EstadisticasPage() {
           </div>
         </div>
 
-        {/* Por tipo */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="font-semibold text-gray-900 mb-5">Emergencias por Tipo</h2>
           <div className="space-y-3">
@@ -82,10 +69,7 @@ export default async function EstadisticasPage() {
                 <div key={tipo} className="flex items-center gap-3">
                   <span className="w-28 text-xs text-gray-500 shrink-0 font-medium truncate">{TIPO_LABELS[tipo] ?? tipo}</span>
                   <div className="flex-1 h-7 bg-gray-100 rounded overflow-hidden">
-                    <div
-                      className="h-7 bg-gray-700 rounded flex items-center justify-end pr-2.5 transition-all"
-                      style={{ width: `${Math.max(pct, 8)}%` }}
-                    >
+                    <div className="h-7 bg-gray-700 rounded flex items-center justify-end pr-2.5 transition-all" style={{ width: `${Math.max(pct, 8)}%` }}>
                       <span className="text-white text-xs font-bold">{count}</span>
                     </div>
                   </div>

@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/prisma";
 import { FileText } from "lucide-react";
 import { PageHeader } from "@/components/ui-custom/PageHeader";
 import { StatusBadge } from "@/components/ui-custom/StatusBadge";
@@ -11,13 +10,20 @@ const ESTADO_COLOR: Record<string, "green"|"yellow"|"gray"> = {
   PUBLICADO: "green", BORRADOR: "yellow", ARCHIVADO: "gray",
 };
 
-export default async function DocumentosPage() {
-  const docs = await prisma.documento.findMany({ orderBy: { fechaEmision: "desc" } });
+const docs = [
+  { id: "1", numero: "OF-001-2026", titulo: "Oficio de solicitud de presupuesto", tipo: "OFICIO", fechaEmision: "2026-04-10", estado: "PUBLICADO", descripcion: "Solicitud al Ministerio del Interior" },
+  { id: "2", numero: "MEM-002-2026", titulo: "Memorando interno sobre guardias", tipo: "MEMORANDO", fechaEmision: "2026-04-08", estado: "PUBLICADO", descripcion: null },
+  { id: "3", numero: "INF-003-2026", titulo: "Informe mensual de operaciones marzo", tipo: "INFORME", fechaEmision: "2026-04-01", estado: "PUBLICADO", descripcion: "Resumen de actividades del mes de marzo" },
+  { id: "4", numero: null, titulo: "Acta de reunión de coordinación", tipo: "ACTA", fechaEmision: "2026-03-28", estado: "BORRADOR", descripcion: null },
+  { id: "5", numero: "RES-001-2026", titulo: "Resolución de nombramiento de jefe de guardia", tipo: "RESOLUCION", fechaEmision: "2026-03-15", estado: "PUBLICADO", descripcion: null },
+  { id: "6", numero: "OF-005-2025", titulo: "Oficio de agradecimiento a municipalidad", tipo: "OFICIO", fechaEmision: "2025-12-20", estado: "ARCHIVADO", descripcion: null },
+  { id: "7", numero: null, titulo: "Convenio de cooperación con hospital regional", tipo: "CONVENIO", fechaEmision: "2026-02-14", estado: "BORRADOR", descripcion: "Pendiente de firma" },
+];
 
+export default function DocumentosPage() {
   return (
     <div>
       <PageHeader icon={FileText} title="Documentos" subtitle={`${docs.length} documentos registrados`} />
-
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -29,7 +35,7 @@ export default async function DocumentosPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {docs.map((d: (typeof docs)[0]) => (
+              {docs.map((d) => (
                 <tr key={d.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-3.5 font-mono text-xs text-gray-500">{d.numero ?? "—"}</td>
                   <td className="px-5 py-3.5">

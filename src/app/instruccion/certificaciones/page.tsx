@@ -1,13 +1,17 @@
-import { prisma } from "@/lib/prisma";
 import { Award, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/ui-custom/PageHeader";
 
-export default async function CertificacionesPage() {
-  const certificaciones = await prisma.certificacion.findMany({
-    orderBy: { fechaEmision: "desc" },
-    include: { bombero: { select: { nombres: true, apellidos: true, cip: true, grado: true } } },
-  });
+const certificaciones = [
+  { id: "1", nombre: "Operador de Autobomba", entidadEmisora: "CGBVP", fechaEmision: "2024-03-10", fechaVencimiento: "2026-03-10", bombero: { nombres: "Carlos Alberto", apellidos: "Quispe Mamani", cip: "B-001", grado: "CAPITAN" } },
+  { id: "2", nombre: "Primeros Auxilios Avanzados", entidadEmisora: "Cruz Roja Peruana", fechaEmision: "2025-01-15", fechaVencimiento: "2027-01-15", bombero: { nombres: "María Elena", apellidos: "Flores Ramos", cip: "B-002", grado: "TENIENTE" } },
+  { id: "3", nombre: "Rescate Vehicular Nivel II", entidadEmisora: "CGBVP", fechaEmision: "2023-08-20", fechaVencimiento: "2026-05-01", bombero: { nombres: "Juan Pablo", apellidos: "Torres Huanca", cip: "B-003", grado: "SARGENTO_PRIMERO" } },
+  { id: "4", nombre: "HAZMAT – Nivel Técnico", entidadEmisora: "NFPA Perú", fechaEmision: "2022-11-05", fechaVencimiento: "2025-11-05", bombero: { nombres: "Miguel Ángel", apellidos: "Paredes Cruz", cip: "B-007", grado: "SARGENTO_SEGUNDO" } },
+  { id: "5", nombre: "Conducción de Vehículos de Emergencia", entidadEmisora: "MTC", fechaEmision: "2024-06-18", fechaVencimiento: null, bombero: { nombres: "Roberto Jesús", apellidos: "Chávez León", cip: "B-005", grado: "BOMBERO_PRIMERO" } },
+  { id: "6", nombre: "Rescate en Altura – Nivel I", entidadEmisora: "CGBVP", fechaEmision: "2025-09-01", fechaVencimiento: "2027-09-01", bombero: { nombres: "Lucia Fernanda", apellidos: "Rojas Soto", cip: "B-006", grado: "BOMBERO_RASO" } },
+  { id: "7", nombre: "Operaciones en Incendios Estructurales", entidadEmisora: "CGBVP", fechaEmision: "2023-04-12", fechaVencimiento: "2026-04-20", bombero: { nombres: "Sandra Patricia", apellidos: "Vega Castillo", cip: "B-008", grado: "ALFEREZ" } },
+];
 
+export default function CertificacionesPage() {
   const hoy = new Date();
   const en30 = new Date(hoy);
   en30.setDate(hoy.getDate() + 30);
@@ -24,17 +28,13 @@ export default async function CertificacionesPage() {
           {vencidas.length > 0 && (
             <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
               <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
-              <p className="text-sm text-red-800">
-                <strong>{vencidas.length} certificación(es) vencida(s)</strong> — requieren renovación
-              </p>
+              <p className="text-sm text-red-800"><strong>{vencidas.length} certificación(es) vencida(s)</strong> — requieren renovación</p>
             </div>
           )}
           {porVencer.length > 0 && (
             <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              <p className="text-sm text-amber-800">
-                <strong>{porVencer.length} certificación(es)</strong> vencen en los próximos 30 días
-              </p>
+              <p className="text-sm text-amber-800"><strong>{porVencer.length} certificación(es)</strong> vencen en los próximos 30 días</p>
             </div>
           )}
         </div>

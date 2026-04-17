@@ -1,11 +1,21 @@
-import { prisma } from "@/lib/prisma";
 import { Pill, AlertTriangle, XCircle, Package } from "lucide-react";
 import { PageHeader } from "@/components/ui-custom/PageHeader";
 import { StatCard } from "@/components/ui-custom/StatCard";
 
-export default async function BotiquinPage() {
-  const items = await prisma.itemBotiquin.findMany({ orderBy: [{ categoria: "asc" }, { nombre: "asc" }] });
+const items = [
+  { id: "1", nombre: "Vendas elásticas 4\"", categoria: "MATERIALES DE CURACIÓN", cantidad: 15, cantidadMinima: 10, unidad: "unidades", fechaVencimiento: null, ubicacion: "Armario A" },
+  { id: "2", nombre: "Gasas estériles 10x10cm", categoria: "MATERIALES DE CURACIÓN", cantidad: 8, cantidadMinima: 20, unidad: "paquetes", fechaVencimiento: null, ubicacion: "Armario A" },
+  { id: "3", nombre: "Alcohol 70°", categoria: "ANTISÉPTICOS", cantidad: 5, cantidadMinima: 5, unidad: "frascos 500ml", fechaVencimiento: "2026-12-31", ubicacion: "Armario B" },
+  { id: "4", nombre: "Agua oxigenada", categoria: "ANTISÉPTICOS", cantidad: 3, cantidadMinima: 4, unidad: "frascos 500ml", fechaVencimiento: "2026-08-15", ubicacion: "Armario B" },
+  { id: "5", nombre: "Ibuprofeno 400mg", categoria: "MEDICAMENTOS", cantidad: 48, cantidadMinima: 30, unidad: "tabletas", fechaVencimiento: "2026-04-30", ubicacion: "Armario C" },
+  { id: "6", nombre: "Paracetamol 500mg", categoria: "MEDICAMENTOS", cantidad: 60, cantidadMinima: 30, unidad: "tabletas", fechaVencimiento: "2027-03-20", ubicacion: "Armario C" },
+  { id: "7", nombre: "Suero fisiológico 500ml", categoria: "SOLUCIONES", cantidad: 4, cantidadMinima: 6, unidad: "bolsas", fechaVencimiento: "2026-06-30", ubicacion: "Refrigerador" },
+  { id: "8", nombre: "Mascarilla de oxígeno adulto", categoria: "EQUIPOS", cantidad: 2, cantidadMinima: 2, unidad: "unidades", fechaVencimiento: null, ubicacion: "Unidad de rescate" },
+  { id: "9", nombre: "Férulas inflables", categoria: "EQUIPOS", cantidad: 3, cantidadMinima: 2, unidad: "juegos", fechaVencimiento: null, ubicacion: "Almacén" },
+  { id: "10", nombre: "Guantes de nitrilo M", categoria: "EQUIPOS", cantidad: 20, cantidadMinima: 50, unidad: "pares", fechaVencimiento: null, ubicacion: "Armario A" },
+];
 
+export default function BotiquinPage() {
   const hoy = new Date();
   const en30dias = new Date(hoy);
   en30dias.setDate(hoy.getDate() + 30);
@@ -36,9 +46,7 @@ export default async function BotiquinPage() {
                 <p className="font-semibold text-red-800 text-sm">{vencidos.length} ítem(s) VENCIDOS — retirar inmediatamente</p>
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {vencidos.map((i) => (
-                    <span key={i.id} className="text-xs bg-red-100 text-red-800 border border-red-200 px-2 py-0.5 rounded-md font-medium">
-                      {i.nombre}
-                    </span>
+                    <span key={i.id} className="text-xs bg-red-100 text-red-800 border border-red-200 px-2 py-0.5 rounded-md font-medium">{i.nombre}</span>
                   ))}
                 </div>
               </div>
@@ -47,17 +55,13 @@ export default async function BotiquinPage() {
           {porVencer.length > 0 && (
             <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              <p className="text-sm text-amber-800">
-                <strong>{porVencer.length} ítem(s)</strong> vencen en los próximos 30 días
-              </p>
+              <p className="text-sm text-amber-800"><strong>{porVencer.length} ítem(s)</strong> vencen en los próximos 30 días</p>
             </div>
           )}
           {bajosStock.length > 0 && (
             <div className="flex items-center gap-3 p-4 bg-orange-50 border border-orange-200 rounded-xl">
               <Package className="w-4 h-4 text-orange-600 shrink-0" />
-              <p className="text-sm text-orange-800">
-                <strong>{bajosStock.length} ítem(s)</strong> por debajo de la cantidad mínima
-              </p>
+              <p className="text-sm text-orange-800"><strong>{bajosStock.length} ítem(s)</strong> por debajo de la cantidad mínima</p>
             </div>
           )}
         </div>
@@ -96,9 +100,7 @@ export default async function BotiquinPage() {
                             {new Date(i.fechaVencimiento).toLocaleDateString("es-PE")}
                             {vencido && " — VENCIDO"}
                           </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">—</span>
-                        )}
+                        ) : <span className="text-xs text-gray-400">—</span>}
                       </td>
                       <td className="px-5 py-3 text-gray-400 text-xs">{i.ubicacion ?? "—"}</td>
                     </tr>

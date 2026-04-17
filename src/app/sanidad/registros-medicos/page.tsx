@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/prisma";
 import { HeartPulse, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/ui-custom/PageHeader";
 import { StatCard } from "@/components/ui-custom/StatCard";
@@ -10,16 +9,18 @@ const GRADO_LABELS: Record<string, string> = {
   TENIENTE: "Tte.", CAPITAN: "Cap.", MAYOR: "My.", CORONEL: "Crnl.",
 };
 
-export default async function RegistrosMedicosPage() {
-  const bomberos = await prisma.bombero.findMany({
-    where: { estado: "ACTIVO" },
-    orderBy: { apellidos: "asc" },
-    include: {
-      fichaMedica: true,
-      evaluacionesSalud: { orderBy: { fecha: "desc" }, take: 1 },
-    },
-  });
+const bomberos = [
+  { id: "1", apellidos: "Quispe Mamani", nombres: "Carlos Alberto", cip: "B-001", grado: "CAPITAN", grupoSanguineo: "O+", fichaMedica: { aptitudOperativa: true, grupoSanguineo: "O+", alergias: null }, evaluacionesSalud: [{ fecha: "2026-01-15", resultado: "APTO" }] },
+  { id: "2", apellidos: "Flores Ramos", nombres: "María Elena", cip: "B-002", grado: "TENIENTE", grupoSanguineo: "A+", fichaMedica: { aptitudOperativa: true, grupoSanguineo: "A+", alergias: "Penicilina" }, evaluacionesSalud: [{ fecha: "2026-02-10", resultado: "APTO" }] },
+  { id: "3", apellidos: "Torres Huanca", nombres: "Juan Pablo", cip: "B-003", grado: "SARGENTO_PRIMERO", grupoSanguineo: "B+", fichaMedica: { aptitudOperativa: true, grupoSanguineo: "B+", alergias: null }, evaluacionesSalud: [{ fecha: "2026-01-20", resultado: "APTO" }] },
+  { id: "4", apellidos: "Mendoza Vargas", nombres: "Ana Lucía", cip: "B-004", grado: "CABO", grupoSanguineo: "AB+", fichaMedica: { aptitudOperativa: false, grupoSanguineo: "AB+", alergias: "Látex, Ibuprofeno" }, evaluacionesSalud: [{ fecha: "2026-03-05", resultado: "NO APTO" }] },
+  { id: "5", apellidos: "Chávez León", nombres: "Roberto Jesús", cip: "B-005", grado: "BOMBERO_PRIMERO", grupoSanguineo: "O-", fichaMedica: { aptitudOperativa: true, grupoSanguineo: "O-", alergias: null }, evaluacionesSalud: [{ fecha: "2026-02-28", resultado: "APTO" }] },
+  { id: "6", apellidos: "Rojas Soto", nombres: "Lucia Fernanda", cip: "B-006", grado: "BOMBERO_RASO", grupoSanguineo: "A-", fichaMedica: null, evaluacionesSalud: [] },
+  { id: "7", apellidos: "Paredes Cruz", nombres: "Miguel Ángel", cip: "B-007", grado: "SARGENTO_SEGUNDO", grupoSanguineo: "B-", fichaMedica: { aptitudOperativa: true, grupoSanguineo: "B-", alergias: null }, evaluacionesSalud: [{ fecha: "2025-12-10", resultado: "APTO CON RESTRICCIONES" }] },
+  { id: "8", apellidos: "Vega Castillo", nombres: "Sandra Patricia", cip: "B-008", grado: "ALFEREZ", grupoSanguineo: "O+", fichaMedica: { aptitudOperativa: true, grupoSanguineo: "O+", alergias: "Sulfonamidas" }, evaluacionesSalud: [{ fecha: "2026-03-18", resultado: "APTO" }] },
+];
 
+export default function RegistrosMedicosPage() {
   const aptos = bomberos.filter((b) => b.fichaMedica?.aptitudOperativa === true).length;
   const noAptos = bomberos.filter((b) => b.fichaMedica?.aptitudOperativa === false).length;
   const sinFicha = bomberos.filter((b) => !b.fichaMedica).length;
@@ -74,10 +75,7 @@ export default async function RegistrosMedicosPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       {b.fichaMedica ? (
-                        <StatusBadge
-                          label={apto ? "APTO" : "NO APTO"}
-                          color={apto ? "green" : "red"}
-                        />
+                        <StatusBadge label={apto ? "APTO" : "NO APTO"} color={apto ? "green" : "red"} />
                       ) : (
                         <span className="text-xs text-gray-400">Sin ficha</span>
                       )}
