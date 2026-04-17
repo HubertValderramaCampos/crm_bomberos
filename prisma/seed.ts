@@ -99,8 +99,7 @@ async function main() {
 
   const bomberos = await Promise.all(
     bomberosData.map((b) =>
-      prisma.bombero.upsert({
-        where: { cip: b.cip },
+      prisma.bombero.upsert({        where: { cip: b.cip },
         update: { nombres: b.nombres, apellidos: b.apellidos },
         create: {
           ...b,
@@ -407,7 +406,7 @@ async function main() {
 
   // ─── GUARDIAS ────────────────────────────────────────────────────────────────
   const hoy = new Date("2026-04-06");
-  const guardias = [];
+  const guardias: { id: string; fecha: Date; turno: string }[] = [];
   for (let i = -3; i <= 4; i++) {
     const fecha = new Date(hoy);
     fecha.setDate(hoy.getDate() + i);
