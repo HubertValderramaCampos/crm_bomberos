@@ -5,35 +5,30 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const capacitaciones = [
-  { id: "1", empresa: "Corporación Aceros Arequipa", tipo: "Brigada contra incendios", fecha: "2026-03-15", participantes: 24, duracion: 8,  estado: "COMPLETADO" },
-  { id: "2", empresa: "Municipalidad de Puente Piedra", tipo: "Evacuación y emergencias", fecha: "2026-03-28", participantes: 40, duracion: 4, estado: "COMPLETADO" },
-  { id: "3", empresa: "Colegio San José Obrero",       tipo: "Primeros auxilios básicos", fecha: "2026-04-05", participantes: 35, duracion: 6, estado: "COMPLETADO" },
-  { id: "4", empresa: "Planta industrial Lima Norte",  tipo: "HAZMAT – Materiales peligrosos", fecha: "2026-04-22", participantes: 18, duracion: 16, estado: "PROGRAMADO" },
-  { id: "5", empresa: "Supermercado Plaza Vea Puente Piedra", tipo: "Evacuación y uso de extintores", fecha: "2026-04-29", participantes: 22, duracion: 4, estado: "PROGRAMADO" },
-  { id: "6", empresa: "Empresa constructora CVC SAC",  tipo: "Seguridad en obra – incendios", fecha: "2026-05-10", participantes: 30, duracion: 8, estado: "PROGRAMADO" },
-];
+interface CapMes { mes: string; participantes: number }
+interface CapRow {
+  id: number;
+  empresa: string;
+  tema: string;
+  fecha: string;
+  num_participantes: number | null;
+  horas: number | null;
+}
 
-const porMes = [
-  { mes: "Ene", capacitaciones: 1, participantes: 28 },
-  { mes: "Feb", capacitaciones: 2, participantes: 45 },
-  { mes: "Mar", capacitaciones: 2, participantes: 64 },
-  { mes: "Abr", capacitaciones: 3, participantes: 75 },
-];
+interface TableProps {
+  data: CapRow[];
+  completadas: number;
+  programadas: number;
+  totalParticipantes: number;
+}
 
-const ESTADO_COLOR: Record<string, string> = {
-  COMPLETADO: "bg-green-100 text-green-800 border-green-200",
-  PROGRAMADO: "bg-blue-100 text-blue-800 border-blue-200",
-  CANCELADO:  "bg-red-100 text-red-800 border-red-200",
-};
-
-export function CapacitacionesChart() {
+export function CapacitacionesChart({ data }: { data: CapMes[] }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <h2 className="font-semibold text-gray-900 mb-1">Capacitaciones a Empresas — 2026</h2>
+      <h2 className="font-semibold text-gray-900 mb-1">Capacitaciones a Empresas — {new Date().getFullYear()}</h2>
       <p className="text-xs text-gray-400 mb-4">Participantes por mes</p>
       <ResponsiveContainer width="100%" height={160}>
-        <BarChart data={porMes} barSize={28}>
+        <BarChart data={data} barSize={28}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
           <XAxis dataKey="mes" tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 12, fill: "#6b7280" }} axisLine={false} tickLine={false} />
@@ -45,10 +40,8 @@ export function CapacitacionesChart() {
   );
 }
 
-export function CapacitacionesTable() {
-  const completadas = capacitaciones.filter((c) => c.estado === "COMPLETADO").length;
-  const programadas = capacitaciones.filter((c) => c.estado === "PROGRAMADO").length;
-  const totalParticipantes = capacitaciones.filter((c) => c.estado === "COMPLETADO").reduce((s, c) => s + c.participantes, 0);
+export function CapacitacionesTable({ data, completadas, programadas, totalParticipantes }: TableProps) {
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="space-y-4">
@@ -75,28 +68,34 @@ export function CapacitacionesTable() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                {["Empresa", "Tipo de Capacitación", "Fecha", "Participantes", "Horas", "Estado"].map((h) => (
+                {["Empresa", "Tema", "Fecha", "Participantes", "Horas", "Estado"].map((h) => (
                   <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {capacitaciones.map((c) => (
-                <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-gray-900 max-w-[180px] truncate">{c.empresa}</td>
-                  <td className="px-4 py-3 text-gray-600 text-xs max-w-[160px] truncate">{c.tipo}</td>
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
-                    {new Date(c.fecha).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" })}
-                  </td>
-                  <td className="px-4 py-3 text-gray-700 font-semibold">{c.participantes}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{c.duracion}h</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-md border ${ESTADO_COLOR[c.estado] ?? ""}`}>
-                      {c.estado}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {data.map((c) => {
+                const estado = c.fecha <= today ? "COMPLETADO" : "PROGRAMADO";
+                const badge = estado === "COMPLETADO"
+                  ? "bg-green-100 text-green-800 border-green-200"
+                  : "bg-blue-100 text-blue-800 border-blue-200";
+                return (
+                  <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 font-medium text-gray-900 max-w-[180px] truncate">{c.empresa}</td>
+                    <td className="px-4 py-3 text-gray-600 text-xs max-w-[160px] truncate">{c.tema}</td>
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
+                      {new Date(c.fecha).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" })}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700 font-semibold">{c.num_participantes ?? "—"}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{c.horas != null ? `${c.horas}h` : "—"}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-md border ${badge}`}>
+                        {estado}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

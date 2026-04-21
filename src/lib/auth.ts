@@ -1,38 +1,58 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-
-const DEMO_USERS = [
-  { id: "1", email: "jefe@bomberos.pe",      password: "demo1234", rol: "JEFE_COMPANIA",       nombres: "Christian Pool Zamudio Lara", cip: "B-001" },
-  { id: "2", email: "admin@bomberos.pe",     password: "demo1234", rol: "ADMINISTRACION",       nombres: "Ana Mendoza Vargas",      cip: "B-004" },
-  { id: "3", email: "ops@bomberos.pe",       password: "demo1234", rol: "OPERACIONES",          nombres: "Juan Torres Huanca",      cip: "B-003" },
-  { id: "4", email: "servicios@bomberos.pe", password: "demo1234", rol: "SERVICIOS_GENERALES",  nombres: "Lucia Rojas Soto",        cip: "B-006" },
-  { id: "5", email: "instruccion@bomberos.pe", password: "demo1234", rol: "INSTRUCCION",        nombres: "Miguel Paredes Cruz",     cip: "B-007" },
-  { id: "6", email: "sanidad@bomberos.pe",   password: "demo1234", rol: "SANIDAD",              nombres: "María Flores Ramos",      cip: "B-002" },
-  { id: "7", email: "imagen@bomberos.pe",    password: "demo1234", rol: "IMAGEN",               nombres: "Sandra Vega Castillo",    cip: "B-008" },
-];
+import bcrypt from "bcryptjs";
+import pool from "./db";
 
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email:    { label: "Email",     type: "email"    },
         password: { label: "Contraseña", type: "password" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const user = DEMO_USERS.find(
-          (u) => u.email === credentials.email && u.password === credentials.password
-        );
-        if (!user) return null;
+        const { rows } = await pool.query<{
+          id: number;
+          email: string;
+          password_hash: string;
+          rol: string;
+          activo: boolean;
+          bombero_id: number | null;
+          nombres: string | null;
+          apellidos: string | null;
+          codigo: string | null;
+          grado: string | null;
+        }>(`
+          SELECT u.id, u.email, u.password_hash, u.rol, u.activo,
+                 u.bombero_id,
+                 b.nombres, b.apellidos, b.codigo, b.grado
+          FROM usuario u
+          LEFT JOIN bombero b ON b.id = u.bombero_id
+          WHERE u.email = $1
+          LIMIT 1
+        `, [credentials.email.toLowerCase().trim()]);
+
+        const user = rows[0];
+        if (!user || !user.activo) return null;
+
+        const valid = await bcrypt.compare(credentials.password, user.password_hash);
+        if (!valid) return null;
+
+        const nombres = user.nombres && user.apellidos
+          ? `${user.apellidos}, ${user.nombres}`
+          : user.email;
 
         return {
-          id: user.id,
-          email: user.email,
-          rol: user.rol,
-          nombres: user.nombres,
-          cip: user.cip,
+          id:        String(user.id),
+          email:     user.email,
+          rol:       user.rol,
+          nombres,
+          cip:       user.codigo ?? null,
+          grado:     user.grado ?? null,
+          bomberoId: user.bombero_id ?? null,
         };
       },
     }),
@@ -40,30 +60,30 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
+        token.id        = user.id;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const u = user as any;
-        token.rol = u.rol;
-        token.nombres = u.nombres;
-        token.cip = u.cip;
+        token.rol       = u.rol;
+        token.nombres   = u.nombres;
+        token.cip       = u.cip;
+        token.grado     = u.grado;
+        token.bomberoId = u.bomberoId;
       }
       return token;
     },
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.id as string;
-        session.user.rol = token.rol as string;
-        session.user.nombres = token.nombres as string;
-        session.user.cip = token.cip as string | null;
+        session.user.id        = token.id as string;
+        session.user.rol       = token.rol as string;
+        session.user.nombres   = token.nombres as string;
+        session.user.cip       = token.cip as string | null;
+        session.user.grado     = token.grado as string | null;
+        session.user.bomberoId = token.bomberoId as number | null;
       }
       return session;
     },
   },
-  pages: {
-    signIn: "/login",
-  },
-  session: {
-    strategy: "jwt",
-  },
-  secret: process.env.NEXTAUTH_SECRET,
+  pages:   { signIn: "/login", newUser: "/inicio" },
+  session: { strategy: "jwt" },
+  secret:  process.env.NEXTAUTH_SECRET,
 };

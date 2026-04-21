@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { Menu, X } from "lucide-react";
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+export function DashboardShell({ children, scrollable = false }: { children: React.ReactNode; scrollable?: boolean }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -42,8 +42,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
+        <main className={`flex-1 ${scrollable ? "overflow-y-auto" : "overflow-hidden"}`}>
+          <div className={`max-w-7xl mx-auto px-4 md:px-6 py-4 ${scrollable ? "" : "h-full flex flex-col"}`}>
             {children}
           </div>
         </main>

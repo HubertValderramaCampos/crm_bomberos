@@ -9,5 +9,5 @@ export default async function Layout({ children }: { children: React.ReactNode }
   if (!["JEFE_COMPANIA", "OPERACIONES"].includes(session.user.rol)) {
     redirect("/dashboard");
   }
-  return <DashboardShell>{children}</DashboardShell>;
+  return <DashboardShell scrollable>{children}</DashboardShell>;
 }

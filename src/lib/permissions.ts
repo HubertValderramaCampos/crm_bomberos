@@ -1,23 +1,25 @@
 export const ROLES = {
-  JEFE_COMPANIA: "JEFE_COMPANIA",
-  ADMINISTRACION: "ADMINISTRACION",
+  JEFE_COMPANIA:       "JEFE_COMPANIA",
+  ADMINISTRACION:      "ADMINISTRACION",
   SERVICIOS_GENERALES: "SERVICIOS_GENERALES",
-  INSTRUCCION: "INSTRUCCION",
-  SANIDAD: "SANIDAD",
-  OPERACIONES: "OPERACIONES",
-  IMAGEN: "IMAGEN",
+  INSTRUCCION:         "INSTRUCCION",
+  SANIDAD:             "SANIDAD",
+  OPERACIONES:         "OPERACIONES",
+  IMAGEN:              "IMAGEN",
+  BOMBERO:             "BOMBERO",
 } as const;
 
 export type Rol = (typeof ROLES)[keyof typeof ROLES];
 
 export const ROL_LABELS: Record<Rol, string> = {
-  JEFE_COMPANIA: "Jefe de Compañía",
-  ADMINISTRACION: "Área de Administración",
+  JEFE_COMPANIA:       "Jefe de Compañía",
+  ADMINISTRACION:      "Área de Administración",
   SERVICIOS_GENERALES: "Área de Servicios Generales",
-  INSTRUCCION: "Área de Instrucción",
-  SANIDAD: "Área de Sanidad",
-  OPERACIONES: "Área de Operaciones",
-  IMAGEN: "Área de Imagen",
+  INSTRUCCION:         "Área de Instrucción",
+  SANIDAD:             "Área de Sanidad",
+  OPERACIONES:         "Área de Operaciones",
+  IMAGEN:              "Área de Imagen",
+  BOMBERO:             "Efectivo",
 };
 
 export const PATH_AREA_MAP: Record<string, Rol[]> = {
@@ -39,13 +41,14 @@ export function canAccessPath(rol: string, pathname: string): boolean {
 
 export function getDefaultPath(rol: string): string {
   const map: Record<string, string> = {
-    JEFE_COMPANIA: "/dashboard",
-    ADMINISTRACION: "/administracion",
+    JEFE_COMPANIA:       "/dashboard",
+    ADMINISTRACION:      "/administracion",
     SERVICIOS_GENERALES: "/servicios-generales",
-    INSTRUCCION: "/instruccion",
-    SANIDAD: "/sanidad",
-    OPERACIONES: "/operaciones",
-    IMAGEN: "/imagen",
+    INSTRUCCION:         "/instruccion",
+    SANIDAD:             "/sanidad",
+    OPERACIONES:         "/operaciones",
+    IMAGEN:              "/imagen",
+    BOMBERO:             "/mi-perfil",
   };
   return map[rol] ?? "/dashboard";
 }
