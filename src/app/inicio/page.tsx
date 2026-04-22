@@ -14,115 +14,107 @@ import Link from "next/link";
 const MESES_ES = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 async function getInicioData(usuarioId: string, bomberoId: number | null) {
-  const client = await pool.connect();
-  try {
-    const anio = new Date().getFullYear();
+  const anio = new Date().getFullYear();
 
-    // Último mes con datos
-    const ultimoMesRes = await client.query<{ mes: number; anio: number }>(
-      `SELECT mes, anio FROM asistencia_mensual ORDER BY anio DESC, mes DESC LIMIT 1`
-    );
-    const { mes, anio: anioMes } = ultimoMesRes.rows[0] ?? { mes: new Date().getMonth() + 1, anio };
+  const ultimoMesRes = await pool.query<{ mes: number; anio: number }>(
+    `SELECT mes, anio FROM asistencia_mensual ORDER BY anio DESC, mes DESC LIMIT 1`
+  );
+  const { mes, anio: anioMes } = ultimoMesRes.rows[0] ?? { mes: new Date().getMonth() + 1, anio };
 
-    const [
-      ecRes, bomberos, enTurno, vehiculosRes,
-      emergAnio, emergActivas, emergMes,
-      asistMes, ranking, miAsistencia,
-      bomberoNombre, vehiculosDetalle,
-    ] = await Promise.all([
+  const [
+    ecRes, bomberos, enTurno, vehiculosRes,
+    emergAnio, emergActivas, emergMes,
+    asistMes, ranking, miAsistencia,
+    bomberoNombre, vehiculosDetalle,
+  ] = await Promise.all([
 
-      // Estado compañía
-      client.query<{
-        estado_general: string | null; personal_disponible: number | null;
-        pilotos_disponibles: number | null; primer_jefe: string | null;
-        segundo_jefe: string | null; created_at: string;
-      }>(`SELECT estado_general, personal_disponible, pilotos_disponibles,
-                 primer_jefe, segundo_jefe, created_at
-          FROM estado_compania ORDER BY created_at DESC LIMIT 1`),
+    pool.query<{
+      estado_general: string | null; personal_disponible: number | null;
+      pilotos_disponibles: number | null; primer_jefe: string | null;
+      segundo_jefe: string | null; created_at: string;
+    }>(`SELECT estado_general, personal_disponible, pilotos_disponibles,
+               primer_jefe, segundo_jefe, created_at
+        FROM estado_compania ORDER BY created_at DESC LIMIT 1`),
 
-      client.query<{ count: string }>(
-        `SELECT COUNT(*) FROM bombero WHERE activo = true`),
+    pool.query<{ count: string }>(
+      `SELECT COUNT(*) FROM bombero WHERE activo = true`),
 
-      client.query<{ count: string }>(`
-        SELECT COUNT(*) FROM asistencia_turno
-        WHERE estado_compania_id = (SELECT id FROM estado_compania ORDER BY created_at DESC LIMIT 1)
-      `),
+    pool.query<{ count: string }>(`
+      SELECT COUNT(*) FROM asistencia_turno
+      WHERE estado_compania_id = (SELECT id FROM estado_compania ORDER BY created_at DESC LIMIT 1)
+    `),
 
-      client.query<{ estado: string; motivo: string | null; count: string }>(
-        `SELECT estado, motivo, COUNT(*) FROM vehiculo GROUP BY estado, motivo`),
+    pool.query<{ estado: string; motivo: string | null; count: string }>(
+      `SELECT estado, motivo, COUNT(*) FROM vehiculo GROUP BY estado, motivo`),
 
-      client.query<{ count: string }>(
-        `SELECT COUNT(*) FROM emergencia
-         WHERE EXTRACT(year FROM COALESCE(fecha_salida,fecha_despacho,created_at)) = $1`, [anio]),
+    pool.query<{ count: string }>(
+      `SELECT COUNT(*) FROM emergencia
+       WHERE EXTRACT(year FROM COALESCE(fecha_salida,fecha_despacho,created_at)) = $1`, [anio]),
 
-      client.query<{ count: string }>(
-        `SELECT COUNT(*) FROM emergencia
-         WHERE estado = 'ATENDIENDO' AND fecha_retorno IS NULL
-           AND COALESCE(fecha_salida,fecha_despacho) >= NOW() - INTERVAL '6 hours'`),
+    pool.query<{ count: string }>(
+      `SELECT COUNT(*) FROM emergencia
+       WHERE estado = 'ATENDIENDO' AND fecha_retorno IS NULL
+         AND COALESCE(fecha_salida,fecha_despacho) >= NOW() - INTERVAL '6 hours'`),
 
-      client.query<{ count: string; total_efectivos: string }>(
-        `SELECT COUNT(*) AS count, COALESCE(SUM(numero_efectivos),0) AS total_efectivos
-         FROM emergencia
-         WHERE DATE_TRUNC('month', COALESCE(fecha_salida,fecha_despacho,created_at)) = DATE_TRUNC('month', CURRENT_DATE)`),
+    pool.query<{ count: string; total_efectivos: string }>(
+      `SELECT COUNT(*) AS count, COALESCE(SUM(numero_efectivos),0) AS total_efectivos
+       FROM emergencia
+       WHERE DATE_TRUNC('month', COALESCE(fecha_salida,fecha_despacho,created_at)) = DATE_TRUNC('month', CURRENT_DATE)`),
 
-      client.query<{ horas: string; emerg: string; activos: string; dias: string }>(
-        `SELECT COALESCE(SUM(horas_acumuladas),0) AS horas,
-                COALESCE(SUM(num_emergencias),0)  AS emerg,
-                COUNT(DISTINCT bombero_id)         AS activos,
-                COALESCE(AVG(dias_asistidos),0)    AS dias
-         FROM asistencia_mensual WHERE mes = $1 AND anio = $2`, [mes, anioMes]),
+    pool.query<{ horas: string; emerg: string; activos: string; dias: string }>(
+      `SELECT COALESCE(SUM(horas_acumuladas),0) AS horas,
+              COALESCE(SUM(num_emergencias),0)  AS emerg,
+              COUNT(DISTINCT bombero_id)         AS activos,
+              COALESCE(AVG(dias_asistidos),0)    AS dias
+       FROM asistencia_mensual WHERE mes = $1 AND anio = $2`, [mes, anioMes]),
 
-      client.query<{
-        id: number; apellidos: string; nombres: string; grado: string; codigo: string;
-        horas_acumuladas: number; dias_asistidos: number; num_emergencias: number;
-      }>(`SELECT b.id, b.apellidos, b.nombres, b.grado, b.codigo,
-                 am.horas_acumuladas, am.dias_asistidos, am.num_emergencias
-          FROM asistencia_mensual am
-          JOIN bombero b ON b.id = am.bombero_id
-          WHERE am.mes = $1 AND am.anio = $2 AND b.activo = true AND am.horas_acumuladas > 0
-          ORDER BY am.horas_acumuladas DESC LIMIT 10`, [mes, anioMes]),
+    pool.query<{
+      id: number; apellidos: string; nombres: string; grado: string; codigo: string;
+      horas_acumuladas: number; dias_asistidos: number; num_emergencias: number;
+    }>(`SELECT b.id, b.apellidos, b.nombres, b.grado, b.codigo,
+               am.horas_acumuladas, am.dias_asistidos, am.num_emergencias
+        FROM asistencia_mensual am
+        JOIN bombero b ON b.id = am.bombero_id
+        WHERE am.mes = $1 AND am.anio = $2 AND b.activo = true AND am.horas_acumuladas > 0
+        ORDER BY am.horas_acumuladas DESC LIMIT 10`, [mes, anioMes]),
 
-      bomberoId ? client.query<{
-        horas_acumuladas: number; dias_asistidos: number; num_emergencias: number; grado: string;
-      }>(`SELECT am.horas_acumuladas, am.dias_asistidos, am.num_emergencias, b.grado
-          FROM asistencia_mensual am JOIN bombero b ON b.id = am.bombero_id
-          WHERE am.bombero_id = $1 AND am.mes = $2 AND am.anio = $3`,
-        [bomberoId, mes, anioMes]) : Promise.resolve({ rows: [] }),
+    bomberoId ? pool.query<{
+      horas_acumuladas: number; dias_asistidos: number; num_emergencias: number; grado: string;
+    }>(`SELECT am.horas_acumuladas, am.dias_asistidos, am.num_emergencias, b.grado
+        FROM asistencia_mensual am JOIN bombero b ON b.id = am.bombero_id
+        WHERE am.bombero_id = $1 AND am.mes = $2 AND am.anio = $3`,
+      [bomberoId, mes, anioMes]) : Promise.resolve({ rows: [] }),
 
-      // Nombre real del usuario desde la tabla bombero
-      bomberoId ? client.query<{ apellidos: string; nombres: string; grado: string }>(
-        `SELECT apellidos, nombres, grado FROM bombero WHERE id = $1`, [bomberoId]
-      ) : Promise.resolve({ rows: [] }),
+    bomberoId ? pool.query<{ apellidos: string; nombres: string; grado: string }>(
+      `SELECT apellidos, nombres, grado FROM bombero WHERE id = $1`, [bomberoId]
+    ) : Promise.resolve({ rows: [] }),
 
-      // Detalle de vehículos para el status
-      client.query<{ codigo: string; tipo: string; estado: string; motivo: string | null }>(
-        `SELECT codigo, tipo, estado, motivo FROM vehiculo ORDER BY codigo`),
-    ]);
+    pool.query<{ codigo: string; tipo: string; estado: string; motivo: string | null }>(
+      `SELECT codigo, tipo, estado, motivo FROM vehiculo ORDER BY codigo`),
+  ]);
 
-    // Vehículos operativos = EN BASE sin motivo de falla
-    const vehiculos = vehiculosRes.rows;
-    const vTotal    = vehiculosRes.rows.reduce((s, r) => s + Number(r.count), 0);
-    const vBase     = vehiculosDetalle.rows.filter(v => v.estado === "EN BASE" && !v.motivo).length;
-    const vFalla    = vehiculosDetalle.rows.filter(v => v.motivo).length;
+  // Vehículos operativos = EN BASE sin motivo de falla
+  const vTotal = vehiculosRes.rows.reduce((s, r) => s + Number(r.count), 0);
+  const vBase  = vehiculosDetalle.rows.filter(v => v.estado === "EN BASE" && !v.motivo).length;
+  const vFalla = vehiculosDetalle.rows.filter(v => v.motivo).length;
 
-    // Nombre para el saludo
-    const bNombre = bomberoNombre.rows[0];
-    const nombreMostrar = bNombre
-      ? bNombre.apellidos.trim().split(",")[0].trim()
-      : null;
+  const bNombre = bomberoNombre.rows[0];
+  const nombreMostrar = bNombre
+    ? bNombre.apellidos.trim().split(",")[0].trim()
+    : null;
 
-    return {
-      mes, anioMes,
-      ec:             ecRes.rows[0] ?? null,
-      totalBomberos:  Number(bomberos.rows[0].count),
-      enTurno:        Number(enTurno.rows[0].count),
-      vehiculosEnBase: vBase,
-      vehiculosTotal:  vTotal,
-      vehiculosFalla:  vFalla,
-      vehiculosDetalle: vehiculosDetalle.rows,
-      emergAnio:      Number(emergAnio.rows[0].count),
-      emergActivas:   Number(emergActivas.rows[0].count),
-      emergMes:       Number(emergMes.rows[0].count),
+  return {
+    mes, anioMes,
+    ec:             ecRes.rows[0] ?? null,
+    totalBomberos:  Number(bomberos.rows[0].count),
+    enTurno:        Number(enTurno.rows[0].count),
+    vehiculosEnBase: vBase,
+    vehiculosTotal:  vTotal,
+    vehiculosFalla:  vFalla,
+    vehiculosDetalle: vehiculosDetalle.rows,
+    emergAnio:      Number(emergAnio.rows[0].count),
+    emergActivas:   Number(emergActivas.rows[0].count),
+    emergMes:       Number(emergMes.rows[0].count),
       totalEfectivos: Number(emergMes.rows[0].total_efectivos),
       asistMes:       asistMes.rows[0],
       ranking:        ranking.rows,
@@ -130,9 +122,6 @@ async function getInicioData(usuarioId: string, bomberoId: number | null) {
       nombreMostrar,
       gradoDB:        bNombre?.grado ?? null,
     };
-  } finally {
-    client.release();
-  }
 }
 
 export default async function InicioPage() {
@@ -155,7 +144,7 @@ export default async function InicioPage() {
   const miGrado   = data?.miAsistencia?.grado ?? data?.gradoDB ?? grado ?? "";
   const metaHoras = HORAS_REGLAMENTO[miGrado] ?? 20;
   const pctMeta   = Math.min(100, Math.round((miHoras / metaHoras) * 100));
-  const miPos     = bomberoId ? (data?.ranking.findIndex(r => r.id === bomberoId) ?? -1) + 1 : 0;
+  const miPos     = bomberoId ? ((data?.ranking?.findIndex(r => r.id === bomberoId) ?? -1) + 1) : 0;
 
   const estadoEC = data?.ec?.estado_general;
   const estadoColor = estadoEC === "EN SERVICIO" ? "bg-green-500"

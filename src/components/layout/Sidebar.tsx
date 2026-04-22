@@ -6,7 +6,7 @@ import Image from "next/image";
 import {
   Home, UserCircle, Radio, BarChart3, FileText, Users,
   Briefcase, ShoppingBag, GraduationCap, MapPin, CalendarCheck,
-  LogOut, ChevronRight, ShieldCheck, TrendingUp,
+  LogOut, ChevronRight, ShieldCheck, TrendingUp, Building2,
 } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
 
@@ -20,8 +20,9 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "__root__",
     items: [
-      { label: "Inicio",  href: "/inicio",  icon: Home,       roles: TODOS },
-      { label: "Mi Perfil", href: "/perfil", icon: UserCircle, roles: ["BOMBERO"] },
+      { label: "Inicio",     href: "/inicio",    icon: Home,       roles: TODOS },
+      { label: "Mi Compañía", href: "/compania", icon: Building2,  roles: ["BOMBERO"] },
+      { label: "Mi Perfil",  href: "/perfil",    icon: UserCircle, roles: ["BOMBERO"] },
     ],
   },
   {

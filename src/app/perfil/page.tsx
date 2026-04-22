@@ -5,7 +5,7 @@ import pool from "@/lib/db";
 import Link from "next/link";
 import {
   User, Clock, CalendarCheck, Siren, BookOpen, ShieldCheck,
-  Phone, Mail, UserCircle2, Settings,
+  Phone, Mail, UserCircle2, Settings, Cake,
 } from "lucide-react";
 import { HORAS_REGLAMENTO } from "@/lib/reglamento";
 
@@ -102,6 +102,19 @@ export default async function PerfilPage() {
   );
 
   const ultimoMes = historial[0];
+
+  function calcularEdad(fechaNac: string | null): number | null {
+    if (!fechaNac) return null;
+    const hoy = new Date();
+    const nac = new Date(fechaNac);
+    if (isNaN(nac.getTime())) return null;
+    let edad = hoy.getFullYear() - nac.getFullYear();
+    const m = hoy.getMonth() - nac.getMonth();
+    if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+    return edad;
+  }
+
+  const edad = calcularEdad(bombero.fecha_nacimiento);
   const totalHoras = historial.reduce((s, h) => s + (h.horas_acumuladas ?? 0), 0);
   const meta = HORAS_REGLAMENTO[bombero.grado] ?? 20;
   const pct = ultimoMes ? Math.min(100, Math.round(((ultimoMes.horas_acumuladas ?? 0) / meta) * 100)) : 0;
@@ -122,6 +135,13 @@ export default async function PerfilPage() {
           <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-gray-400">
             <span className="font-mono font-medium text-gray-600">{bombero.codigo}</span>
             {bombero.dni && <span>DNI {bombero.dni}</span>}
+            {bombero.fecha_nacimiento && (
+              <span className="flex items-center gap-1">
+                <Cake className="w-3 h-3" />
+                {new Date(bombero.fecha_nacimiento).toLocaleDateString("es-PE", { day:"2-digit", month:"short", year:"numeric" })}
+                {edad !== null && <span className="font-semibold text-gray-600">· {edad} años</span>}
+              </span>
+            )}
             {bombero.fecha_ingreso && (
               <span>Ingreso: {new Date(bombero.fecha_ingreso).toLocaleDateString("es-PE", { day:"2-digit", month:"short", year:"numeric" })}</span>
             )}

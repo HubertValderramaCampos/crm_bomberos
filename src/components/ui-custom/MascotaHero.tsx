@@ -1,5 +1,11 @@
 "use client";
-import { Player } from "@lottiefiles/react-lottie-player";
+
+import dynamic from "next/dynamic";
+
+const Player = dynamic(
+  () => import("@lottiefiles/react-lottie-player").then(m => m.Player),
+  { ssr: false }
+);
 
 interface Props {
   horas: number;
@@ -9,78 +15,70 @@ interface Props {
   nombre: string;
 }
 
-function getMascotaEstado(pct: number) {
+function getEstado(pct: number) {
   if (pct >= 100) return {
-    // Animación de celebración — pon aquí el JSON de "perro saltando/festejando"
     src: "/mascota/celebracion.json",
-    mensaje: "¡Meta cumplida! Eres un héroe de la compañía 🏆",
-    color: "text-green-700",
-    bg: "from-green-50 to-emerald-100 border-green-200",
+    label: "¡Meta cumplida!",
+    mensaje: "Eres un referente de la compañía este mes.",
+    color: "text-green-700", bg: "from-green-50 to-emerald-100 border-green-200",
+    barColor: "from-green-400 to-emerald-500",
   };
   if (pct >= 60) return {
-    // Animación activa — pon el JSON de "perro corriendo/activo"
     src: "/mascota/activo.json",
-    mensaje: "¡Buen ritmo! Sigue así, casi llegas 🔥",
-    color: "text-blue-700",
-    bg: "from-blue-50 to-sky-100 border-blue-200",
+    label: "¡Buen ritmo!",
+    mensaje: "Vas bien encaminado, sigue así.",
+    color: "text-orange-700", bg: "from-orange-50 to-amber-100 border-amber-200",
+    barColor: "from-orange-400 to-amber-400",
   };
   if (pct > 0) return {
-    // Animación idle — pon el JSON de "perro sentado/esperando"
-    src: "/mascota/idle.json",
-    mensaje: "Tu mascota espera más horas... ¡a entrenar!",
-    color: "text-amber-700",
-    bg: "from-amber-50 to-yellow-100 border-amber-200",
+    src: "/mascota/idle.jso.json",
+    label: "En progreso",
+    mensaje: "Necesitas más horas para cumplir la meta.",
+    color: "text-amber-700", bg: "from-amber-50 to-yellow-100 border-yellow-200",
+    barColor: "from-amber-400 to-yellow-400",
   };
   return {
-    // Animación dormido — pon el JSON de "perro durmiendo"
     src: "/mascota/dormido.json",
-    mensaje: "Sin registros este mes. ¡Despierta a tu pastor!",
-    color: "text-gray-500",
-    bg: "from-gray-50 to-gray-100 border-gray-200",
+    label: "Sin registros",
+    mensaje: "No hay horas registradas este mes.",
+    color: "text-gray-500", bg: "from-gray-50 to-gray-100 border-gray-200",
+    barColor: "from-gray-300 to-gray-400",
   };
 }
 
-export function MascotaHero({ horas, meta, pct, grado }: Props) {
-  const estado = getMascotaEstado(pct);
+export function MascotaHero({ horas, meta, pct, grado, nombre }: Props) {
+  const e = getEstado(pct);
 
   return (
-    <div className={`bg-gradient-to-br ${estado.bg} border rounded-2xl p-5 flex flex-col items-center text-center h-full justify-between min-h-[300px]`}>
+    <div className={`bg-gradient-to-br ${e.bg} border rounded-2xl p-5 flex flex-col items-center text-center h-full justify-between min-h-[220px]`}>
 
-      {/* Mascota Lottie */}
-      <div className="flex-1 flex items-center justify-center w-full">
+      <div className="w-32 h-32 mt-1">
         <Player
           autoplay
           loop
-          src={estado.src}
-          style={{ height: 180, width: 180 }}
+          src={e.src}
+          style={{ width: "100%", height: "100%" }}
         />
       </div>
 
-      {/* Mensaje */}
-      <p className={`text-sm font-semibold ${estado.color} leading-snug px-2 mb-3`}>
-        {estado.mensaje}
-      </p>
+      <div className="mt-1 mb-4">
+        <p className={`text-base font-bold ${e.color}`}>{e.label}</p>
+        <p className="text-xs text-gray-500 mt-1 leading-snug px-2">{e.mensaje}</p>
+        <p className="text-xs text-gray-400 mt-1">{nombre}</p>
+      </div>
 
-      {/* Barra de progreso */}
       <div className="w-full">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs text-gray-500 font-medium">{horas}h acumuladas</span>
-          <span className={`text-xs font-bold ${estado.color}`}>{pct}%</span>
+        <div className="flex items-center justify-between mb-1.5 text-xs">
+          <span className="text-gray-500 font-medium">{horas}h acumuladas</span>
+          <span className={`font-bold ${e.color}`}>{pct}%</span>
         </div>
-        <div className="w-full h-3 bg-white/60 rounded-full overflow-hidden border border-white">
+        <div className="w-full h-3 bg-white/70 rounded-full overflow-hidden border border-white/80">
           <div
-            className="h-full rounded-full transition-all duration-1000"
-            style={{
-              width: `${pct}%`,
-              background: pct >= 100
-                ? "linear-gradient(to right, #16a34a, #22c55e)"
-                : pct >= 60
-                ? "linear-gradient(to right, #f97316, #facc15)"
-                : "linear-gradient(to right, #dc2626, #f97316)",
-            }}
+            className={`h-full rounded-full bg-gradient-to-r ${e.barColor} transition-all duration-700`}
+            style={{ width: `${Math.min(100, pct)}%` }}
           />
         </div>
-        <p className="text-xs text-gray-400 mt-1.5 text-center">
+        <p className="text-xs text-gray-400 mt-1.5">
           Meta: <span className="font-semibold text-gray-600">{meta}h / mes</span>
           {grado && <span className="ml-1">· {grado}</span>}
         </p>

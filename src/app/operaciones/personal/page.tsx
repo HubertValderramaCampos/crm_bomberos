@@ -87,7 +87,11 @@ async function getPersonal(filtros: {
         COUNT(DISTINCT b.id) AS total_bomberos,
         COUNT(DISTINCT bea.bombero_id) FILTER (WHERE bea.estado ILIKE '%turno%') AS en_turno,
         COALESCE(SUM(am.horas_acumuladas), 0) AS total_horas,
-        COALESCE(SUM(am.num_emergencias), 0) AS total_emergencias
+        (SELECT COUNT(*) FROM emergencia
+         WHERE tipo = 'EMERGENCIA'
+           AND EXTRACT(month FROM COALESCE(fecha_salida,fecha_despacho,created_at)) = $1
+           AND EXTRACT(year  FROM COALESCE(fecha_salida,fecha_despacho,created_at)) = $2
+        ) AS total_emergencias
       FROM bombero b
       LEFT JOIN bombero_estado_actual bea ON bea.bombero_id = b.id
       LEFT JOIN asistencia_mensual am ON am.bombero_id = b.id
