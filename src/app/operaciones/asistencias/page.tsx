@@ -184,7 +184,7 @@ export default async function AsistenciasPage({
     <div className="space-y-4 pb-6">
 
       {/* Header + selector de mes */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <CalendarCheck className="w-5 h-5 text-red-700" />
@@ -196,7 +196,7 @@ export default async function AsistenciasPage({
         </div>
 
         {/* Selector de mes */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap max-w-full">
           {data.resumenMeses.map(r => (
             <Link
               key={`${r.mes}-${r.anio}`}
@@ -214,7 +214,7 @@ export default async function AsistenciasPage({
       </div>
 
       {/* KPIs del mes */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
           { icon: Users,        label: "Bomberos activos",   value: data.actual?.bomberos ?? "—",                           sub: `con registro ${MESES_ES[mes]}`,           color: "text-blue-600"   },
           { icon: Clock,        label: "Horas totales",       value: data.actual ? `${data.actual.totalHoras.toLocaleString()}h` : "—", sub: `promedio: ${data.actual?.promHoras ?? "—"}h`, color: "text-purple-600" },

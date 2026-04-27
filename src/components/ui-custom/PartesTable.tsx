@@ -105,25 +105,25 @@ function ParteRow({ parte, esBombero }: { parte: Parte; esBombero: boolean }) {
         </td>
 
         {/* Fecha */}
-        <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
+        <td className="hidden sm:table-cell px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
           <p className="font-medium text-gray-700">{fmtFecha(fechaRef)}</p>
           <p className="text-gray-400 text-[11px]">{fmtHora(fechaRef)}</p>
         </td>
 
         {/* T. respuesta */}
-        <td className="px-3 py-3 text-xs whitespace-nowrap">
+        <td className="hidden md:table-cell px-3 py-3 text-xs whitespace-nowrap">
           <span className={`font-bold ${tResp === "—" ? "text-gray-300" : "text-blue-700"}`}>{tResp}</span>
           {tResp !== "—" && <p className="text-[10px] text-gray-400">despacho→llegada</p>}
         </td>
 
         {/* Duración */}
-        <td className="px-3 py-3 text-xs whitespace-nowrap">
+        <td className="hidden md:table-cell px-3 py-3 text-xs whitespace-nowrap">
           <span className={`font-bold ${durTotal === "—" ? "text-gray-300" : "text-purple-700"}`}>{durTotal}</span>
           {durTotal !== "—" && <p className="text-[10px] text-gray-400">duración total</p>}
         </td>
 
         {/* Personal */}
-        <td className="px-3 py-3 text-xs max-w-[160px]">
+        <td className="hidden lg:table-cell px-3 py-3 text-xs max-w-[160px]">
           {esBombero ? (
             parte.numero_efectivos != null
               ? <p className="text-[11px] text-gray-400 flex items-center gap-1"><Users className="w-3 h-3" />{parte.numero_efectivos} ef.</p>
@@ -145,7 +145,7 @@ function ParteRow({ parte, esBombero }: { parte: Parte; esBombero: boolean }) {
         </td>
 
         {/* Unidades */}
-        <td className="px-3 py-3">
+        <td className="hidden lg:table-cell px-3 py-3">
           {parte.vehiculos.length > 0 ? (
             <div className="flex flex-wrap gap-1">
               {parte.vehiculos.map(v => (
@@ -168,7 +168,7 @@ function ParteRow({ parte, esBombero }: { parte: Parte; esBombero: boolean }) {
       {open && (
         <tr className="border-b border-gray-200">
           <td colSpan={9} className="bg-gray-50 px-6 py-5">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
 
               {/* Timeline */}
               <div>
@@ -336,7 +336,7 @@ export function PartesTable({
         {/* Fila 1: búsqueda + tipo + estado */}
         <div className="flex flex-wrap gap-3 items-center">
           <Filter className="w-4 h-4 text-gray-400 shrink-0" />
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative flex-1 min-w-[150px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
@@ -391,9 +391,19 @@ export function PartesTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {["N.° Parte", "Tipo / Estado", "Descripción", "Fecha", "T. Resp.", "Duración", "Al Mando", "Unidades", ""].map(h => (
-                  <th key={h} className="text-left px-3 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap first:pl-4">
-                    {h}
+                {[
+                  { label: "N.° Parte",    cls: "" },
+                  { label: "Tipo / Estado",cls: "" },
+                  { label: "Descripción",  cls: "" },
+                  { label: "Fecha",        cls: "hidden sm:table-cell" },
+                  { label: "T. Resp.",     cls: "hidden md:table-cell" },
+                  { label: "Duración",     cls: "hidden md:table-cell" },
+                  { label: "Al Mando",     cls: "hidden lg:table-cell" },
+                  { label: "Unidades",     cls: "hidden lg:table-cell" },
+                  { label: "",             cls: "" },
+                ].map(h => (
+                  <th key={h.label} className={`text-left px-3 py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap first:pl-4 ${h.cls}`}>
+                    {h.label}
                   </th>
                 ))}
               </tr>

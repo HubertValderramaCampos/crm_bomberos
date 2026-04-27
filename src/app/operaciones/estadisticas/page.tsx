@@ -187,7 +187,7 @@ export default async function EstadisticasPage({
     <div className="space-y-4 pb-6">
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-red-700" />
@@ -201,7 +201,7 @@ export default async function EstadisticasPage({
       </div>
 
       {/* KPIs — 4 tarjetas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           {
             icon: Siren, label: `Total ${periodoLabel}`, color: "text-red-600",

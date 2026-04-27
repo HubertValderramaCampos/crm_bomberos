@@ -178,7 +178,7 @@ export default async function InicioPage() {
     <div className="space-y-4 pb-6">
 
       {/* ── Saludo ── */}
-      <div className="pt-1 flex items-center justify-between gap-4 flex-wrap">
+      <div className="pt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-bold text-gray-900">
             {saludo}, {primerApellido}
@@ -209,7 +209,7 @@ export default async function InicioPage() {
             </span>
           )}
         </div>
-        <div className="grid grid-cols-4 gap-px bg-gray-100">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-gray-100">
           {[
             { icon: ShieldCheck, label: "Estado",              value: estadoEC ?? "—",                                                          sub: null,                                                                           color: estadoText,                                                          bg: "bg-white" },
             { icon: Users,       label: "En turno",            value: data?.enTurno ?? "—",                                                     sub: `de ${data?.totalBomberos ?? "—"} activos`,                                    color: "text-blue-600",                                                     bg: "bg-white" },
@@ -236,11 +236,11 @@ export default async function InicioPage() {
           <div className="lg:col-span-3 flex flex-col gap-4">
 
             {/* Mascota + KPIs en fila */}
-            <div data-tour="mis-kpis" className="grid grid-cols-3 gap-3">
-              <div className="col-span-1">
+            <div data-tour="mis-kpis" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-1 flex justify-center sm:justify-start">
                 <MascotaHero horas={miHoras} meta={metaHoras} pct={pctMeta} grado={miGrado} nombre={primerApellido} />
               </div>
-              <div className="col-span-2 grid grid-cols-2 gap-3">
+              <div className="sm:col-span-2 grid grid-cols-2 gap-3">
                 {[
                   { icon: Clock,         label: "Mis horas",       value: miHoras > 0 ? `${miHoras}h` : "—",            sub: `Meta: ${metaHoras}h · ${pctMeta}%`,                  color: pctMeta >= 100 ? "text-green-600" : pctMeta >= 60 ? "text-amber-600" : "text-red-600" },
                   { icon: CalendarCheck, label: "Días asistidos",  value: data?.miAsistencia?.dias_asistidos ?? "—",     sub: `${MESES_ES[data?.mes ?? 1]} ${data?.anioMes ?? ""}`, color: "text-blue-600"   },
