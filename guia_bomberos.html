@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<style>
+  body {
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 11pt;
+    color: #1a1a1a;
+    margin: 2.5cm 3cm;
+    line-height: 1.5;
+  }
+  h1 {
+    font-size: 20pt;
+    color: #b91c1c;
+    text-align: center;
+    margin-bottom: 4pt;
+    border-bottom: 3px solid #b91c1c;
+    padding-bottom: 6pt;
+  }
+  .subtitulo {
+    text-align: center;
+    color: #555;
+    font-size: 10pt;
+    margin-top: 0;
+    margin-bottom: 24pt;
+  }
+  h2 {
+    font-size: 13pt;
+    color: #b91c1c;
+    margin-top: 22pt;
+    margin-bottom: 6pt;
+    border-left: 4px solid #b91c1c;
+    padding-left: 8pt;
+  }
+  h3 {
+    font-size: 11pt;
+    color: #333;
+    margin-top: 12pt;
+    margin-bottom: 4pt;
+    font-weight: bold;
+  }
+  p, li {
+    margin: 3pt 0;
+  }
+  ul {
+    margin: 4pt 0 8pt 16pt;
+    padding: 0;
+  }
+  li {
+    margin-bottom: 3pt;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10pt 0 14pt 0;
+    font-size: 10.5pt;
+  }
+  th {
+    background-color: #b91c1c;
+    color: white;
+    padding: 6pt 8pt;
+    text-align: left;
+  }
+  td {
+    padding: 5pt 8pt;
+    border-bottom: 1px solid #ddd;
+    vertical-align: top;
+  }
+  tr:nth-child(even) td {
+    background-color: #fef2f2;
+  }
+  .nota {
+    background: #fff7ed;
+    border-left: 4px solid #f97316;
+    padding: 8pt 10pt;
+    margin: 10pt 0;
+    font-size: 10pt;
+  }
+  .paso {
+    display: inline-block;
+    background: #b91c1c;
+    color: white;
+    border-radius: 50%;
+    width: 18pt;
+    height: 18pt;
+    text-align: center;
+    line-height: 18pt;
+    font-size: 9pt;
+    font-weight: bold;
+    margin-right: 6pt;
+  }
+  .paso-linea {
+    margin-bottom: 8pt;
+  }
+  hr {
+    border: none;
+    border-top: 1px solid #e5e7eb;
+    margin: 18pt 0;
+  }
+  .pie {
+    text-align: center;
+    font-size: 9pt;
+    color: #999;
+    margin-top: 30pt;
+    border-top: 1px solid #eee;
+    padding-top: 8pt;
+  }
+</style>
+</head>
+<body>
+
+<h1>🚒 Sistema CRM — Compañía B-150</h1>
+<p class="subtitulo">Guía rápida de uso para bomberos · Versión 1.0</p>
+
+<!-- ═══════════════════════════════ 1 ═══════════════════════════════ -->
+<h2>1. Acceso al sistema</h2>
+
+<p>Abre tu navegador y ve a la dirección del sistema. Verás la pantalla de inicio de sesión.</p>
+
+<div class="paso-linea"><span class="paso">1</span> <strong>Código de bombero</strong> — ingresa tu código (ej: <em>a23071</em>). Solo minúsculas, sin espacios.</div>
+<div class="paso-linea"><span class="paso">2</span> <strong>Contraseña</strong> — la primera vez es tu apellido en minúsculas + los últimos 2 dígitos de tu código.<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ejemplo: código <em>a23071</em> → contraseña inicial <em>valderrama71</em></div>
+<div class="paso-linea"><span class="paso">3</span> Haz clic en <strong>Ingresar</strong>.</div>
+
+<div class="nota">
+  <strong>Primera vez:</strong> el sistema te pedirá completar tus datos personales (correo, teléfono, contacto de emergencia) y luego cambiar tu contraseña por una personal. Ambos pasos son obligatorios.
+</div>
+
+<!-- ═══════════════════════════════ 2 ═══════════════════════════════ -->
+<h2>2. Pantalla de Inicio</h2>
+
+<p>Al ingresar verás el <strong>Panel de Inicio</strong> con un resumen de la compañía en tiempo real:</p>
+
+<table>
+  <tr>
+    <th>Tarjeta</th>
+    <th>Qué muestra</th>
+  </tr>
+  <tr>
+    <td><strong>Estado de la Compañía</strong></td>
+    <td>Estado general (OPERATIVO / ALERTA / etc.), personal disponible, pilotos disponibles.</td>
+  </tr>
+  <tr>
+    <td><strong>Bomberos activos</strong></td>
+    <td>Total de efectivos activos en el padrón.</td>
+  </tr>
+  <tr>
+    <td><strong>En turno ahora</strong></td>
+    <td>Cantidad de bomberos de guardia en este momento.</td>
+  </tr>
+  <tr>
+    <td><strong>Vehículos</strong></td>
+    <td>Cantidad de unidades disponibles y en mantenimiento.</td>
+  </tr>
+  <tr>
+    <td><strong>Emergencias del año</strong></td>
+    <td>Total de salidas registradas en el año en curso.</td>
+  </tr>
+  <tr>
+    <td><strong>Mi asistencia del mes</strong></td>
+    <td>Tus días asistidos, horas acumuladas y emergencias del mes.</td>
+  </tr>
+  <tr>
+    <td><strong>Ranking de asistencia</strong></td>
+    <td>Top de bomberos con más horas en el mes más reciente con datos.</td>
+  </tr>
+  <tr>
+    <td><strong>Mi progreso de horas</strong></td>
+    <td>Barra de progreso hacia las horas reglamentarias del mes.</td>
+  </tr>
+</table>
+
+<!-- ═══════════════════════════════ 3 ═══════════════════════════════ -->
+<h2>3. Menú principal</h2>
+
+<p>La barra lateral izquierda te da acceso a todas las secciones. Las secciones disponibles dependen de tu rol:</p>
+
+<table>
+  <tr>
+    <th>Sección</th>
+    <th>Contenido principal</th>
+  </tr>
+  <tr>
+    <td><strong>Inicio</strong></td>
+    <td>Panel con resumen general (ver punto 2).</td>
+  </tr>
+  <tr>
+    <td><strong>Compañía</strong></td>
+    <td>Información general de la B-150: misión, jefatura, historia.</td>
+  </tr>
+  <tr>
+    <td><strong>Operaciones</strong></td>
+    <td>Emergencias, guardias, asistencias, partes, personal operativo, estadísticas y análisis.</td>
+  </tr>
+  <tr>
+    <td><strong>Servicios Generales</strong></td>
+    <td>Vehículos, equipos, inventario y mantenimiento.</td>
+  </tr>
+  <tr>
+    <td><strong>Instrucción</strong></td>
+    <td>Cursos y certificaciones del personal.</td>
+  </tr>
+  <tr>
+    <td><strong>Sanidad</strong></td>
+    <td>Registros médicos y botiquín.</td>
+  </tr>
+  <tr>
+    <td><strong>Imagen</strong></td>
+    <td>Comunicados y eventos institucionales.</td>
+  </tr>
+  <tr>
+    <td><strong>Administración</strong></td>
+    <td>Personal, documentos y presupuesto (solo jefatura/admin).</td>
+  </tr>
+  <tr>
+    <td><strong>Mi Perfil</strong></td>
+    <td>Tus datos personales y configuración de cuenta.</td>
+  </tr>
+</table>
+
+<!-- ═══════════════════════════════ 4 ═══════════════════════════════ -->
+<h2>4. Operaciones</h2>
+
+<h3>Emergencias</h3>
+<p>Registra y consulta todas las salidas de emergencia. Muestra tipo, fecha, efectivos desplegados y estado (ATENDIENDO / CERRADA).</p>
+
+<h3>Guardias</h3>
+<p>Consulta el cuadro de guardias de la compañía. Permite saber quién está de turno en cada fecha.</p>
+
+<h3>Asistencias</h3>
+<p>Muestra la asistencia mensual de cada bombero: días asistidos, días de guardia, horas acumuladas y número de emergencias. Los datos se actualizan automáticamente desde el portal CGBVP cuando el mes es cerrado por la jefatura nacional.</p>
+
+<h3>Partes</h3>
+<p>Listado de partes de compañía registrados. Incluye número de parte, fecha, tipo y estado.</p>
+
+<h3>Estadísticas y Análisis</h3>
+<p>Gráficas de emergencias por mes, tipo y comparativas de asistencia del personal.</p>
+
+<!-- ═══════════════════════════════ 5 ═══════════════════════════════ -->
+<h2>5. Mi Perfil</h2>
+
+<p>Accede desde el ícono de usuario en la barra lateral o desde el menú <strong>Mi Perfil</strong>.</p>
+<ul>
+  <li>Actualiza tu correo electrónico y teléfono.</li>
+  <li>Registra un contacto de emergencia (nombre y teléfono).</li>
+  <li>Cambia tu contraseña desde la pestaña <strong>Configuración</strong>.</li>
+</ul>
+
+<!-- ═══════════════════════════════ 6 ═══════════════════════════════ -->
+<h2>6. Cambiar contraseña</h2>
+
+<div class="paso-linea"><span class="paso">1</span> Ve a <strong>Mi Perfil → Configuración</strong>.</div>
+<div class="paso-linea"><span class="paso">2</span> Ingresa tu contraseña actual.</div>
+<div class="paso-linea"><span class="paso">3</span> Escribe la nueva contraseña (mínimo 8 caracteres).</div>
+<div class="paso-linea"><span class="paso">4</span> Confírmala y haz clic en <strong>Establecer contraseña</strong>.</div>
+
+<div class="nota">
+  <strong>Recomendación:</strong> usa una contraseña que recuerdes pero que no sea obvia. No la compartas con nadie.
+</div>
+
+<!-- ═══════════════════════════════ 7 ═══════════════════════════════ -->
+<h2>7. Preguntas frecuentes</h2>
+
+<table>
+  <tr>
+    <th>Pregunta</th>
+    <th>Respuesta</th>
+  </tr>
+  <tr>
+    <td>Olvidé mi contraseña</td>
+    <td>Contacta al administrador del sistema para que restablezca tu acceso.</td>
+  </tr>
+  <tr>
+    <td>No aparece mi asistencia del mes actual</td>
+    <td>Los datos de asistencia los publica el CGBVP al cerrar el mes. Aparecerán automáticamente en los primeros días del mes siguiente.</td>
+  </tr>
+  <tr>
+    <td>¿Puedo ver la asistencia de otro bombero?</td>
+    <td>Sí, en la sección Operaciones → Asistencias está el listado completo de la compañía.</td>
+  </tr>
+  <tr>
+    <td>¿Desde qué dispositivo puedo ingresar?</td>
+    <td>El sistema funciona desde cualquier navegador web moderno (Chrome, Edge, Firefox) en PC, tablet o celular.</td>
+  </tr>
+</table>
+
+<hr />
+
+<p class="pie">Compañía de Bomberos Voluntarios del Perú · B-150 Puente Piedra<br>
+Para soporte técnico comunícate con el administrador del sistema.</p>
+
+</body>
+</html>

@@ -3,7 +3,6 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import pool from "@/lib/db";
 import { MascotaHero } from "@/components/ui-custom/MascotaHero";
-import { RankingCard } from "@/components/ui-custom/RankingCard";
 import { ProgresoCard } from "@/components/ui-custom/ProgresoCard";
 import { HORAS_REGLAMENTO } from "@/lib/reglamento";
 import { calcularRacha } from "@/lib/racha";
@@ -260,8 +259,19 @@ export default async function InicioPage() {
               </div>
             </div>
 
-            {/* Ranking */}
-            {data && <div data-tour="ranking-card"><RankingCard ranking={data.ranking} mes={data.mes} anio={data.anioMes} miId={bomberoId ?? undefined} miPosicion={miPos} compact /></div>}
+            {/* Ranking — próximamente */}
+            <div data-tour="ranking-card" className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                <span className="text-base">🔒</span>
+                <div>
+                  <h2 className="font-bold text-gray-900 text-sm">Ranking de Asistencia</h2>
+                  <p className="text-xs text-gray-400">Próximamente — Nivel 2</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-center justify-center py-6 gap-1">
+                <p className="text-xs font-semibold text-gray-500">Disponible en la siguiente versión</p>
+              </div>
+            </div>
           </div>
 
           {/* Columna derecha: progreso */}
@@ -323,13 +333,37 @@ export default async function InicioPage() {
             </div>
           )}
 
-          <RankingCard ranking={data.ranking} mes={data.mes} anio={data.anioMes} miPosicion={0} />
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div className="px-4 py-4 border-b border-gray-100 flex items-center gap-2">
+              <span className="text-base">🔒</span>
+              <div>
+                <h2 className="font-bold text-gray-900 text-sm">Ranking de Asistencia</h2>
+                <p className="text-xs text-gray-400">Próximamente — Nivel 2</p>
+              </div>
+            </div>
+            <div className="flex flex-col items-center justify-center py-10 gap-2">
+              <p className="text-sm font-semibold text-gray-500">Disponible en la siguiente versión</p>
+              <p className="text-xs text-gray-400 text-center max-w-xs">El ranking completo de asistencia estará disponible próximamente.</p>
+            </div>
+          </div>
         </>
       )}
 
       {/* ── OTROS ROLES ── */}
       {!esBombero && !esOperativo && data && (
-        <RankingCard ranking={data.ranking} mes={data.mes} anio={data.anioMes} miPosicion={0} />
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="px-4 py-4 border-b border-gray-100 flex items-center gap-2">
+            <span className="text-base">🔒</span>
+            <div>
+              <h2 className="font-bold text-gray-900 text-sm">Ranking de Asistencia</h2>
+              <p className="text-xs text-gray-400">Próximamente — Nivel 2</p>
+            </div>
+          </div>
+          <div className="flex flex-col items-center justify-center py-10 gap-2">
+            <p className="text-sm font-semibold text-gray-500">Disponible en la siguiente versión</p>
+            <p className="text-xs text-gray-400 text-center max-w-xs">El ranking completo de asistencia estará disponible próximamente.</p>
+          </div>
+        </div>
       )}
 
     </div>

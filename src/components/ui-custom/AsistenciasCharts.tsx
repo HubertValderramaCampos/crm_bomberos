@@ -56,29 +56,15 @@ export function AsistenciasCharts({ resumenMeses, porGrado, cumplimiento, topBom
         </ResponsiveContainer>
       </Card>
 
-      {/* 2. Top 10 bomberos del mes */}
-      <Card title="Top 10 Bomberos" sub={`Mayor asistencia — ${mesActual}/${anioActual}`}>
-        {topBomberos.length === 0 ? (
-          <p className="text-sm text-gray-400 py-6 text-center">Sin datos.</p>
-        ) : (
-          <ResponsiveContainer width="100%" height={Math.max(200, topBomberos.length * 34)}>
-            <BarChart data={topBomberos} layout="vertical" barSize={16}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} unit="h" />
-              <YAxis dataKey="nombre" type="category" width={130}
-                tick={{ fontSize: 10, fill: "#374151" }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
-                formatter={(v, _, p) => [`${v}h · ${p.payload.dias} días`, ""]}
-              />
-              <Bar dataKey="horas" name="Horas" radius={[0, 5, 5, 0]}>
-                {topBomberos.map((_, i) => (
-                  <Cell key={i} fill={i === 0 ? "#b91c1c" : i === 1 ? "#d97706" : i === 2 ? "#2563eb" : "#94a3b8"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        )}
+      {/* 2. Top 10 bomberos — próximamente */}
+      <Card title="Top 10 Bomberos" sub="Disponible en la próxima versión del sistema">
+        <div className="flex flex-col items-center justify-center py-10 gap-3">
+          <span className="text-3xl">🔒</span>
+          <p className="text-sm font-semibold text-gray-500">Próximamente — Nivel 2</p>
+          <p className="text-xs text-gray-400 text-center max-w-xs">
+            El ranking individual de bomberos estará disponible en la siguiente versión del sistema.
+          </p>
+        </div>
       </Card>
 
       {/* 3. Promedio de horas por grado */}

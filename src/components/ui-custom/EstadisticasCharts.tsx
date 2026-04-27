@@ -166,27 +166,15 @@ export function EstadisticasCharts({ dias, categorias, respuesta, vehiculos, man
         )}
       </Card>
 
-      {/* 6. Efectivos al mando — barras horizontales */}
-      <Card title="Efectivos al Mando" sub={`Salidas como jefe de emergencia — ${periodo}`}>
-        {mando.length === 0 ? (
-          <p className="text-sm text-gray-400 py-8 text-center">Sin datos.</p>
-        ) : (
-          <ResponsiveContainer width="100%" height={Math.max(180, mando.length * 40)}>
-            <BarChart data={mando} layout="vertical" barSize={18}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
-              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-              <YAxis dataKey="nombre" type="category" width={130}
-                tick={{ fontSize: 10, fill: "#374151" }} axisLine={false} tickLine={false}
-                tickFormatter={v => abrevNombre(v)} />
-              <Tooltip
-                contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
-                formatter={(v) => [`${v} salidas`, ""]}
-                labelFormatter={v => v}
-              />
-              <Bar dataKey="veces" fill="#7c3aed" radius={[0, 5, 5, 0]} name="Al mando" />
-            </BarChart>
-          </ResponsiveContainer>
-        )}
+      {/* 6. Efectivos al mando — próximamente */}
+      <Card title="Efectivos al Mando" sub="Disponible en la próxima versión del sistema">
+        <div className="flex flex-col items-center justify-center py-10 gap-3">
+          <span className="text-3xl">🔒</span>
+          <p className="text-sm font-semibold text-gray-500">Próximamente — Nivel 2</p>
+          <p className="text-xs text-gray-400 text-center max-w-xs">
+            El ranking de efectivos al mando estará disponible en la siguiente versión del sistema.
+          </p>
+        </div>
       </Card>
 
     </div>

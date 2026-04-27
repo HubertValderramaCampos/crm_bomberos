@@ -39,23 +39,20 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: "Gestión Administrativa",
-    roles: ["JEFE_COMPANIA","ADMINISTRACION"],
     items: [
-      { label: "Próximamente", href: "#", icon: Briefcase, roles: ["JEFE_COMPANIA","ADMINISTRACION"] },
+      { label: "Próximamente", href: "#", icon: Briefcase, roles: TODOS },
     ],
   },
   {
     title: "Gestión Comercial",
-    roles: ["JEFE_COMPANIA","ADMINISTRACION"],
     items: [
-      { label: "Próximamente", href: "#", icon: ShoppingBag, roles: ["JEFE_COMPANIA","ADMINISTRACION"] },
+      { label: "Próximamente", href: "#", icon: ShoppingBag, roles: TODOS },
     ],
   },
   {
     title: "Gestión Formativa",
-    roles: ["JEFE_COMPANIA","INSTRUCCION"],
     items: [
-      { label: "Próximamente", href: "#", icon: GraduationCap, roles: ["JEFE_COMPANIA","INSTRUCCION"] },
+      { label: "Próximamente", href: "#", icon: GraduationCap, roles: TODOS },
     ],
   },
 ];
