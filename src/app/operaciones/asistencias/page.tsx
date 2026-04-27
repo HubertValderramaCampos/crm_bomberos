@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import pool from "@/lib/db";
 import { CalendarCheck, Users, Clock, Siren, TrendingUp, ChevronRight } from "lucide-react";
+import { calcularRacha } from "@/lib/racha";
 import { AsistenciasCharts } from "@/components/ui-custom/AsistenciasCharts";
 
 const MESES_ES = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -156,12 +157,18 @@ export default async function AsistenciasPage({
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
   const esBombero = session.user.rol === "BOMBERO";
+  const bomberoId = session.user.bomberoId ?? null;
 
-  // Obtener último mes disponible
+  // Obtener último mes disponible + racha si es bombero
   const client = await pool.connect();
-  const ultimoMes = await client.query<{ mes: number; anio: number }>(
-    `SELECT mes, anio FROM asistencia_mensual ORDER BY anio DESC, mes DESC LIMIT 1`
-  ).finally(() => client.release());
+  const [ultimoMes, racha] = await Promise.all([
+    client.query<{ mes: number; anio: number }>(
+      `SELECT mes, anio FROM asistencia_mensual ORDER BY anio DESC, mes DESC LIMIT 1`
+    ).finally(() => client.release()),
+    esBombero && bomberoId ? calcularRacha(bomberoId).catch(() => null) : Promise.resolve(null),
+  ]);
+
+  const puedeVerBeneficios = !esBombero || (racha?.rachaActual ?? 0) >= 2;
 
   const sp = await searchParams;
   const defMes  = ultimoMes.rows[0]?.mes  ?? new Date().getMonth() + 1;
@@ -245,6 +252,7 @@ export default async function AsistenciasPage({
         }))}
         mesActual={mes}
         anioActual={anio}
+        puedeVerBeneficios={puedeVerBeneficios}
       />
 
       {/* Tabla detalle — solo para operativos */}

@@ -5,18 +5,20 @@ import {
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
   ComposedChart, Area,
 } from "recharts";
+import { Trophy } from "lucide-react";
 
 const MESES_ES = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 interface Props {
-  dias:             { dia: string; total: number }[];
-  categorias:       { categoria: string; total: number }[];
-  respuesta:        { categoria: string; mins: number; total: number }[];
-  vehiculos:        { codigo: string; tipo: string; total: number }[];
-  mando:            { nombre: string; veces: number }[];
-  tendenciaMensual: { mes: string; total: number; cerradas: number }[];
-  anio:             number;
-  mes:              number | null;
+  dias:                  { dia: string; total: number }[];
+  categorias:            { categoria: string; total: number }[];
+  respuesta:             { categoria: string; mins: number; total: number }[];
+  vehiculos:             { codigo: string; tipo: string; total: number }[];
+  mando:                 { nombre: string; veces: number }[];
+  tendenciaMensual:      { mes: string; total: number; cerradas: number }[];
+  anio:                  number;
+  mes:                   number | null;
+  puedeVerBeneficios:    boolean;
 }
 
 const COLORES_CAT = ["#b91c1c","#d97706","#2563eb","#059669","#7c3aed","#0891b2","#65a30d","#6b7280"];
@@ -40,7 +42,7 @@ function Card({ title, sub, children, full }: { title: string; sub?: string; chi
   );
 }
 
-export function EstadisticasCharts({ dias, categorias, respuesta, vehiculos, mando, tendenciaMensual, anio, mes }: Props) {
+export function EstadisticasCharts({ dias, categorias, respuesta, vehiculos, mando, tendenciaMensual, anio, mes, puedeVerBeneficios }: Props) {
   const periodo = mes ? `${MESES_ES[mes]} ${anio}` : `${anio}`;
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -166,16 +168,42 @@ export function EstadisticasCharts({ dias, categorias, respuesta, vehiculos, man
         )}
       </Card>
 
-      {/* 6. Efectivos al mando — próximamente */}
-      <Card title="Efectivos al Mando" sub="Disponible en la próxima versión del sistema">
-        <div className="flex flex-col items-center justify-center py-10 gap-3">
-          <span className="text-3xl">🔒</span>
-          <p className="text-sm font-semibold text-gray-500">Próximamente — Nivel 2</p>
-          <p className="text-xs text-gray-400 text-center max-w-xs">
-            El ranking de efectivos al mando estará disponible en la siguiente versión del sistema.
-          </p>
-        </div>
-      </Card>
+      {/* 6. Efectivos al mando */}
+      {puedeVerBeneficios ? (
+        <Card title="Efectivos al Mando" sub={`Salidas como jefe de emergencia — ${periodo}`}>
+          {mando.length === 0 ? (
+            <p className="text-sm text-gray-400 py-8 text-center">Sin datos.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={Math.max(180, mando.length * 40)}>
+              <BarChart data={mando} layout="vertical" barSize={18}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+                <YAxis dataKey="nombre" type="category" width={130}
+                  tick={{ fontSize: 10, fill: "#374151" }} axisLine={false} tickLine={false}
+                  tickFormatter={v => abrevNombre(v)} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
+                  formatter={(v) => [`${v} salidas`, ""]}
+                  labelFormatter={v => v}
+                />
+                <Bar dataKey="veces" fill="#7c3aed" radius={[0, 5, 5, 0]} name="Al mando" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+      ) : (
+        <Card title="Efectivos al Mando" sub="Beneficio de racha">
+          <div className="flex flex-col items-center justify-center py-10 gap-3">
+            <div className="w-10 h-10 rounded-full bg-purple-50 border border-purple-200 flex items-center justify-center">
+              <Trophy className="w-5 h-5 text-purple-400" />
+            </div>
+            <p className="text-sm font-semibold text-gray-700">Desbloquea con racha de 3 semanas</p>
+            <p className="text-xs text-gray-400 text-center max-w-xs">
+              Mantén asistencia 3 semanas seguidas para ver quién lidera más emergencias.
+            </p>
+          </div>
+        </Card>
+      )}
 
     </div>
   );

@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { TrendingUp, Siren, Clock, Truck, Flame, Users } from "lucide-react";
 import pool from "@/lib/db";
+import { calcularRacha } from "@/lib/racha";
 import { EstadisticasCharts } from "@/components/ui-custom/EstadisticasCharts";
 import { EstadisticasFiltros } from "@/components/ui-custom/EstadisticasFiltros";
 
@@ -163,8 +164,17 @@ export default async function EstadisticasPage({
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
+  const esBombero  = session.user.rol === "BOMBERO";
+  const bomberoId  = session.user.bomberoId ?? null;
+
   const hoy = new Date();
-  const [anios, sp] = await Promise.all([getAniosDisponibles(), searchParams]);
+  const [anios, sp, racha] = await Promise.all([
+    getAniosDisponibles(),
+    searchParams,
+    esBombero && bomberoId ? calcularRacha(bomberoId).catch(() => null) : Promise.resolve(null),
+  ]);
+
+  const puedeVerBeneficios = !esBombero || (racha?.rachaActual ?? 0) >= 3;
 
   const anio = Number(sp.anio) || hoy.getFullYear();
   const mes  = sp.mes !== undefined ? (Number(sp.mes) || null) : hoy.getMonth() + 1;
@@ -245,6 +255,7 @@ export default async function EstadisticasPage({
         tendenciaMensual={data.tendenciaMensual}
         anio={anio}
         mes={mes}
+        puedeVerBeneficios={puedeVerBeneficios}
       />
 
     </div>
