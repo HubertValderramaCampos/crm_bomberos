@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import pool from "@/lib/db";
 import { MascotaHero } from "@/components/ui-custom/MascotaHero";
+import { RankingCard } from "@/components/ui-custom/RankingCard";
 import { ProgresoCard } from "@/components/ui-custom/ProgresoCard";
 import { HORAS_REGLAMENTO } from "@/lib/reglamento";
 import { calcularRacha } from "@/lib/racha";
@@ -259,19 +260,29 @@ export default async function InicioPage() {
               </div>
             </div>
 
-            {/* Ranking — próximamente */}
-            <div data-tour="ranking-card" className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                <span className="text-base">🔒</span>
-                <div>
-                  <h2 className="font-bold text-gray-900 text-sm">Ranking de Asistencia</h2>
-                  <p className="text-xs text-gray-400">Próximamente — Nivel 2</p>
+            {/* Ranking — desbloqueado si tiene racha ≥ 1 semana */}
+            {data && (racha?.rachaActual ?? 0) >= 1 ? (
+              <div data-tour="ranking-card">
+                <RankingCard ranking={data.ranking} mes={data.mes} anio={data.anioMes} miId={bomberoId ?? undefined} miPosicion={miPos} compact />
+              </div>
+            ) : (
+              <div data-tour="ranking-card" className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                  <Award className="w-4 h-4 text-amber-400" />
+                  <div>
+                    <h2 className="font-bold text-gray-900 text-sm">Ranking de Asistencia</h2>
+                    <p className="text-xs text-gray-400">Beneficio desbloqueable</p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-center justify-center py-7 gap-2 px-4 text-center">
+                  <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center">
+                    <Award className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-700">Asiste una semana para ver el ranking</p>
+                  <p className="text-xs text-gray-400 max-w-[200px]">Cuando tengas al menos 1 semana de racha podrás ver tu posición frente a los demás.</p>
                 </div>
               </div>
-              <div className="flex flex-col items-center justify-center py-6 gap-1">
-                <p className="text-xs font-semibold text-gray-500">Disponible en la siguiente versión</p>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Columna derecha: progreso */}
@@ -333,37 +344,13 @@ export default async function InicioPage() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            <div className="px-4 py-4 border-b border-gray-100 flex items-center gap-2">
-              <span className="text-base">🔒</span>
-              <div>
-                <h2 className="font-bold text-gray-900 text-sm">Ranking de Asistencia</h2>
-                <p className="text-xs text-gray-400">Próximamente — Nivel 2</p>
-              </div>
-            </div>
-            <div className="flex flex-col items-center justify-center py-10 gap-2">
-              <p className="text-sm font-semibold text-gray-500">Disponible en la siguiente versión</p>
-              <p className="text-xs text-gray-400 text-center max-w-xs">El ranking completo de asistencia estará disponible próximamente.</p>
-            </div>
-          </div>
+          <RankingCard ranking={data.ranking} mes={data.mes} anio={data.anioMes} miPosicion={0} />
         </>
       )}
 
       {/* ── OTROS ROLES ── */}
       {!esBombero && !esOperativo && data && (
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="px-4 py-4 border-b border-gray-100 flex items-center gap-2">
-            <span className="text-base">🔒</span>
-            <div>
-              <h2 className="font-bold text-gray-900 text-sm">Ranking de Asistencia</h2>
-              <p className="text-xs text-gray-400">Próximamente — Nivel 2</p>
-            </div>
-          </div>
-          <div className="flex flex-col items-center justify-center py-10 gap-2">
-            <p className="text-sm font-semibold text-gray-500">Disponible en la siguiente versión</p>
-            <p className="text-xs text-gray-400 text-center max-w-xs">El ranking completo de asistencia estará disponible próximamente.</p>
-          </div>
-        </div>
+        <RankingCard ranking={data.ranking} mes={data.mes} anio={data.anioMes} miPosicion={0} />
       )}
 
     </div>
