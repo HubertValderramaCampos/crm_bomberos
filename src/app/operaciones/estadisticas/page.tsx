@@ -104,8 +104,8 @@ async function getEstadisticas(anio: number, mes: number | null) {
         SELECT
           COUNT(*) AS total,
           COUNT(*) FILTER (
-            WHERE estado = 'ATENDIENDO' AND fecha_retorno IS NULL
-              AND COALESCE(fecha_salida,fecha_despacho) >= NOW() - INTERVAL '6 hours'
+            WHERE estado = 'ATENDIENDO' AND fecha_ingreso IS NULL
+              AND COALESCE(fecha_salida,fecha_despacho) >= NOW() - INTERVAL '24 hours'
           ) AS atendiendo,
           COUNT(*) FILTER (WHERE estado = 'CERRADO') AS cerradas,
           ROUND(AVG(EXTRACT(EPOCH FROM (fecha_llegada - fecha_despacho))/60)
@@ -184,7 +184,7 @@ export default async function EstadisticasPage({
   const topCategoria = data.categorias[0];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 pb-6">
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -201,7 +201,7 @@ export default async function EstadisticasPage({
       </div>
 
       {/* KPIs — 4 tarjetas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           {
             icon: Siren, label: `Total ${periodoLabel}`, color: "text-red-600",
@@ -225,9 +225,9 @@ export default async function EstadisticasPage({
           },
         ].map(({ icon: Icon, label, value, sub, color }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-200 px-4 py-3">
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <Icon className={`w-4 h-4 ${color}`} />
-              <p className="text-xs text-gray-400 uppercase tracking-widest font-medium leading-tight">{label}</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <Icon className={`w-3.5 h-3.5 ${color}`} />
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold leading-tight">{label}</p>
             </div>
             <p className={`text-2xl font-bold ${color}`}>{value}</p>
             <p className="text-xs text-gray-400 mt-0.5 leading-tight">{sub}</p>

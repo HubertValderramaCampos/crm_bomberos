@@ -12,20 +12,19 @@ const MESES_CORTO = ["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","O
 async function getAsistenciasData(mes: number, anio: number) {
   const client = await pool.connect();
   try {
-    const [resumenMeses, detalleMes, topBomberos, porGrado, cumplimiento] = await Promise.all([
+    const [resumenMeses, detalleMes, topBomberos, porGrado, emergReales, cumplimiento] = await Promise.all([
 
       // Resumen por mes (todos los meses disponibles)
       client.query<{
         mes: number; anio: number; bomberos: string;
         prom_horas: string; total_horas: string;
-        total_dias: string; total_emerg: string;
+        total_dias: string;
       }>(`
         SELECT mes, anio,
                COUNT(DISTINCT bombero_id)             AS bomberos,
                ROUND(AVG(horas_acumuladas)::numeric,1) AS prom_horas,
                SUM(horas_acumuladas)                   AS total_horas,
-               SUM(dias_asistidos)                     AS total_dias,
-               SUM(num_emergencias)                    AS total_emerg
+               SUM(dias_asistidos)                     AS total_dias
         FROM asistencia_mensual
         GROUP BY mes, anio
         ORDER BY anio DESC, mes DESC
@@ -69,6 +68,18 @@ async function getAsistenciasData(mes: number, anio: number) {
         GROUP BY b.grado ORDER BY prom_horas DESC
       `, [mes, anio]),
 
+      // Conteo real de emergencias del mes (partes reales, no participaciones)
+      client.query<{ mes: number; anio: number; total: string }>(`
+        SELECT
+          EXTRACT(month FROM COALESCE(fecha_salida,fecha_despacho,created_at))::int AS mes,
+          EXTRACT(year  FROM COALESCE(fecha_salida,fecha_despacho,created_at))::int AS anio,
+          COUNT(*) AS total
+        FROM emergencia
+        WHERE tipo = 'EMERGENCIA'
+        GROUP BY 1, 2
+        ORDER BY 2 DESC, 1 DESC
+      `),
+
       // Cumplimiento reglamentario por grado
       client.query<{ grado: string; cumple: string; no_cumple: string; total: string }>(`
         SELECT b.grado,
@@ -99,6 +110,10 @@ async function getAsistenciasData(mes: number, anio: number) {
     const resumen = resumenMeses.rows;
     const actual  = resumen.find(r => r.mes === mes && r.anio === anio);
 
+    // Conteo real de emergencias por mes (partes reales)
+    const emergMap = new Map(emergReales.rows.map(r => [`${r.anio}-${r.mes}`, Number(r.total)]));
+    const emergMesActual = emergMap.get(`${anio}-${mes}`) ?? 0;
+
     // Calcular cumplimiento global
     const totalCumple   = cumplimiento.rows.reduce((s, r) => s + Number(r.cumple), 0);
     const totalNoCumple = cumplimiento.rows.reduce((s, r) => s + Number(r.no_cumple), 0);
@@ -111,14 +126,14 @@ async function getAsistenciasData(mes: number, anio: number) {
         promHoras:  Number(r.prom_horas),
         totalHoras: Number(r.total_horas),
         totalDias:  Number(r.total_dias),
-        totalEmerg: Number(r.total_emerg),
+        totalEmerg: emergMap.get(`${r.anio}-${r.mes}`) ?? 0,
       })),
       actual: actual ? {
         bomberos:   Number(actual.bomberos),
         promHoras:  Number(actual.prom_horas),
         totalHoras: Number(actual.total_horas),
         totalDias:  Number(actual.total_dias),
-        totalEmerg: Number(actual.total_emerg),
+        totalEmerg: emergMesActual,
       } : null,
       detalleMes:  detalleMes.rows,
       topBomberos: topBomberos.rows,
@@ -140,6 +155,7 @@ export default async function AsistenciasPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
+  const esBombero = session.user.rol === "BOMBERO";
 
   // Obtener último mes disponible
   const client = await pool.connect();
@@ -165,7 +181,7 @@ export default async function AsistenciasPage({
     : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 pb-6">
 
       {/* Header + selector de mes */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -198,18 +214,18 @@ export default async function AsistenciasPage({
       </div>
 
       {/* KPIs del mes */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
           { icon: Users,        label: "Bomberos activos",   value: data.actual?.bomberos ?? "—",                           sub: `con registro ${MESES_ES[mes]}`,           color: "text-blue-600"   },
           { icon: Clock,        label: "Horas totales",       value: data.actual ? `${data.actual.totalHoras.toLocaleString()}h` : "—", sub: `promedio: ${data.actual?.promHoras ?? "—"}h`, color: "text-purple-600" },
           { icon: CalendarCheck,label: "Días de asistencia",  value: data.actual?.totalDias ?? "—",                          sub: "suma de todos los bomberos",             color: "text-amber-600"  },
-          { icon: Siren,        label: "Emergencias",         value: data.actual?.totalEmerg ?? "—",                         sub: "participaciones totales",                color: "text-red-600"    },
+          { icon: Siren,        label: "Emergencias",         value: data.actual?.totalEmerg ?? "—",                         sub: "partes reales del mes",                  color: "text-red-600"    },
           { icon: TrendingUp,   label: "Cumple reglamento",   value: `${pctCumple}%`,                                        sub: `${data.totalCumple} de ${data.totalCumple + data.totalNoCumple}`, color: pctCumple >= 70 ? "text-green-600" : "text-amber-600" },
         ].map(({ icon: Icon, label, value, sub, color }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-200 px-4 py-3">
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <Icon className={`w-4 h-4 ${color}`} />
-              <p className="text-xs text-gray-400 uppercase tracking-widest font-medium">{label}</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <Icon className={`w-3.5 h-3.5 ${color}`} />
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">{label}</p>
             </div>
             <p className={`text-2xl font-bold ${color}`}>{value}</p>
             <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
@@ -231,8 +247,8 @@ export default async function AsistenciasPage({
         anioActual={anio}
       />
 
-      {/* Tabla detalle */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      {/* Tabla detalle — solo para operativos */}
+      {!esBombero && <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-gray-900">Detalle individual</h2>
@@ -295,7 +311,7 @@ export default async function AsistenciasPage({
             </tbody>
           </table>
         </div>
-      </div>
+      </div>}
 
     </div>
   );

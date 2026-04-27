@@ -2,8 +2,9 @@
 import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { Menu, X } from "lucide-react";
+import { GuiaGlobal } from "@/components/ui-custom/GuiaGlobal";
 
-export function DashboardShell({ children, scrollable = false }: { children: React.ReactNode; scrollable?: boolean }) {
+export function DashboardShell({ children, scrollable = false, wide = false }: { children: React.ReactNode; scrollable?: boolean; wide?: boolean }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -41,9 +42,11 @@ export function DashboardShell({ children, scrollable = false }: { children: Rea
           </span>
         </div>
 
+        <GuiaGlobal />
+
         {/* Content */}
         <main className={`flex-1 ${scrollable ? "overflow-y-auto" : "overflow-hidden"}`}>
-          <div className={`max-w-7xl mx-auto px-4 md:px-6 py-4 ${scrollable ? "" : "h-full flex flex-col"}`}>
+          <div className={`w-full mx-auto px-4 md:px-8 py-5 ${wide ? "max-w-screen-2xl" : "max-w-5xl"} ${scrollable ? "" : "h-full flex flex-col"}`}>
             {children}
           </div>
         </main>

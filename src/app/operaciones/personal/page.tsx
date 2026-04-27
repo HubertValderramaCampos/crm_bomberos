@@ -150,29 +150,31 @@ export default async function PersonalPage({
   }));
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <Users className="w-5 h-5 text-red-700" />
-          Bomberos
-        </h1>
-        <p className="text-sm text-gray-400 mt-0.5">
-          Actividad y asistencia — {MESES_ES[filtros.mes]} {filtros.anio}
-        </p>
+    <div className="space-y-4 pb-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <Users className="w-5 h-5 text-red-700" />
+            Bomberos
+          </h1>
+          <p className="text-sm text-gray-400 mt-0.5">
+            Actividad y asistencia — {MESES_ES[filtros.mes]} {filtros.anio}
+          </p>
+        </div>
       </div>
 
       {/* KPIs */}
       {kpi && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { label: "Bomberos activos",    value: kpi.total_bomberos,   sub: "en la compañía" },
-            { label: "En turno ahora",      value: kpi.en_turno,         sub: "estado actual" },
-            { label: "Horas acumuladas",    value: Number(kpi.total_horas).toLocaleString(), sub: `${MESES_ES[filtros.mes]} ${filtros.anio}` },
-            { label: "Emergencias atendidas", value: kpi.total_emergencias, sub: `${MESES_ES[filtros.mes]} ${filtros.anio}` },
-          ].map(({ label, value, sub }) => (
+            { label: "Bomberos activos",      value: kpi.total_bomberos,                         sub: "en la compañía",                              color: "text-blue-600"   },
+            { label: "En turno ahora",        value: kpi.en_turno,                               sub: "estado actual",                               color: "text-green-600"  },
+            { label: "Horas acumuladas",      value: Number(kpi.total_horas).toLocaleString(),   sub: `${MESES_ES[filtros.mes]} ${filtros.anio}`,    color: "text-purple-600" },
+            { label: "Emergencias atendidas", value: kpi.total_emergencias,                      sub: `${MESES_ES[filtros.mes]} ${filtros.anio}`,    color: "text-red-600"    },
+          ].map(({ label, value, sub, color }) => (
             <div key={label} className="bg-white rounded-xl border border-gray-200 px-4 py-3">
-              <p className="text-xs text-gray-400 uppercase tracking-widest font-medium mb-1">{label}</p>
-              <p className="text-3xl font-bold text-gray-900">{value}</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-1">{label}</p>
+              <p className={`text-2xl font-bold ${color}`}>{value}</p>
               <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
             </div>
           ))}

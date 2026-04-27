@@ -225,7 +225,7 @@ export default async function AnalisisPage({
   ].join(" · ");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 pb-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -245,7 +245,7 @@ export default async function AnalisisPage({
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: "Total emergencias",     value: data.totalEmerg,                                           sub: subtitulo,                                      color: "text-red-600"   },
           { label: "T. respuesta promedio", value: data.tiempos.prom > 0 ? `${data.tiempos.prom} min` : "—", sub: `${data.tiempos.conDatos} partes con datos`,    color: "text-blue-600"  },
@@ -253,8 +253,8 @@ export default async function AnalisisPage({
           { label: "Más lento",             value: data.tiempos.max  > 0 ? `${data.tiempos.max} min`  : "—", sub: "tiempo máximo registrado",                     color: "text-amber-600" },
         ].map(({ label, value, sub, color }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-200 px-4 py-3">
-            <p className="text-xs text-gray-400 uppercase tracking-widest font-medium mb-1">{label}</p>
-            <p className={`text-3xl font-bold ${color}`}>{value}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-1">{label}</p>
+            <p className={`text-2xl font-bold ${color}`}>{value}</p>
             <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
           </div>
         ))}

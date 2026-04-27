@@ -15,6 +15,7 @@ export async function PUT(req: NextRequest) {
     telefono?: string;
     contacto_emergencia_nombre?: string;
     contacto_emergencia_telefono?: string;
+    perfil_completado?: boolean;
   };
   try {
     body = await req.json();
@@ -22,7 +23,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  const { fecha_nacimiento, correo, telefono, contacto_emergencia_nombre, contacto_emergencia_telefono } = body;
+  const { fecha_nacimiento, correo, telefono, contacto_emergencia_nombre, contacto_emergencia_telefono, perfil_completado } = body;
 
   // Validar correo básico si viene
   if (correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
@@ -37,14 +38,16 @@ export async function PUT(req: NextRequest) {
         correo                       = COALESCE($2, correo),
         telefono                     = COALESCE($3, telefono),
         contacto_emergencia_nombre   = COALESCE($4, contacto_emergencia_nombre),
-        contacto_emergencia_telefono = COALESCE($5, contacto_emergencia_telefono)
-      WHERE id = $6
+        contacto_emergencia_telefono = COALESCE($5, contacto_emergencia_telefono),
+        perfil_completado            = CASE WHEN $6 = true THEN true ELSE perfil_completado END
+      WHERE id = $7
     `, [
       fecha_nacimiento || null,
       correo || null,
       telefono || null,
       contacto_emergencia_nombre || null,
       contacto_emergencia_telefono || null,
+      perfil_completado ?? false,
       session.user.bomberoId,
     ]);
 

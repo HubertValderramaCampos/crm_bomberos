@@ -8,15 +8,16 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: "credentials",
       credentials: {
-        email:    { label: "Email",     type: "email"    },
+        codigo:   { label: "Código",    type: "text"     },
         password: { label: "Contraseña", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.codigo || !credentials?.password) return null;
+
+        const codigo = credentials.codigo.toLowerCase().trim();
 
         const { rows } = await pool.query<{
           id: number;
-          email: string;
           password_hash: string;
           rol: string;
           activo: boolean;
@@ -26,14 +27,14 @@ export const authOptions: NextAuthOptions = {
           codigo: string | null;
           grado: string | null;
         }>(`
-          SELECT u.id, u.email, u.password_hash, u.rol, u.activo,
+          SELECT u.id, u.password_hash, u.rol, u.activo,
                  u.bombero_id,
                  b.nombres, b.apellidos, b.codigo, b.grado
           FROM usuario u
           LEFT JOIN bombero b ON b.id = u.bombero_id
-          WHERE u.email = $1
+          WHERE u.codigo = $1
           LIMIT 1
-        `, [credentials.email.toLowerCase().trim()]);
+        `, [codigo]);
 
         const user = rows[0];
         if (!user || !user.activo) return null;
@@ -43,11 +44,11 @@ export const authOptions: NextAuthOptions = {
 
         const nombres = user.nombres && user.apellidos
           ? `${user.apellidos}, ${user.nombres}`
-          : user.email;
+          : user.codigo ?? String(user.id);
 
         return {
           id:        String(user.id),
-          email:     user.email,
+          email:     `${user.codigo ?? user.id}@b150.pe`,
           rol:       user.rol,
           nombres,
           cip:       user.codigo ?? null,

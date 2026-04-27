@@ -40,7 +40,7 @@ export default function EmergenciasPage() {
   const enCurso = emergencias.filter((e) => e.estado === "EN_CURSO").length;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 pb-6">
       <PageHeader icon={Siren} title="Emergencias" subtitle={`${emergencias.length} atenciones registradas · ${enCurso} en curso`} />
 
       {enCurso > 0 && (

@@ -1,9 +1,10 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { Truck, Users, Siren, ShieldCheck, Clock, CheckCircle, XCircle, Wrench } from "lucide-react";
+import { Truck, Users, Siren, ShieldCheck, Clock, CheckCircle, XCircle, Wrench, Lock } from "lucide-react";
 import pool from "@/lib/db";
 import { VehiculosDonut, PersonalDonut, RolesBar } from "@/components/ui-custom/OperatividadCharts";
+import { calcularRacha } from "@/lib/racha";
 
 interface EstadoCompania {
   id: number;
@@ -58,50 +59,45 @@ interface Emergencia {
 }
 
 async function getEstadoActual() {
-  const client = await pool.connect();
-  try {
-    const ecRes = await client.query<EstadoCompania>(
-      `SELECT * FROM estado_compania ORDER BY created_at DESC LIMIT 1`
-    );
-    const ec = ecRes.rows[0] ?? null;
-    if (!ec) return { ec: null, personal: [], vehiculos: [], emergencias: [] };
+  const ecRes = await pool.query<EstadoCompania>(
+    `SELECT * FROM estado_compania ORDER BY created_at DESC LIMIT 1`
+  );
+  const ec = ecRes.rows[0] ?? null;
+  if (!ec) return { ec: null, personal: [], vehiculos: [], emergencias: [] };
 
-    const [personalRes, vehiculosRes, emergenciasRes] = await Promise.all([
-      client.query<PersonalTurno>(`
-        SELECT at.id, at.nombre_raw, at.tipo, at.hora_ingreso,
-               at.es_al_mando, at.es_piloto, at.es_medico,
-               at.es_appa, at.es_map, at.es_brec,
-               b.apellidos, b.nombres, b.grado, b.codigo
-        FROM asistencia_turno at
-        LEFT JOIN bombero b ON b.id = at.bombero_id
-        WHERE at.estado_compania_id = $1
-        ORDER BY at.es_al_mando DESC, at.hora_ingreso
-      `, [ec.id]),
-      client.query<VehiculoTurno>(`
-        SELECT id, codigo_vehiculo, estado, motivo, tipo_vehiculo
-        FROM estado_compania_vehiculo
-        WHERE estado_compania_id = $1
-        ORDER BY tipo_vehiculo, codigo_vehiculo
-      `, [ec.id]),
-      client.query<Emergencia>(`
-        SELECT e.id, e.numero_parte, e.tipo AS tipo_raw,
-               te.descripcion AS tipo_desc,
-               e.estado, e.direccion,
-               e.fecha_despacho::text, e.fecha_salida::text,
-               e.piloto_nombre, e.numero_efectivos
-        FROM emergencia e
-        LEFT JOIN tipo_emergencia te ON te.id = e.tipo_emergencia_id
-        WHERE e.estado = 'ATENDIENDO'
-          AND e.fecha_retorno IS NULL
-          AND COALESCE(e.fecha_salida, e.fecha_despacho) >= NOW() - INTERVAL '6 hours'
-        ORDER BY COALESCE(e.fecha_salida, e.fecha_despacho) DESC
-      `),
-    ]);
+  const [personalRes, vehiculosRes, emergenciasRes] = await Promise.all([
+    pool.query<PersonalTurno>(`
+      SELECT at.id, at.nombre_raw, at.tipo, at.hora_ingreso,
+             at.es_al_mando, at.es_piloto, at.es_medico,
+             at.es_appa, at.es_map, at.es_brec,
+             b.apellidos, b.nombres, b.grado, b.codigo
+      FROM asistencia_turno at
+      LEFT JOIN bombero b ON b.id = at.bombero_id
+      WHERE at.estado_compania_id = $1
+      ORDER BY at.es_al_mando DESC, at.hora_ingreso
+    `, [ec.id]),
+    pool.query<VehiculoTurno>(`
+      SELECT id, codigo_vehiculo, estado, motivo, tipo_vehiculo
+      FROM estado_compania_vehiculo
+      WHERE estado_compania_id = $1
+      ORDER BY tipo_vehiculo, codigo_vehiculo
+    `, [ec.id]),
+    pool.query<Emergencia>(`
+      SELECT e.id, e.numero_parte, e.tipo AS tipo_raw,
+             te.descripcion AS tipo_desc,
+             e.estado, e.direccion,
+             e.fecha_despacho::text, e.fecha_salida::text,
+             e.piloto_nombre, e.numero_efectivos
+      FROM emergencia e
+      LEFT JOIN tipo_emergencia te ON te.id = e.tipo_emergencia_id
+      WHERE e.estado = 'ATENDIENDO'
+        AND e.fecha_ingreso IS NULL
+        AND COALESCE(e.fecha_salida, e.fecha_despacho) >= NOW() - INTERVAL '24 hours'
+      ORDER BY COALESCE(e.fecha_salida, e.fecha_despacho) DESC
+    `),
+  ]);
 
-    return { ec, personal: personalRes.rows, vehiculos: vehiculosRes.rows, emergencias: emergenciasRes.rows };
-  } finally {
-    client.release();
-  }
+  return { ec, personal: personalRes.rows, vehiculos: vehiculosRes.rows, emergencias: emergenciasRes.rows };
 }
 
 const ESTADO_CIA_COLOR: Record<string, { dot: string; text: string; bg: string }> = {
@@ -130,11 +126,17 @@ function formatTs(ts: string | null): string {
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
-  if (session.user.rol === "BOMBERO") redirect("/inicio");
+  const esBombero  = session.user.rol === "BOMBERO";
+  const bomberoId  = session.user.bomberoId ?? null;
 
-  const { ec, personal, vehiculos, emergencias } = await getEstadoActual().catch(() => ({
-    ec: null, personal: [], vehiculos: [], emergencias: [],
-  }));
+  const [{ ec, personal, vehiculos, emergencias }, rachaDB] = await Promise.all([
+    getEstadoActual().catch(() => ({ ec: null, personal: [], vehiculos: [], emergencias: [] })),
+    esBombero && bomberoId ? calcularRacha(bomberoId).catch(() => null) : Promise.resolve(null),
+  ]);
+
+  // Recompensas del bombero basadas en racha
+  const puedeVerTurno     = !esBombero || (rachaDB?.asistioEstaSemana ?? false);
+  const puedeVerUnidades  = !esBombero || ((rachaDB?.rachaActual ?? 0) >= 2);
 
   const today = new Date().toLocaleDateString("es-PE", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
@@ -145,8 +147,8 @@ export default async function DashboardPage() {
 
   const tieneMotivo           = (v: VehiculoTurno) => !!(v.motivo && v.motivo.trim());
   const vehiculosOperativos   = vehiculos.filter(v => v.estado === "EN BASE" && !tieneMotivo(v));
-  const vehiculosFalla        = vehiculos.filter(v => tieneMotivo(v));
-  const vehiculosEnEmergencia = vehiculos.filter(v => v.estado === "EN EMERGENCIA" && !tieneMotivo(v));
+  const vehiculosEnEmergencia = vehiculos.filter(v => v.estado === "EN EMERGENCIA");
+  const vehiculosFalla        = vehiculos.filter(v => v.estado !== "EN EMERGENCIA" && tieneMotivo(v));
   const vehiculosFuera        = vehiculos.filter(v => v.estado === "FUERA DE SERVICIO" && !tieneMotivo(v));
 
   const personalBomberos = personal.filter(p => p.tipo === "BOM");
@@ -173,18 +175,16 @@ export default async function DashboardPage() {
   ].filter(r => r.total > 0);
 
   return (
-    <div className="h-full flex flex-col gap-3">
+    <div className="space-y-4 pb-6">
 
-      {/* ── Barra de estado + header ── */}
-      <div className={`rounded-xl border px-4 py-3 flex items-center gap-3 flex-wrap shrink-0 ${estadoStyle.bg}`}>
+      {/* ── Barra de estado ── */}
+      <div className={`rounded-xl border px-4 py-3 flex items-center gap-3 flex-wrap ${estadoStyle.bg}`}>
         <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${estadoStyle.dot} ${estadoKey === "EN EMERGENCIA" ? "animate-pulse" : ""}`} />
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2 flex-wrap">
             <h1 className="text-base font-bold text-gray-900">Operatividad</h1>
             <span className={`text-sm font-semibold ${estadoStyle.text}`}>{estadoKey || "Sin datos"}</span>
-            {ec?.observaciones && (
-              <span className="text-xs text-amber-700">· {ec.observaciones}</span>
-            )}
+            {ec?.observaciones && <span className="text-xs text-amber-700">· {ec.observaciones}</span>}
           </div>
           <p className="text-xs text-gray-400 capitalize mt-0.5">{today}</p>
         </div>
@@ -195,36 +195,27 @@ export default async function DashboardPage() {
         )}
         {emergencias.length > 0 && (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-red-700 rounded-lg text-white text-xs font-bold animate-pulse shrink-0">
-            <Siren className="w-3.5 h-3.5" />
-            {emergencias.length} ATENDIENDO
+            <Siren className="w-3.5 h-3.5" />{emergencias.length} ATENDIENDO
           </div>
         )}
       </div>
 
       {/* ── KPIs ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          {
-            icon: Users, label: "En turno", color: "text-blue-600",
+          { icon: Users,      label: "En turno",            color: "text-blue-600",
             value: personal.length,
-            sub: `${personalBomberos.length} bomberos · ${personalRentados.length} rentados`,
-          },
-          {
-            icon: Truck, label: "Flota operativa", color: vehiculosFalla.length > 0 ? "text-amber-600" : "text-green-600",
+            sub: `${personalBomberos.length} bomberos · ${personalRentados.length} rentados` },
+          { icon: Truck,      label: "Flota operativa",     color: vehiculosFalla.length > 0 ? "text-amber-600" : "text-green-600",
             value: `${vehiculosOperativos.length}/${vehiculos.length}`,
-            sub: vehiculosFalla.length > 0 ? `${vehiculosFalla.length} con desperfectos` : "todas operativas",
-          },
-          {
-            icon: Siren, label: "Emergencias activas", color: emergencias.length > 0 ? "text-red-600" : "text-gray-400",
+            sub: vehiculosFalla.length > 0 ? `${vehiculosFalla.length} con desperfectos` : "todas operativas" },
+          { icon: Siren,      label: "Emergencias activas", color: emergencias.length > 0 ? "text-red-600" : "text-gray-400",
             value: emergencias.length,
             sub: emergencias.length > 0 ? "en atención ahora" : "sin emergencias",
-            highlight: emergencias.length > 0,
-          },
-          {
-            icon: ShieldCheck, label: "Pilotos disponibles", color: "text-purple-600",
+            highlight: emergencias.length > 0 },
+          { icon: ShieldCheck, label: "Pilotos disponibles", color: "text-purple-600",
             value: ec?.pilotos_disponibles ?? "—",
-            sub: `${ec?.paramedicos_disponibles ?? 0} paramédicos`,
-          },
+            sub: `${ec?.paramedicos_disponibles ?? 0} paramédicos` },
         ].map(({ icon: Icon, label, value, sub, color, highlight }) => (
           <div key={label} className={`rounded-xl border px-4 py-3 ${highlight ? "bg-red-50 border-red-200" : "bg-white border-gray-200"}`}>
             <div className="flex items-center gap-1.5 mb-1">
@@ -238,30 +229,28 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Gráficas ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <VehiculosDonut vehiculos={vehiculosChart} />
         <PersonalDonut  personal={personalChart} />
         {rolesChart.length > 0
           ? <RolesBar roles={rolesChart} />
-          : (
-            <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-center">
+          : <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-center">
               <p className="text-xs text-gray-400">Sin especialidades registradas</p>
             </div>
-          )
         }
       </div>
 
-      {/* ── Detalle: 2 columnas (Personal | Unidades + Emergencias) ── */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-3 min-h-0">
+      {/* ── Detalle: Personal + Unidades + Emergencias ── */}
+      <div className={`grid grid-cols-1 gap-3 ${esBombero ? "lg:grid-cols-2" : "lg:grid-cols-5"}`}>
 
-        {/* ── Personal en turno (más ancho) ── */}
-        <div className="lg:col-span-3 bg-white rounded-xl border border-gray-200 flex flex-col min-h-0">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2 shrink-0">
-            <Users className="w-4 h-4 text-gray-400" />
-            <p className="text-sm font-semibold text-gray-900">Personal en Turno</p>
-            <span className="ml-auto text-xs bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">{personal.length} efectivos</span>
-          </div>
-          <div className="overflow-y-auto flex-1">
+        {/* Personal en turno — jefe: col-span-3, bombero con turno: col-span-1 */}
+        {!esBombero && (
+          <div className="lg:col-span-3 bg-white rounded-xl border border-gray-200">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+              <Users className="w-4 h-4 text-gray-400" />
+              <p className="text-sm font-semibold text-gray-900">Personal en Turno</p>
+              <span className="ml-auto text-xs bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">{personal.length} efectivos</span>
+            </div>
             {personal.length === 0 ? (
               <p className="px-4 py-10 text-center text-sm text-gray-400">Sin personal registrado.</p>
             ) : (
@@ -274,30 +263,26 @@ export default async function DashboardPage() {
                       : p.nombre_raw.replace(/^(Ren)?tado\s+/i, "").replace(/^(BOM|REN|SubTnte|Sec|Tte|Cap|Brig)\s*/i, "").split("(")[0].trim();
                     return (
                       <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="pl-4 pr-2 py-2.5 w-1">
-                          <span className={`block w-1 h-7 rounded-full ${p.tipo === "REN" ? "bg-amber-400" : "bg-blue-500"}`} />
+                        <td className="pl-4 pr-2 py-2 w-1">
+                          <span className={`block w-1 h-6 rounded-full ${p.tipo === "REN" ? "bg-amber-400" : "bg-blue-500"}`} />
                         </td>
-                        <td className="px-2 py-2.5 min-w-0">
+                        <td className="px-2 py-2 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-gray-900 leading-tight truncate">{nombre}</span>
-                            {p.es_al_mando && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 bg-red-100 text-red-700 rounded uppercase tracking-wide shrink-0">Mando</span>
-                            )}
+                            <span className="text-xs font-semibold text-gray-900 leading-tight truncate">{nombre}</span>
+                            {p.es_al_mando && <span className="text-[9px] font-bold px-1.5 py-0.5 bg-red-100 text-red-700 rounded uppercase shrink-0">Mando</span>}
                           </div>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            {p.grado && <span className="text-[11px] text-gray-500">{p.grado}</span>}
-                            {p.codigo && <span className="text-[11px] text-gray-400 font-mono">{p.codigo}</span>}
+                            {p.grado && <span className="text-[10px] text-gray-500">{p.grado}</span>}
+                            {p.codigo && <span className="text-[10px] text-gray-400 font-mono">{p.codigo}</span>}
                           </div>
                         </td>
-                        <td className="px-2 py-2.5">
+                        <td className="px-2 py-2">
                           <div className="flex gap-1 flex-wrap">
-                            {roles.map(r => (
-                              <span key={r} className="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded font-medium">{r}</span>
-                            ))}
+                            {roles.map(r => <span key={r} className="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded font-medium">{r}</span>)}
                           </div>
                         </td>
-                        <td className="px-4 py-2.5 text-right shrink-0">
-                          {p.hora_ingreso && <span className="text-[11px] text-gray-400 whitespace-nowrap">{p.hora_ingreso}</span>}
+                        <td className="px-4 py-2 text-right shrink-0">
+                          {p.hora_ingreso && <span className="text-[10px] text-gray-400 whitespace-nowrap">{p.hora_ingreso}</span>}
                         </td>
                       </tr>
                     );
@@ -306,63 +291,114 @@ export default async function DashboardPage() {
               </table>
             )}
           </div>
-        </div>
+        )}
 
-        {/* ── Columna derecha: Unidades + Emergencias ── */}
-        <div className="lg:col-span-2 flex flex-col gap-3 min-h-0">
+        {/* Bombero: turno bloqueado o desbloqueado */}
+        {esBombero && !puedeVerTurno && (
+          <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center text-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+              <Lock className="w-5 h-5 text-gray-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-700">¿Quién está en turno ahora?</p>
+              <p className="text-xs text-gray-400 mt-1">Asiste a la compañía esta semana para ver quién está en servicio en tiempo real.</p>
+            </div>
+          </div>
+        )}
+
+        {esBombero && puedeVerTurno && (
+          <div className="bg-white rounded-xl border border-gray-200">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+              <Users className="w-4 h-4 text-gray-400" />
+              <p className="text-sm font-semibold text-gray-900">En Turno Ahora</p>
+              <span className="ml-auto text-xs bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">{personal.length} efectivos</span>
+            </div>
+            {personal.length === 0 ? (
+              <p className="px-4 py-6 text-center text-sm text-gray-400">Sin personal registrado.</p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {personal.map((p) => {
+                  const nombre = p.apellidos && p.nombres
+                    ? `${p.apellidos.trim().split(",")[0]}, ${p.nombres.split(" ")[0]}`
+                    : p.nombre_raw.replace(/^(Ren)?tado\s+/i, "").split("(")[0].trim();
+                  const roles = getRolesPersonal(p);
+                  return (
+                    <div key={p.id} className="px-4 py-2.5 flex items-center gap-3">
+                      <span className={`block w-1 h-6 rounded-full shrink-0 ${p.tipo === "REN" ? "bg-amber-400" : "bg-blue-500"}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-gray-900 truncate leading-tight">
+                          {nombre}
+                          {p.es_al_mando && <span className="ml-1 text-[9px] font-bold bg-red-100 text-red-700 px-1 py-0.5 rounded">Mando</span>}
+                        </p>
+                        {p.grado && <p className="text-[10px] text-gray-400">{p.grado}</p>}
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        {roles.map(r => <span key={r} className="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded font-medium">{r}</span>)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Columna derecha: Unidades + Emergencias */}
+        <div className={`flex flex-col gap-3 ${esBombero ? "" : "lg:col-span-2"}`}>
 
           {/* Unidades */}
-          <div className="bg-white rounded-xl border border-gray-200 flex flex-col" style={{ minHeight: 0, flex: "1 1 0" }}>
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2 shrink-0">
+          <div className="bg-white rounded-xl border border-gray-200">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
               <Truck className="w-4 h-4 text-gray-400" />
               <p className="text-sm font-semibold text-gray-900">Unidades</p>
-              <span className="ml-auto text-xs text-gray-400">{vehiculos.length} registradas</span>
+              <span className="ml-auto text-xs text-gray-400">{puedeVerUnidades ? `${vehiculos.length} registradas` : "bloqueado"}</span>
             </div>
-
-            <div className="overflow-y-auto flex-1">
-              {vehiculos.length === 0 ? (
-                <p className="px-4 py-6 text-center text-sm text-gray-400">Sin unidades.</p>
-              ) : (
-                <div className="grid grid-cols-1 divide-y divide-gray-50">
-                  {vehiculos.map((v) => {
-                    const operativo = v.estado === "EN BASE" && !tieneMotivo(v);
-                    const enEmerg   = v.estado === "EN EMERGENCIA";
-                    const conFalla  = tieneMotivo(v);
-                    return (
-                      <div key={v.id} className="px-4 py-2 flex items-center gap-3">
-                        <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${
-                          operativo ? "bg-green-50" : conFalla ? "bg-amber-50" : enEmerg ? "bg-blue-50" : "bg-red-50"
-                        }`}>
-                          {operativo  ? <CheckCircle className="w-3.5 h-3.5 text-green-600" />
-                          : conFalla  ? <Wrench      className="w-3.5 h-3.5 text-amber-500" />
-                          : enEmerg   ? <Siren       className="w-3.5 h-3.5 text-blue-600"  />
-                          :             <XCircle     className="w-3.5 h-3.5 text-red-500"   />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-gray-900 font-mono">{v.codigo_vehiculo}</p>
-                          <p className="text-[10px] text-gray-400 truncate">{v.tipo_vehiculo ?? "—"}</p>
-                          {v.motivo && <p className="text-[10px] text-amber-600 truncate">{v.motivo}</p>}
-                        </div>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${
-                          operativo ? "bg-green-100 text-green-700 border-green-200"
-                          : conFalla ? "bg-amber-100 text-amber-700 border-amber-200"
-                          : enEmerg  ? "bg-blue-100 text-blue-700 border-blue-200"
-                          : "bg-red-100 text-red-700 border-red-200"
-                        }`}>
-                          {operativo ? "OPER." : conFalla ? "FALLA" : enEmerg ? "EMERG." : "FUERA"}
-                        </span>
+            {!puedeVerUnidades ? (
+              <div className="px-4 py-8 flex flex-col items-center text-center gap-2">
+                <Lock className="w-5 h-5 text-gray-300" />
+                <p className="text-xs text-gray-400">Mantén racha de 2 semanas seguidas para ver el estado de las unidades.</p>
+              </div>
+            ) : vehiculos.length === 0 ? (
+              <p className="px-4 py-6 text-center text-sm text-gray-400">Sin unidades.</p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {vehiculos.map((v) => {
+                  const enEmerg   = v.estado === "EN EMERGENCIA";
+                  const operativo = v.estado === "EN BASE" && !tieneMotivo(v);
+                  const conFalla  = !enEmerg && tieneMotivo(v);
+                  return (
+                    <div key={v.id} className="px-4 py-2 flex items-center gap-3">
+                      <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 ${
+                        operativo ? "bg-green-50" : conFalla ? "bg-amber-50" : enEmerg ? "bg-blue-50" : "bg-red-50"
+                      }`}>
+                        {operativo ? <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+                        : conFalla ? <Wrench      className="w-3.5 h-3.5 text-amber-500" />
+                        : enEmerg  ? <Siren       className="w-3.5 h-3.5 text-blue-600"  />
+                        :            <XCircle     className="w-3.5 h-3.5 text-red-500"   />}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-gray-900 font-mono">{v.codigo_vehiculo}</p>
+                        <p className="text-[10px] text-gray-400 truncate">{v.tipo_vehiculo ?? "—"}</p>
+                        {v.motivo && <p className="text-[10px] text-amber-600 truncate">{v.motivo}</p>}
+                      </div>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${
+                        operativo ? "bg-green-100 text-green-700 border-green-200"
+                        : conFalla ? "bg-amber-100 text-amber-700 border-amber-200"
+                        : enEmerg  ? "bg-blue-100 text-blue-700 border-blue-200"
+                        :            "bg-red-100 text-red-700 border-red-200"
+                      }`}>
+                        {operativo ? "OPER." : conFalla ? "FALLA" : enEmerg ? "EMERG." : "FUERA"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Emergencias activas */}
-          <div className={`rounded-xl border flex flex-col shrink-0 ${emergencias.length > 0 ? "bg-red-50 border-red-200" : "bg-white border-gray-200"}`}
-            style={{ minHeight: emergencias.length === 0 ? 80 : "auto" }}>
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2 shrink-0">
+          <div className={`rounded-xl border ${emergencias.length > 0 ? "bg-red-50 border-red-200" : "bg-white border-gray-200"}`}>
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
               <Siren className={`w-4 h-4 ${emergencias.length > 0 ? "text-red-500" : "text-gray-300"}`} />
               <p className="text-sm font-semibold text-gray-900">Emergencias Activas</p>
               {emergencias.length > 0 ? (

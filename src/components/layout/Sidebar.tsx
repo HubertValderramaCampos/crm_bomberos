@@ -5,8 +5,8 @@ import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import {
   Home, UserCircle, Radio, BarChart3, FileText, Users,
-  Briefcase, ShoppingBag, GraduationCap, MapPin, CalendarCheck,
-  LogOut, ChevronRight, ShieldCheck, TrendingUp, Building2,
+  Briefcase, ShoppingBag, GraduationCap, CalendarCheck,
+  LogOut, ChevronRight, ShieldCheck, TrendingUp,
 } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
 
@@ -15,26 +15,26 @@ type NavSection = { title: string; roles?: string[]; items: NavItem[] };
 
 const TODOS = ["JEFE_COMPANIA","ADMINISTRACION","SERVICIOS_GENERALES","INSTRUCCION","SANIDAD","OPERACIONES","IMAGEN","BOMBERO"];
 const OPERATIVOS = ["JEFE_COMPANIA","OPERACIONES"];
+const OPERATIVOS_Y_BOMBERO = ["JEFE_COMPANIA","OPERACIONES","BOMBERO"];
 
 const NAV_SECTIONS: NavSection[] = [
   {
     title: "__root__",
     items: [
-      { label: "Inicio",     href: "/inicio",    icon: Home,       roles: TODOS },
-      { label: "Mi Compañía", href: "/compania", icon: Building2,  roles: ["BOMBERO"] },
-      { label: "Mi Perfil",  href: "/perfil",    icon: UserCircle, roles: ["BOMBERO"] },
+      { label: "Inicio",    href: "/inicio", icon: Home,       roles: TODOS },
+      { label: "Mi Perfil", href: "/perfil", icon: UserCircle, roles: ["BOMBERO"] },
     ],
   },
   {
     title: "Gestión Operativa",
-    roles: OPERATIVOS,
+    roles: OPERATIVOS_Y_BOMBERO,
     items: [
-      { label: "Operatividad",         href: "/dashboard",                icon: Radio,         roles: OPERATIVOS },
-      { label: "Estadísticas",         href: "/operaciones/estadisticas", icon: TrendingUp,    roles: OPERATIVOS },
-      { label: "Partes de Emergencia", href: "/operaciones/partes",       icon: FileText,      roles: OPERATIVOS },
+      { label: "Operatividad",         href: "/dashboard",                icon: Radio,         roles: OPERATIVOS_Y_BOMBERO },
+      { label: "Estadísticas",         href: "/operaciones/estadisticas", icon: TrendingUp,    roles: OPERATIVOS_Y_BOMBERO },
+      { label: "Partes de Emergencia", href: "/operaciones/partes",       icon: FileText,      roles: OPERATIVOS_Y_BOMBERO },
       { label: "Bomberos",             href: "/operaciones/personal",     icon: Users,         roles: OPERATIVOS },
-      { label: "Asistencias",          href: "/operaciones/asistencias",  icon: CalendarCheck, roles: OPERATIVOS },
-      { label: "Análisis",             href: "/operaciones/analisis",     icon: BarChart3,     roles: OPERATIVOS },
+      { label: "Asistencias",          href: "/operaciones/asistencias",  icon: CalendarCheck, roles: OPERATIVOS_Y_BOMBERO },
+      { label: "Análisis",             href: "/operaciones/analisis",     icon: BarChart3,     roles: OPERATIVOS_Y_BOMBERO },
     ],
   },
   {
@@ -117,11 +117,15 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
                   );
                 }
 
+                const tourAttr = item.href === "/dashboard" ? "nav-operatividad"
+                  : item.href === "/perfil" ? "nav-perfil"
+                  : undefined;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={onClose}
+                    {...(tourAttr ? { "data-tour": tourAttr } : {})}
                     className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all group ${
                       active
                         ? "bg-red-700 text-white font-medium"

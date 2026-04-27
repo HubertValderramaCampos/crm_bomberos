@@ -102,7 +102,7 @@ export default async function BomberoDetallePage({
     : "bg-gray-100 text-gray-500 border-gray-200";
 
   return (
-    <div className="space-y-5 max-w-5xl">
+    <div className="space-y-4 pb-6">
       {/* Back */}
       <Link href="/operaciones/personal" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700">
         <ArrowLeft className="w-4 h-4" /> Volver a Personal
@@ -132,19 +132,19 @@ export default async function BomberoDetallePage({
       </div>
 
       {/* KPIs acumulados */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { icon: Clock,         label: "Horas totales",     value: totalHoras + "h",       sub: `${historial.length} meses` },
-          { icon: CalendarCheck, label: "Días últ. mes",     value: ultimoMes?.dias_asistidos ?? "—", sub: ultimoMes ? `${MESES_ES[ultimoMes.mes]} ${ultimoMes.anio}` : "sin datos" },
-          { icon: Siren,         label: "Emergencias",       value: totalEmerg,              sub: "acumulado" },
-          { icon: ShieldCheck,   label: "Veces al mando",    value: emergencias.length,      sub: "partes registrados" },
-        ].map(({ icon: Icon, label, value, sub }) => (
+          { icon: Clock,         label: "Horas totales",  value: totalHoras + "h",                  sub: `${historial.length} meses`,           color: "text-purple-600" },
+          { icon: CalendarCheck, label: "Días últ. mes",  value: ultimoMes?.dias_asistidos ?? "—",  sub: ultimoMes ? `${MESES_ES[ultimoMes.mes]} ${ultimoMes.anio}` : "sin datos", color: "text-blue-600" },
+          { icon: Siren,         label: "Emergencias",    value: totalEmerg,                         sub: "acumulado",                           color: "text-red-600"    },
+          { icon: ShieldCheck,   label: "Veces al mando", value: emergencias.length,                 sub: "partes registrados",                  color: "text-amber-600"  },
+        ].map(({ icon: Icon, label, value, sub, color }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-200 px-4 py-3">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Icon className="w-4 h-4 text-gray-400" />
-              <p className="text-xs text-gray-400 uppercase tracking-widest font-medium">{label}</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <Icon className={`w-3.5 h-3.5 ${color}`} />
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">{label}</p>
             </div>
-            <p className="text-3xl font-bold text-gray-900">{value}</p>
+            <p className={`text-2xl font-bold ${color}`}>{value}</p>
             <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
           </div>
         ))}

@@ -50,9 +50,9 @@ export function MascotaHero({ horas, meta, pct, grado, nombre }: Props) {
   const e = getEstado(pct);
 
   return (
-    <div className={`bg-gradient-to-br ${e.bg} border rounded-2xl p-5 flex flex-col items-center text-center h-full justify-between min-h-[220px]`}>
+    <div className={`bg-gradient-to-br ${e.bg} border rounded-2xl p-3 flex flex-col items-center text-center h-full justify-between`}>
 
-      <div className="w-32 h-32 mt-1">
+      <div className="w-24 h-24 mt-0.5">
         <Player
           autoplay
           loop
@@ -61,26 +61,24 @@ export function MascotaHero({ horas, meta, pct, grado, nombre }: Props) {
         />
       </div>
 
-      <div className="mt-1 mb-4">
-        <p className={`text-base font-bold ${e.color}`}>{e.label}</p>
-        <p className="text-xs text-gray-500 mt-1 leading-snug px-2">{e.mensaje}</p>
-        <p className="text-xs text-gray-400 mt-1">{nombre}</p>
+      <div className="mt-1 mb-2">
+        <p className={`text-sm font-bold ${e.color}`}>{e.label}</p>
+        <p className="text-[10px] text-gray-500 mt-0.5 leading-snug px-1">{e.mensaje}</p>
       </div>
 
       <div className="w-full">
-        <div className="flex items-center justify-between mb-1.5 text-xs">
-          <span className="text-gray-500 font-medium">{horas}h acumuladas</span>
+        <div className="flex items-center justify-between mb-1 text-[10px]">
+          <span className="text-gray-500 font-medium">{horas}h</span>
           <span className={`font-bold ${e.color}`}>{pct}%</span>
         </div>
-        <div className="w-full h-3 bg-white/70 rounded-full overflow-hidden border border-white/80">
+        <div className="w-full h-2 bg-white/70 rounded-full overflow-hidden border border-white/80">
           <div
             className={`h-full rounded-full bg-gradient-to-r ${e.barColor} transition-all duration-700`}
             style={{ width: `${Math.min(100, pct)}%` }}
           />
         </div>
-        <p className="text-xs text-gray-400 mt-1.5">
-          Meta: <span className="font-semibold text-gray-600">{meta}h / mes</span>
-          {grado && <span className="ml-1">· {grado}</span>}
+        <p className="text-[10px] text-gray-400 mt-1">
+          Meta: <span className="font-semibold text-gray-600">{meta}h</span>
         </p>
       </div>
     </div>

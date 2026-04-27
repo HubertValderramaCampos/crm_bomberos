@@ -3,11 +3,11 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Loader2, Lock, Mail, AlertCircle } from "lucide-react";
+import { Loader2, Lock, Hash, AlertCircle } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail]       = useState("");
+  const [codigo, setCodigo]     = useState("");
   const [password, setPassword] = useState("");
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
@@ -16,12 +16,12 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const res = await signIn("credentials", { email, password, redirect: false });
+    const res = await signIn("credentials", { codigo, password, redirect: false });
     setLoading(false);
     if (res?.ok) {
       router.push("/inicio");
     } else {
-      setError("Correo electrónico o contraseña incorrectos.");
+      setError("Código o contraseña incorrectos.");
     }
   }
 
@@ -147,16 +147,16 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Correo electrónico
+                  Código de bombero
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
-                    type="email"
+                    type="text"
                     required
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="usuario@cbpp.pe"
+                    value={codigo}
+                    onChange={e => setCodigo(e.target.value)}
+                    placeholder="Ej: a23071"
                     className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent bg-white placeholder:text-gray-400"
                   />
                 </div>

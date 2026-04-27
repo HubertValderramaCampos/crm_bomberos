@@ -134,6 +134,7 @@ export default async function PartesPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
+  const esBombero = session.user.rol === "BOMBERO";
 
   const [sp, meta] = await Promise.all([searchParams, getDistritosCategorias()]);
 
@@ -153,13 +154,15 @@ export default async function PartesPage({
   }));
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <Siren className="w-5 h-5 text-red-700" />
-          Partes de Emergencia
-        </h1>
-        <p className="text-sm text-gray-400 mt-0.5">{total.toLocaleString()} partes registrados</p>
+    <div className="space-y-4 pb-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <Siren className="w-5 h-5 text-red-700" />
+            Partes de Emergencia
+          </h1>
+          <p className="text-sm text-gray-400 mt-0.5">{total.toLocaleString()} partes registrados</p>
+        </div>
       </div>
 
       <PartesTable
@@ -170,6 +173,7 @@ export default async function PartesPage({
         filtros={filtros}
         distritos={meta.distritos}
         categorias={meta.categorias}
+        esBombero={esBombero}
       />
     </div>
   );

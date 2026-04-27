@@ -60,7 +60,7 @@ function TimelineStep({ label, ts, color }: { label: string; ts: string | null; 
   );
 }
 
-function ParteRow({ parte }: { parte: Parte }) {
+function ParteRow({ parte, esBombero }: { parte: Parte; esBombero: boolean }) {
   const [open, setOpen] = useState(false);
   const tipoBadge  = TIPO_BADGE[parte.tipo]    ?? "bg-gray-100 text-gray-600 border-gray-200";
   const estadoBadge = ESTADO_BADGE[parte.estado] ?? "bg-gray-100 text-gray-600 border-gray-200";
@@ -124,15 +124,23 @@ function ParteRow({ parte }: { parte: Parte }) {
 
         {/* Personal */}
         <td className="px-3 py-3 text-xs max-w-[160px]">
-          {parte.al_mando ? (
-            <p className="truncate text-gray-700 font-medium leading-tight">{parte.al_mando}</p>
-          ) : parte.piloto_nombre ? (
-            <p className="truncate text-gray-500">{parte.piloto_nombre.replace(/^(Ren)?tado\s+/i, "")}</p>
-          ) : <span className="text-gray-300">—</span>}
-          {parte.numero_efectivos != null && (
-            <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
-              <Users className="w-3 h-3" />{parte.numero_efectivos} ef.
-            </p>
+          {esBombero ? (
+            parte.numero_efectivos != null
+              ? <p className="text-[11px] text-gray-400 flex items-center gap-1"><Users className="w-3 h-3" />{parte.numero_efectivos} ef.</p>
+              : <span className="text-gray-300">—</span>
+          ) : (
+            <>
+              {parte.al_mando ? (
+                <p className="truncate text-gray-700 font-medium leading-tight">{parte.al_mando}</p>
+              ) : parte.piloto_nombre ? (
+                <p className="truncate text-gray-500">{parte.piloto_nombre.replace(/^(Ren)?tado\s+/i, "")}</p>
+              ) : <span className="text-gray-300">—</span>}
+              {parte.numero_efectivos != null && (
+                <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
+                  <Users className="w-3 h-3" />{parte.numero_efectivos} ef.
+                </p>
+              )}
+            </>
           )}
         </td>
 
@@ -194,8 +202,8 @@ function ParteRow({ parte }: { parte: Parte }) {
                 </div>
               </div>
 
-              {/* Personal */}
-              <div>
+              {/* Personal — oculto para bomberos */}
+              {!esBombero && <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
                   <ShieldCheck className="w-3 h-3" />Personal
                 </p>
@@ -227,7 +235,7 @@ function ParteRow({ parte }: { parte: Parte }) {
                     </div>
                   )}
                 </div>
-              </div>
+              </div>}
 
               {/* Ubicación + Unidades */}
               <div>
@@ -275,7 +283,7 @@ function ParteRow({ parte }: { parte: Parte }) {
 }
 
 export function PartesTable({
-  partes, total, pagina, totalPaginas, filtros, distritos, categorias,
+  partes, total, pagina, totalPaginas, filtros, distritos, categorias, esBombero = false,
 }: {
   partes: Parte[];
   total: number;
@@ -284,6 +292,7 @@ export function PartesTable({
   filtros: Filtros;
   distritos: { id: number; nombre: string }[];
   categorias: string[];
+  esBombero?: boolean;
 }) {
   const router   = useRouter();
   const pathname = usePathname();
@@ -396,7 +405,7 @@ export function PartesTable({
                     No se encontraron partes con los filtros aplicados.
                   </td>
                 </tr>
-              ) : partes.map(p => <ParteRow key={p.id} parte={p} />)}
+              ) : partes.map(p => <ParteRow key={p.id} parte={p} esBombero={esBombero} />)}
             </tbody>
           </table>
         </div>

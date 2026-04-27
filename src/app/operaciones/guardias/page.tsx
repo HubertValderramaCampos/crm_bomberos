@@ -84,7 +84,7 @@ export default function GuardiasPage() {
   const hoy = new Date();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-6">
       <PageHeader
         icon={CalendarDays}
         title="Cuadro de Guardias"

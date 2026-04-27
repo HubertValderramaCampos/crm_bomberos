@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import pool from "@/lib/db";
 import { MascotaHero } from "@/components/ui-custom/MascotaHero";
 import { RankingCard } from "@/components/ui-custom/RankingCard";
+import { ProgresoCard } from "@/components/ui-custom/ProgresoCard";
 import { HORAS_REGLAMENTO } from "@/lib/reglamento";
+import { calcularRacha } from "@/lib/racha";
 import {
   Users, Siren, Clock, Truck, ShieldCheck,
   CalendarCheck, AlertTriangle, Award,
@@ -14,12 +16,26 @@ import Link from "next/link";
 const MESES_ES = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 async function getInicioData(usuarioId: string, bomberoId: number | null) {
-  const anio = new Date().getFullYear();
+  const now    = new Date();
+  const mesHoy = now.getMonth() + 1;
+  const anioHoy = now.getFullYear();
 
-  const ultimoMesRes = await pool.query<{ mes: number; anio: number }>(
-    `SELECT mes, anio FROM asistencia_mensual ORDER BY anio DESC, mes DESC LIMIT 1`
+  // Si el mes actual ya tiene datos úsalo, si no cae al último mes con datos
+  const hayMesActualRes = await pool.query<{ existe: boolean }>(
+    `SELECT EXISTS(SELECT 1 FROM asistencia_mensual WHERE mes = $1 AND anio = $2) AS existe`,
+    [mesHoy, anioHoy]
   );
-  const { mes, anio: anioMes } = ultimoMesRes.rows[0] ?? { mes: new Date().getMonth() + 1, anio };
+  const hayMesActual = hayMesActualRes.rows[0]?.existe ?? false;
+
+  let mes: number, anioMes: number;
+  if (hayMesActual) {
+    mes = mesHoy; anioMes = anioHoy;
+  } else {
+    const ultimoRes = await pool.query<{ mes: number; anio: number }>(
+      `SELECT mes, anio FROM asistencia_mensual ORDER BY anio DESC, mes DESC LIMIT 1`
+    );
+    ({ mes, anio: anioMes } = ultimoRes.rows[0] ?? { mes: mesHoy, anio: anioHoy });
+  }
 
   const [
     ecRes, bomberos, enTurno, vehiculosRes,
@@ -49,12 +65,13 @@ async function getInicioData(usuarioId: string, bomberoId: number | null) {
 
     pool.query<{ count: string }>(
       `SELECT COUNT(*) FROM emergencia
-       WHERE EXTRACT(year FROM COALESCE(fecha_salida,fecha_despacho,created_at)) = $1`, [anio]),
+       WHERE EXTRACT(year FROM COALESCE(fecha_salida,fecha_despacho,created_at)) = $1`, [anioHoy]),
 
     pool.query<{ count: string }>(
       `SELECT COUNT(*) FROM emergencia
-       WHERE estado = 'ATENDIENDO' AND fecha_retorno IS NULL
-         AND COALESCE(fecha_salida,fecha_despacho) >= NOW() - INTERVAL '6 hours'`),
+       WHERE estado = 'ATENDIENDO'
+         AND fecha_ingreso IS NULL
+         AND COALESCE(fecha_salida, fecha_despacho) >= NOW() - INTERVAL '24 hours'`),
 
     pool.query<{ count: string; total_efectivos: string }>(
       `SELECT COUNT(*) AS count, COALESCE(SUM(numero_efectivos),0) AS total_efectivos
@@ -132,7 +149,10 @@ export default async function InicioPage() {
   const esBombero  = rol === "BOMBERO";
   const esOperativo = rol === "JEFE_COMPANIA" || rol === "OPERACIONES";
 
-  const data = await getInicioData(session.user.id, bomberoId ?? null).catch(() => null);
+  const [data, racha] = await Promise.all([
+    getInicioData(session.user.id, bomberoId ?? null).catch(() => null),
+    esBombero && bomberoId ? calcularRacha(bomberoId).catch(() => null) : Promise.resolve(null),
+  ]);
 
   // Nombre para el saludo: primero apellido real de DB, fallback a token
   const primerApellido = data?.nombreMostrar
@@ -156,18 +176,15 @@ export default async function InicioPage() {
   const saludo = hora < 12 ? "Buenos días" : hora < 19 ? "Buenas tardes" : "Buenas noches";
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-10">
+    <div className="space-y-4 pb-6">
 
       {/* ── Saludo ── */}
-      <div className="pt-1 flex items-start justify-between gap-4 flex-wrap">
+      <div className="pt-1 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-xs text-gray-400 uppercase tracking-widest font-medium capitalize">
-            {new Date().toLocaleDateString("es-PE", { weekday:"long", day:"numeric", month:"long", year:"numeric" })}
-          </p>
-          <h1 className="text-2xl font-bold text-gray-900 mt-0.5">
+          <h1 className="text-xl font-bold text-gray-900">
             {saludo}, {primerApellido}
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Cía. B. V. N.° 150 — Puente Piedra</p>
+          <p className="text-sm text-gray-400 mt-0.5">Cía. B. V. N.° 150 — Puente Piedra</p>
         </div>
         {data?.emergActivas && data.emergActivas > 0 ? (
           <Link href="/dashboard" className="flex items-center gap-2 px-4 py-2 bg-red-700 hover:bg-red-800 rounded-xl text-white text-sm font-semibold transition-colors animate-pulse">
@@ -182,92 +199,79 @@ export default async function InicioPage() {
         )}
       </div>
 
-      {/* ── STATUS GENERAL DE LA COMPAÑÍA ── */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        {/* Header del card */}
-        <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-3">
-          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${estadoColor}`} />
-          <h2 className="font-bold text-gray-900 text-sm">Estado de la Compañía</h2>
+      {/* ── STATUS GENERAL DE LA COMPAÑÍA — compacto ── */}
+      <div data-tour="estado-cia" className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-gray-100 flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${estadoColor}`} />
+          <h2 className="font-semibold text-gray-900 text-xs uppercase tracking-widest">Estado de la Compañía</h2>
           {data?.ec?.primer_jefe && (
-            <span className="text-xs text-gray-500 ml-1">
+            <span className="text-xs text-gray-400 ml-1">
               · {data.ec.primer_jefe.replace(/^(Sub)?T(nte|te)\s*/i, "").split(",")[0].trim()}
             </span>
           )}
         </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-gray-100">
+        <div className="grid grid-cols-4 gap-px bg-gray-100">
           {[
-            {
-              icon: ShieldCheck,
-              label: "Estado",
-              value: estadoEC ?? "—",
-              color: estadoText,
-              bg: "bg-white",
-            },
-            {
-              icon: Users,
-              label: "En turno",
-              value: data?.enTurno ?? "—",
-              sub: `de ${data?.totalBomberos ?? "—"} activos`,
-              color: "text-blue-600",
-              bg: "bg-white",
-            },
-            {
-              icon: Truck,
-              label: "Flota operativa",
-              value: `${data?.vehiculosEnBase ?? "—"}/${data?.vehiculosTotal ?? "—"}`,
-              sub: data?.vehiculosFalla ? `${data.vehiculosFalla} con falla` : "todas operativas",
-              color: data?.vehiculosFalla ? "text-amber-600" : "text-green-600",
-              bg: "bg-white",
-            },
-            {
-              icon: Siren,
-              label: "Emergencias activas",
-              value: data?.emergActivas ?? 0,
-              sub: data?.emergActivas ? "en atención ahora" : "sin emergencias",
-              color: (data?.emergActivas ?? 0) > 0 ? "text-red-600" : "text-gray-400",
-              bg: (data?.emergActivas ?? 0) > 0 ? "bg-red-50" : "bg-white",
-            },
+            { icon: ShieldCheck, label: "Estado",              value: estadoEC ?? "—",                                                          sub: null,                                                                           color: estadoText,                                                          bg: "bg-white" },
+            { icon: Users,       label: "En turno",            value: data?.enTurno ?? "—",                                                     sub: `de ${data?.totalBomberos ?? "—"} activos`,                                    color: "text-blue-600",                                                     bg: "bg-white" },
+            { icon: Truck,       label: "Flota operativa",     value: `${data?.vehiculosEnBase ?? "—"}/${data?.vehiculosTotal ?? "—"}`,           sub: data?.vehiculosFalla ? `${data.vehiculosFalla} con falla` : "todas operativas", color: data?.vehiculosFalla ? "text-amber-600" : "text-green-600",          bg: "bg-white" },
+            { icon: Siren,       label: "Emergencias activas", value: data?.emergActivas ?? 0,                                                   sub: data?.emergActivas ? "en atención ahora" : "sin emergencias",                  color: (data?.emergActivas ?? 0) > 0 ? "text-red-600" : "text-gray-400",   bg: (data?.emergActivas ?? 0) > 0 ? "bg-red-50" : "bg-white" },
           ].map(({ icon: Icon, label, value, sub, color, bg }) => (
-            <div key={label} className={`${bg} px-4 py-4`}>
-              <div className="flex items-center gap-1.5 mb-1">
-                <Icon className={`w-3.5 h-3.5 ${color}`} />
-                <p className="text-[10px] text-gray-400 uppercase tracking-widest font-medium">{label}</p>
+            <div key={label} className={`${bg} px-3 py-3`}>
+              <div className="flex items-center gap-1 mb-1">
+                <Icon className={`w-3 h-3 ${color}`} />
+                <p className="text-[9px] text-gray-400 uppercase tracking-widest font-medium">{label}</p>
               </div>
-              <p className={`text-2xl font-bold ${color}`}>{value}</p>
-              {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
+              <p className={`text-xl font-bold ${color}`}>{value}</p>
+              {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── SECCIÓN BOMBERO ── */}
+      {/* ── SECCIÓN BOMBERO — layout 2 columnas ── */}
       {esBombero && (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-1">
-              <MascotaHero horas={miHoras} meta={metaHoras} pct={pctMeta} grado={miGrado} nombre={primerApellido} />
-            </div>
-            <div className="lg:col-span-2 grid grid-cols-2 gap-3">
-              {[
-                { icon: Clock,         label: "Mis horas",       value: miHoras > 0 ? `${miHoras}h` : "—",              sub: `Meta: ${metaHoras}h · ${pctMeta}%`,                   color: pctMeta >= 100 ? "text-green-600" : pctMeta >= 60 ? "text-amber-600" : "text-red-600" },
-                { icon: CalendarCheck, label: "Días asistidos",  value: data?.miAsistencia?.dias_asistidos ?? "—",       sub: `${MESES_ES[data?.mes ?? 1]} ${data?.anioMes ?? ""}`,  color: "text-blue-600"   },
-                { icon: Siren,         label: "Mis emergencias", value: data?.miAsistencia?.num_emergencias ?? "—",      sub: `${MESES_ES[data?.mes ?? 1]}`,                         color: "text-red-600"    },
-                { icon: Award,         label: "Mi posición",     value: miPos > 0 ? `#${miPos}` : "—",                  sub: "ranking de horas",                                    color: "text-purple-600" },
-              ].map(({ icon: Icon, label, value, sub, color }) => (
-                <div key={label} className="bg-white rounded-xl border border-gray-200 px-4 py-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Icon className={`w-4 h-4 ${color}`} />
-                    <p className="text-xs text-gray-400 uppercase tracking-widest font-medium">{label}</p>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+
+          {/* Columna izquierda: mascota + KPIs personales */}
+          <div className="lg:col-span-3 flex flex-col gap-4">
+
+            {/* Mascota + KPIs en fila */}
+            <div data-tour="mis-kpis" className="grid grid-cols-3 gap-3">
+              <div className="col-span-1">
+                <MascotaHero horas={miHoras} meta={metaHoras} pct={pctMeta} grado={miGrado} nombre={primerApellido} />
+              </div>
+              <div className="col-span-2 grid grid-cols-2 gap-3">
+                {[
+                  { icon: Clock,         label: "Mis horas",       value: miHoras > 0 ? `${miHoras}h` : "—",            sub: `Meta: ${metaHoras}h · ${pctMeta}%`,                  color: pctMeta >= 100 ? "text-green-600" : pctMeta >= 60 ? "text-amber-600" : "text-red-600" },
+                  { icon: CalendarCheck, label: "Días asistidos",  value: data?.miAsistencia?.dias_asistidos ?? "—",     sub: `${MESES_ES[data?.mes ?? 1]} ${data?.anioMes ?? ""}`, color: "text-blue-600"   },
+                  { icon: Siren,         label: "Mis emergencias", value: data?.miAsistencia?.num_emergencias ?? "—",    sub: `${MESES_ES[data?.mes ?? 1]}`,                        color: "text-red-600"    },
+                  { icon: Award,         label: "Mi posición",     value: miPos > 0 ? `#${miPos}` : "—",                sub: "ranking de horas",                                   color: "text-purple-600" },
+                ].map(({ icon: Icon, label, value, sub, color }) => (
+                  <div key={label} className="bg-white rounded-xl border border-gray-200 px-3 py-3">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Icon className={`w-3.5 h-3.5 ${color}`} />
+                      <p className="text-[9px] text-gray-400 uppercase tracking-widest font-medium">{label}</p>
+                    </div>
+                    <p className={`text-xl font-bold ${color}`}>{value}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>
                   </div>
-                  <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
+
+            {/* Ranking */}
+            {data && <div data-tour="ranking-card"><RankingCard ranking={data.ranking} mes={data.mes} anio={data.anioMes} miId={bomberoId ?? undefined} miPosicion={miPos} compact /></div>}
           </div>
-          {data && <RankingCard ranking={data.ranking} mes={data.mes} anio={data.anioMes} miId={bomberoId ?? undefined} miPosicion={miPos} />}
-        </>
+
+          {/* Columna derecha: progreso */}
+          <div data-tour="progreso-card" className="lg:col-span-2">
+            {racha && (
+              <ProgresoCard racha={racha} horas={miHoras} meta={metaHoras} pct={pctMeta} />
+            )}
+          </div>
+
+        </div>
       )}
 
       {/* ── SECCIÓN OPERATIVA / JEFE ── */}
