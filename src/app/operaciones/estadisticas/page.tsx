@@ -105,7 +105,7 @@ async function getEstadisticas(anio: number, mes: number | null) {
         SELECT
           COUNT(*) AS total,
           COUNT(*) FILTER (
-            WHERE estado = 'ATENDIENDO' AND fecha_ingreso IS NULL
+            WHERE estado = 'ATENDIENDO' AND fecha_ingreso IS NULL AND fecha_retorno IS NULL AND km_ingreso IS NULL
               AND COALESCE(fecha_salida,fecha_despacho) >= NOW() - INTERVAL '24 hours'
           ) AS atendiendo,
           COUNT(*) FILTER (WHERE estado = 'CERRADO') AS cerradas,

@@ -71,6 +71,8 @@ async function getInicioData(usuarioId: string, bomberoId: number | null) {
       `SELECT COUNT(*) FROM emergencia
        WHERE estado = 'ATENDIENDO'
          AND fecha_ingreso IS NULL
+         AND fecha_retorno IS NULL
+         AND km_ingreso IS NULL
          AND COALESCE(fecha_salida, fecha_despacho) >= NOW() - INTERVAL '24 hours'`),
 
     pool.query<{ count: string; total_efectivos: string }>(

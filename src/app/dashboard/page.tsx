@@ -92,6 +92,8 @@ async function getEstadoActual() {
       LEFT JOIN tipo_emergencia te ON te.id = e.tipo_emergencia_id
       WHERE e.estado = 'ATENDIENDO'
         AND e.fecha_ingreso IS NULL
+        AND e.fecha_retorno IS NULL
+        AND e.km_ingreso IS NULL
         AND COALESCE(e.fecha_salida, e.fecha_despacho) >= NOW() - INTERVAL '24 hours'
       ORDER BY COALESCE(e.fecha_salida, e.fecha_despacho) DESC
     `),
