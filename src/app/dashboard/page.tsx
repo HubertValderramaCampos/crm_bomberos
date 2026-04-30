@@ -5,7 +5,6 @@ import { Truck, Users, Siren, ShieldCheck, Clock, CheckCircle, XCircle, Wrench, 
 import pool from "@/lib/db";
 import { VehiculosDonut, PersonalDonut, RolesBar } from "@/components/ui-custom/OperatividadCharts";
 import { calcularRacha } from "@/lib/racha";
-import { BtnCancelarEmergencia } from "@/components/ui-custom/BtnCancelarEmergencia";
 
 interface EstadoCompania {
   id: number;
@@ -434,7 +433,6 @@ export default async function DashboardPage() {
                         {e.numero_efectivos != null && <span>{e.numero_efectivos} ef.</span>}
                         {e.piloto_nombre && <span>· {e.piloto_nombre.replace(/^(Ren)?tado\s+/i, "")}</span>}
                       </div>
-                      <BtnCancelarEmergencia id={e.id} numeroParte={e.numero_parte} />
                     </div>
                   );
                 })}
