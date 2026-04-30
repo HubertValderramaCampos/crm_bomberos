@@ -22,6 +22,7 @@ const TIPO_BADGE: Record<string, string> = {
 const ESTADO_BADGE: Record<string, string> = {
   "CERRADO":    "bg-green-100 text-green-700 border-green-200",
   "ATENDIENDO": "bg-red-100 text-red-700 border-red-200",
+  "CANCELADA":  "bg-gray-100 text-gray-500 border-gray-200",
 };
 
 function fmt(ts: string | null, opts?: Intl.DateTimeFormatOptions): string {
@@ -357,6 +358,7 @@ export function PartesTable({
             <option value="">Todos los estados</option>
             <option value="CERRADO">Cerrado</option>
             <option value="ATENDIENDO">Atendiendo</option>
+            <option value="CANCELADA">Cancelada</option>
           </select>
         </div>
 

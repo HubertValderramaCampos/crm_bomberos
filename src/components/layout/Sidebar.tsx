@@ -3,10 +3,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
+import { useState, useEffect } from "react";
 import {
   Home, UserCircle, Radio, BarChart3, FileText, Users,
-  Briefcase, ShoppingBag, GraduationCap, CalendarCheck,
+  ShoppingBag, GraduationCap, CalendarCheck,
   LogOut, ChevronRight, ShieldCheck, TrendingUp,
+  Scroll, Gift, CalendarDays, Building2, ScanLine,
 } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
 
@@ -39,8 +41,19 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: "Gestión Administrativa",
+    roles: ["JEFE_COMPANIA", "ADMINISTRACION"],
     items: [
-      { label: "Próximamente", href: "#", icon: Briefcase, roles: TODOS },
+      { label: "Oficios Institucionales", href: "/administracion/oficios-institucionales", icon: Scroll,       roles: ["JEFE_COMPANIA", "ADMINISTRACION"] },
+      { label: "Oficios Varios",          href: "/administracion/oficios-varios",          icon: FileText,     roles: ["JEFE_COMPANIA", "ADMINISTRACION"] },
+      { label: "Donaciones",              href: "/administracion/donaciones",               icon: Gift,         roles: ["JEFE_COMPANIA", "ADMINISTRACION"] },
+      { label: "Programación",            href: "/administracion/programacion",             icon: CalendarDays, roles: ["JEFE_COMPANIA", "ADMINISTRACION"] },
+      { label: "Entidades",               href: "/administracion/entidades",                icon: Building2,    roles: ["JEFE_COMPANIA", "ADMINISTRACION"] },
+    ],
+  },
+  {
+    title: "Capacitaciones",
+    items: [
+      { label: "Solicitar Capacitación",  href: "/solicitar-capacitacion",                  icon: ScanLine,     roles: TODOS },
     ],
   },
   {
@@ -61,6 +74,21 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const rol = session?.user?.rol ?? "";
+  const [solicitudesPendientes, setSolicitudesPendientes] = useState(0);
+
+  useEffect(() => {
+    const rolesAdmin = ["JEFE_COMPANIA", "ADMINISTRACION"];
+    if (!rolesAdmin.includes(rol)) return;
+    function cargar() {
+      fetch("/api/solicitudes-capacitacion/pendientes")
+        .then(r => r.json())
+        .then(d => setSolicitudesPendientes(d.count ?? 0))
+        .catch(() => {});
+    }
+    cargar();
+    const t = setInterval(cargar, 30000);
+    return () => clearInterval(t);
+  }, [rol]);
 
   return (
     <div className="flex flex-col h-full w-64 bg-[#111827] text-white">
@@ -117,6 +145,8 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
                 const tourAttr = item.href === "/dashboard" ? "nav-operatividad"
                   : item.href === "/perfil" ? "nav-perfil"
                   : undefined;
+                const esScanear = item.href === "/solicitar-capacitacion" && ["JEFE_COMPANIA","ADMINISTRACION"].includes(rol);
+                const badge = esScanear && solicitudesPendientes > 0 ? solicitudesPendientes : 0;
                 return (
                   <Link
                     key={item.href}
@@ -131,7 +161,12 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
                   >
                     <Icon className="w-4 h-4 shrink-0" />
                     <span className="flex-1">{item.label}</span>
-                    {active && <ChevronRight className="w-3 h-3 opacity-60" />}
+                    {badge > 0 && (
+                      <span className="w-5 h-5 rounded-full bg-amber-400 text-gray-900 text-[10px] font-bold flex items-center justify-center shrink-0">
+                        {badge > 9 ? "9+" : badge}
+                      </span>
+                    )}
+                    {active && !badge && <ChevronRight className="w-3 h-3 opacity-60" />}
                   </Link>
                 );
               })}
