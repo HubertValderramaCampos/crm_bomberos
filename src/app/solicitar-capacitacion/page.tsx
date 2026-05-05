@@ -17,10 +17,10 @@ export default async function SolicitarCapacitacionPage() {
       <div className="space-y-4 pb-6">
         <PageHeader
           icon={ScanLine}
-          title="Solicitud de Capacitación"
+          title="Subir Documento"
           subtitle={esAdmin
-            ? "Gestiona y aprueba solicitudes de capacitación"
-            : "Envía una solicitud de capacitación externa"}
+            ? "Gestiona y clasifica documentos recibidos"
+            : "Fotografía o sube un documento y la IA lo clasificará automáticamente"}
         />
         <EscanerDocumento esAdmin={esAdmin} />
       </div>

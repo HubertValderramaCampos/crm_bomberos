@@ -5,30 +5,39 @@ import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const PROMPT = `Analiza esta imagen de un documento. Tu tarea es determinar si contiene una solicitud de capacitación para bomberos.
+const PROMPT = `Analiza esta imagen de un documento oficial y clasifícalo.
 
 Responde SIEMPRE con un JSON válido con esta estructura exacta:
 {
   "es_solicitud_capacitacion": true/false,
   "confianza": "alta" | "media" | "baja",
-  "tipo_documento": "solicitud_capacitacion" | "oficio" | "memorando" | "informe" | "otro",
-  "descripcion_documento": "breve descripción de lo que es el documento",
+  "tipo_documento": "solicitud_capacitacion" | "oficio" | "memorando" | "informe" | "solicitud" | "carta" | "otro",
+  "descripcion_documento": "breve descripción de lo que es el documento (máx 1 oración)",
   "datos": {
-    "empresa": "nombre de la empresa o institución que solicita (o null)",
-    "contacto": "nombre del contacto o firmante (o null)",
+    "empresa": "nombre de la empresa, institución u organización remitente (o null)",
+    "contacto": "nombre del firmante o contacto principal (o null)",
     "telefono": "teléfono (o null)",
     "correo": "correo electrónico (o null)",
-    "tema": "tema o título de la capacitación solicitada (o null)",
-    "descripcion": "descripción detallada de lo que solicitan (o null)",
-    "fecha_solicitada": "fecha en formato YYYY-MM-DD (o null si no se menciona)",
+    "tema": "asunto principal o título del documento (o null)",
+    "descripcion": "descripción detallada del contenido (o null)",
+    "fecha_solicitada": "fecha propuesta o de referencia en formato YYYY-MM-DD (o null)",
     "hora_inicio": "hora inicio en formato HH:MM (o null)",
     "hora_fin": "hora fin en formato HH:MM (o null)",
-    "lugar": "lugar propuesto (o null)",
-    "num_participantes": número entero de participantes (o null)
+    "lugar": "lugar mencionado (o null)",
+    "num_participantes": número entero de participantes si se menciona (o null)
   }
 }
 
-Si no es una solicitud de capacitación, igual devuelve el JSON con es_solicitud_capacitacion: false y datos con todos los campos en null.
+Instrucciones de clasificación:
+- "solicitud_capacitacion": pide explícitamente una capacitación, charla, curso o taller para bomberos
+- "oficio": documento oficial numerado dirigido a una institución
+- "memorando": comunicación interna entre áreas
+- "informe": reporte o informe de actividades/incidentes
+- "solicitud": solicitud formal que NO sea de capacitación
+- "carta": comunicación menos formal
+- "otro": cualquier otro tipo
+
+Extrae todos los datos posibles independientemente del tipo de documento.
 No incluyas texto fuera del JSON.`;
 
 export async function POST(req: Request) {

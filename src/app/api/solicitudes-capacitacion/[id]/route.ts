@@ -11,7 +11,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const body = await req.json();
 
   const {
-    estado, actividad_id, entidad_id,
+    estado, actividad_id, entidad_id, tipo_documento,
     empresa, contacto, telefono, correo, tema, descripcion,
     fecha_solicitada, hora_inicio, hora_fin, lugar, num_participantes, notas,
   } = body;
@@ -32,14 +32,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       hora_fin          = COALESCE($12, hora_fin),
       lugar             = COALESCE($13, lugar),
       num_participantes = COALESCE($14, num_participantes),
-      notas             = COALESCE($15, notas)
-    WHERE id = $16`,
+      notas             = COALESCE($15, notas),
+      tipo_documento    = COALESCE($16, tipo_documento)
+    WHERE id = $17`,
     [
       estado ?? null, actividad_id ?? null, entidad_id ?? null,
       empresa ?? null, contacto ?? null, telefono ?? null, correo ?? null,
       tema ?? null, descripcion ?? null,
       fecha_solicitada ?? null, hora_inicio ?? null, hora_fin ?? null,
       lugar ?? null, num_participantes ?? null, notas ?? null,
+      tipo_documento ?? null,
       id,
     ]
   );

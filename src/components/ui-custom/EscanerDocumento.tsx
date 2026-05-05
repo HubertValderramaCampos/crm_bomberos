@@ -6,8 +6,11 @@ import {
   Building2, Phone, Mail, User, CalendarDays, Clock,
   MapPin, Users, FileText, RotateCcw, Sparkles, Send,
   Check, ScanLine, MessageSquare, ChevronDown, ChevronUp,
-  InboxIcon, Pencil,
+  InboxIcon, Pencil, FileCheck, FileClock, FileX, Tag,
 } from "lucide-react";
+
+type TipoDoc = "solicitud_capacitacion" | "oficio" | "memorando" | "informe" | "solicitud" | "carta" | "otro";
+type EstadoDoc = "PENDIENTE" | "EN_REVISION" | "APROBADO" | "ATENDIDO" | "RECHAZADO" | "APROBADA" | "RECHAZADA";
 
 interface DatosIA {
   empresa: string | null; contacto: string | null; telefono: string | null;
@@ -18,14 +21,15 @@ interface DatosIA {
 interface ResultadoIA {
   es_solicitud_capacitacion: boolean;
   confianza: "alta" | "media" | "baja";
-  tipo_documento: string;
+  tipo_documento: TipoDoc;
   descripcion_documento: string;
   datos: DatosIA;
 }
-interface Entidad  { id: number; nombre: string; tipo: string; }
-interface Bombero  { id: number; apellidos: string; nombres: string; grado: string; codigo: string; }
-interface Solicitud {
-  id: number; estado: string; empresa: string | null; tema: string | null;
+interface Entidad { id: number; nombre: string; tipo: string; }
+interface Bombero { id: number; apellidos: string; nombres: string; grado: string; codigo: string; }
+interface Documento {
+  id: number; estado: EstadoDoc; tipo_documento: TipoDoc;
+  empresa: string | null; tema: string | null;
   fecha_solicitada: string | null; hora_inicio: string | null; hora_fin: string | null;
   lugar: string | null; num_participantes: number | null;
   contacto: string | null; telefono: string | null; correo: string | null;
@@ -37,6 +41,34 @@ interface Solicitud {
 }
 
 const inputCls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400";
+
+const TIPO_LABEL: Record<TipoDoc, string> = {
+  solicitud_capacitacion: "Solicitud de Capacitación",
+  oficio:    "Oficio",
+  memorando: "Memorando",
+  informe:   "Informe",
+  solicitud: "Solicitud",
+  carta:     "Carta",
+  otro:      "Otro",
+};
+const TIPO_COLOR: Record<TipoDoc, string> = {
+  solicitud_capacitacion: "bg-red-100 text-red-700",
+  oficio:    "bg-blue-100 text-blue-700",
+  memorando: "bg-purple-100 text-purple-700",
+  informe:   "bg-amber-100 text-amber-700",
+  solicitud: "bg-teal-100 text-teal-700",
+  carta:     "bg-green-100 text-green-700",
+  otro:      "bg-gray-100 text-gray-600",
+};
+const ESTADO_BADGE: Record<string, { cls: string; label: string }> = {
+  PENDIENTE:   { cls: "bg-amber-100 text-amber-700",  label: "Pendiente"   },
+  EN_REVISION: { cls: "bg-blue-100 text-blue-700",    label: "En revisión" },
+  APROBADO:    { cls: "bg-green-100 text-green-700",  label: "Aprobado"    },
+  APROBADA:    { cls: "bg-green-100 text-green-700",  label: "Aprobada"    },
+  ATENDIDO:    { cls: "bg-teal-100 text-teal-700",    label: "Atendido"    },
+  RECHAZADO:   { cls: "bg-red-100 text-red-600",      label: "Rechazado"   },
+  RECHAZADA:   { cls: "bg-red-100 text-red-600",      label: "Rechazada"   },
+};
 
 async function subirImagenCliente(imagen: string): Promise<string | null> {
   try {
@@ -125,9 +157,9 @@ function PasoCaptura({ onImagen }: { onImagen: (dataUrl: string) => void }) {
         <ScanLine className="w-8 h-8 text-red-600" />
       </div>
       <div className="text-center">
-        <h3 className="text-base font-bold text-gray-900">Fotografiar solicitud</h3>
+        <h3 className="text-base font-bold text-gray-900">Subir documento</h3>
         <p className="text-sm text-gray-500 mt-1 max-w-xs">
-          Fotografía o sube la imagen del documento de solicitud de capacitación.
+          Fotografía o sube el documento. La IA lo clasificará automáticamente.
         </p>
       </div>
       <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
@@ -161,30 +193,77 @@ function PasoAnalizando({ imagen }: { imagen: string }) {
         </div>
       </div>
       <div className="text-center">
-        <p className="font-semibold text-gray-900">Analizando documento...</p>
-        <p className="text-sm text-gray-400 mt-1">La IA está extrayendo la información</p>
+        <p className="font-semibold text-gray-900">Clasificando documento...</p>
+        <p className="text-sm text-gray-400 mt-1">La IA está analizando y extrayendo datos</p>
       </div>
     </div>
   );
 }
 
 /* ─────────────────────────────────────────────
-   Paso 3B — No es solicitud
+   Banner resultado IA
 ───────────────────────────────────────────── */
-function PasoNoEsSolicitud({ resultado, onReiniciar }: { resultado: ResultadoIA; onReiniciar: () => void }) {
+function BannerIA({ resultado }: { resultado: ResultadoIA }) {
+  const confianzaColor = { alta: "text-green-600 bg-green-50 border-green-200", media: "text-amber-600 bg-amber-50 border-amber-200", baja: "text-red-600 bg-red-50 border-red-200" }[resultado.confianza];
+  const tipoColor = TIPO_COLOR[resultado.tipo_documento] ?? "bg-gray-100 text-gray-600";
   return (
-    <div className="flex flex-col items-center gap-4 py-6 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center">
-        <AlertCircle className="w-7 h-7 text-amber-500" />
+    <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+      <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+          <p className="text-xs font-semibold text-blue-800">Clasificado por IA</p>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tipoColor}`}>
+            {TIPO_LABEL[resultado.tipo_documento] ?? resultado.tipo_documento}
+          </span>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${confianzaColor}`}>
+            confianza {resultado.confianza}
+          </span>
+        </div>
+        <p className="text-xs text-blue-600">{resultado.descripcion_documento}</p>
       </div>
-      <div>
-        <p className="font-bold text-gray-900">No parece una solicitud de capacitación</p>
-        <p className="text-sm text-gray-500 mt-1">{resultado.descripcion_documento}</p>
-      </div>
-      <button onClick={onReiniciar}
-        className="flex items-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg">
-        <RotateCcw className="w-4 h-4" /> Intentar con otro documento
-      </button>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Selector de entidad reutilizable
+───────────────────────────────────────────── */
+function SelectorEntidad({ entidades, entidadSel, onSelect, onClear }: {
+  entidades: Entidad[];
+  entidadSel: Entidad | null;
+  onSelect: (e: Entidad) => void;
+  onClear: () => void;
+}) {
+  const [busq, setBusq]         = useState("");
+  const [mostrar, setMostrar]   = useState(false);
+  const filtradas = entidades.filter(e => e.nombre.toLowerCase().includes(busq.toLowerCase()));
+
+  if (entidadSel) return (
+    <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg bg-white">
+      <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
+      <span className="flex-1 text-sm text-gray-900 truncate">{entidadSel.nombre}</span>
+      <span className="text-[10px] text-gray-400">{entidadSel.tipo}</span>
+      <button type="button" onClick={onClear} className="text-gray-400 hover:text-gray-600"><X className="w-3.5 h-3.5" /></button>
+    </div>
+  );
+
+  return (
+    <div className="relative">
+      <input type="text" value={busq} onChange={e => { setBusq(e.target.value); setMostrar(true); }}
+        onFocus={() => setMostrar(true)} onBlur={() => setTimeout(() => setMostrar(false), 150)}
+        placeholder="Buscar entidad registrada..." className={inputCls} />
+      {mostrar && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-36 overflow-y-auto">
+          {filtradas.slice(0, 6).map(e => (
+            <div key={e.id} onMouseDown={() => onSelect(e)} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm">
+              <Building2 className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+              <span className="flex-1 truncate">{e.nombre}</span>
+              <span className="text-[10px] text-gray-400">{e.tipo}</span>
+            </div>
+          ))}
+          {filtradas.length === 0 && <p className="px-3 py-2 text-xs text-gray-400">Sin coincidencias</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -201,7 +280,6 @@ function FlujoBombero({
   const [nota, setNota]       = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
-  const confianzaColor = { alta: "text-green-600 bg-green-50", media: "text-amber-600 bg-amber-50", baja: "text-red-600 bg-red-50" }[resultado.confianza];
   const d = resultado.datos;
 
   async function enviar(e: React.FormEvent) {
@@ -213,11 +291,13 @@ function FlujoBombero({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          empresa: d.empresa, tema: d.tema, descripcion: d.descripcion,
+          empresa: d.empresa, tema: d.tema ?? resultado.descripcion_documento,
+          descripcion: d.descripcion,
           fecha_solicitada: d.fecha_solicitada, hora_inicio: d.hora_inicio,
           hora_fin: d.hora_fin, lugar: d.lugar, num_participantes: d.num_participantes,
           contacto: d.contacto, telefono: d.telefono, correo: d.correo,
           notas: nota || null, imagen_key,
+          tipo_documento: resultado.tipo_documento,
         }),
       });
       const data = await res.json();
@@ -229,45 +309,26 @@ function FlujoBombero({
 
   return (
     <form onSubmit={enviar} className="space-y-4">
-      {/* Banner IA */}
-      <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-        <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-blue-800">Solicitud detectada</p>
-          <p className="text-xs text-blue-600 mt-0.5">{resultado.descripcion_documento}</p>
-        </div>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${confianzaColor}`}>
-          {resultado.confianza}
-        </span>
-      </div>
+      <BannerIA resultado={resultado} />
 
-      {/* Resumen extraído (solo lectura) */}
       <div className="p-4 bg-gray-50 rounded-xl space-y-2">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Datos detectados (solo lectura)</p>
-        <div className="flex items-center gap-2 text-sm overflow-hidden">
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Datos detectados</p>
+        <div className="flex items-center gap-2 overflow-hidden">
           <img src={imagen} alt="doc" className="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0" />
           <div className="min-w-0">
-            {d.empresa    && <p className="text-xs font-semibold text-gray-800 truncate">{d.empresa}</p>}
-            {d.tema       && <p className="text-xs text-gray-600 truncate">{d.tema}</p>}
+            {d.empresa && <p className="text-xs font-semibold text-gray-800 truncate">{d.empresa}</p>}
+            {d.tema    && <p className="text-xs text-gray-600 truncate">{d.tema}</p>}
             {d.fecha_solicitada && <p className="text-xs text-gray-400">{new Date(d.fecha_solicitada + "T12:00:00").toLocaleDateString("es-PE", { day: "2-digit", month: "long", year: "numeric" })}</p>}
           </div>
         </div>
-        {(d.hora_inicio || d.lugar || d.num_participantes) && (
-          <div className="flex flex-wrap gap-3 pt-1">
-            {d.hora_inicio && <span className="flex items-center gap-1 text-xs text-gray-500"><Clock className="w-3 h-3" />{d.hora_inicio}{d.hora_fin ? ` — ${d.hora_fin}` : ""}</span>}
-            {d.lugar       && <span className="flex items-center gap-1 text-xs text-gray-500"><MapPin className="w-3 h-3" />{d.lugar}</span>}
-            {d.num_participantes && <span className="flex items-center gap-1 text-xs text-gray-500"><Users className="w-3 h-3" />{d.num_participantes} participantes</span>}
-          </div>
-        )}
         <p className="text-[10px] text-amber-600 bg-amber-50 rounded px-2 py-1 mt-1">
-          El jefe revisará y completará los detalles antes de aprobar.
+          El jefe revisará y gestionará este documento.
         </p>
       </div>
 
-      {/* Nota del bombero */}
       <Campo label="Nota adicional (opcional)" icon={MessageSquare}>
         <textarea rows={3} value={nota} onChange={e => setNota(e.target.value)}
-          placeholder="Agrega cualquier comentario o detalle relevante para el jefe..."
+          placeholder="Agrega cualquier comentario relevante para el jefe..."
           className={`${inputCls} resize-none`} />
       </Campo>
 
@@ -281,7 +342,7 @@ function FlujoBombero({
         <button type="submit" disabled={loading}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-red-700 hover:bg-red-800 disabled:opacity-50 rounded-lg">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          {loading ? "Enviando..." : "Enviar solicitud al jefe"}
+          {loading ? "Enviando..." : "Enviar al jefe"}
         </button>
       </div>
     </form>
@@ -304,14 +365,13 @@ function FlujoAdmin({
     fecha_solicitada: d.fecha_solicitada ?? "", hora_inicio: d.hora_inicio ?? "",
     hora_fin: d.hora_fin ?? "", lugar: d.lugar ?? "",
     num_participantes: d.num_participantes?.toString() ?? "", notas: "",
+    tipo_documento: resultado.tipo_documento,
   });
-  const [entidades, setEntidades]       = useState<Entidad[]>([]);
-  const [entidadId, setEntidadId]       = useState<number | null>(null);
-  const [entidadSel, setEntidadSel]     = useState<Entidad | null>(null);
-  const [busqEnt, setBusqEnt]           = useState("");
-  const [mostrarDrop, setMostrarDrop]   = useState(false);
-  const [loading, setLoading]           = useState(false);
-  const [error, setError]               = useState("");
+  const [entidades, setEntidades]     = useState<Entidad[]>([]);
+  const [entidadId, setEntidadId]     = useState<number | null>(null);
+  const [entidadSel, setEntidadSel]   = useState<Entidad | null>(null);
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState("");
 
   useEffect(() => { fetch("/api/entidades").then(r => r.json()).then(setEntidades); }, []);
   useEffect(() => {
@@ -320,21 +380,19 @@ function FlujoAdmin({
     if (m) { setEntidadId(m.id); setEntidadSel(m); }
   }, [entidades, d.empresa]);
 
-  const entFilt = entidades.filter(e => e.nombre.toLowerCase().includes(busqEnt.toLowerCase()));
-  function selEnt(e: Entidad) { setEntidadId(e.id); setEntidadSel(e); setBusqEnt(""); setMostrarDrop(false); setForm(f => ({ ...f, empresa: e.nombre })); }
-
-  const confianzaColor = { alta: "text-green-600 bg-green-50", media: "text-amber-600 bg-amber-50", baja: "text-red-600 bg-red-50" }[resultado.confianza];
-
   async function handleEnviar(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.tema.trim()) { setError("El tema de la capacitación es obligatorio."); return; }
     setError(""); setLoading(true);
     try {
       const imagen_key = await subirImagenCliente(imagen);
       const res = await fetch("/api/solicitudes-capacitacion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, num_participantes: form.num_participantes ? Number(form.num_participantes) : null, entidad_id: entidadId, imagen_key }),
+        body: JSON.stringify({
+          ...form,
+          num_participantes: form.num_participantes ? Number(form.num_participantes) : null,
+          entidad_id: entidadId, imagen_key,
+        }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Error al guardar."); return; }
@@ -345,49 +403,45 @@ function FlujoAdmin({
 
   return (
     <form onSubmit={handleEnviar} className="space-y-4">
-      <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-        <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-blue-800">Datos extraídos por IA — revisa y corrige</p>
-          <p className="text-xs text-blue-600 mt-0.5 truncate">{resultado.descripcion_documento}</p>
-        </div>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${confianzaColor}`}>{resultado.confianza}</span>
-      </div>
+      <BannerIA resultado={resultado} />
 
       <div className="flex items-center gap-3">
         <div className="w-14 h-14 rounded-lg overflow-hidden border border-gray-200 shrink-0">
           <img src={imagen} alt="doc" className="w-full h-full object-cover" />
         </div>
-        <p className="text-xs text-gray-500 flex-1">Puedes editar cualquier campo antes de guardar. Luego podrás agendar en el calendario y asignar efectivos.</p>
+        <p className="text-xs text-gray-500 flex-1">Revisa y corrige los datos antes de guardar.</p>
       </div>
 
       {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{error}</div>}
 
+      {/* Tipo de documento */}
       <div className="p-4 bg-gray-50 rounded-xl space-y-3">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Empresa / Institución</p>
-        {entidadSel ? (
-          <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg bg-white">
-            <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
-            <span className="flex-1 text-sm text-gray-900 truncate">{entidadSel.nombre}</span>
-            <span className="text-[10px] text-gray-400">{entidadSel.tipo}</span>
-            <button type="button" onClick={() => { setEntidadId(null); setEntidadSel(null); }} className="text-gray-400 hover:text-gray-600"><X className="w-3.5 h-3.5" /></button>
-          </div>
-        ) : (
-          <div className="relative">
-            <input type="text" value={busqEnt} onChange={e => { setBusqEnt(e.target.value); setMostrarDrop(true); }}
-              onFocus={() => setMostrarDrop(true)} placeholder="Buscar entidad registrada..." className={inputCls} />
-            {mostrarDrop && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-36 overflow-y-auto">
-                {entFilt.slice(0, 6).map(e => (
-                  <div key={e.id} onMouseDown={() => selEnt(e)} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm">
-                    <Building2 className="w-3.5 h-3.5 text-gray-400 shrink-0" /><span className="flex-1 truncate">{e.nombre}</span>
-                  </div>
-                ))}
-                {entFilt.length === 0 && <p className="px-3 py-2 text-xs text-gray-400">Sin coincidencias — se guardará como texto</p>}
-              </div>
-            )}
-          </div>
-        )}
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Clasificación</p>
+        <div>
+          <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 mb-1.5">
+            <Tag className="w-3.5 h-3.5 text-gray-400" />Tipo de documento
+          </label>
+          <select value={form.tipo_documento} onChange={e => setForm(f => ({ ...f, tipo_documento: e.target.value as TipoDoc }))}
+            className={inputCls}>
+            <option value="solicitud_capacitacion">Solicitud de Capacitación</option>
+            <option value="oficio">Oficio</option>
+            <option value="memorando">Memorando</option>
+            <option value="informe">Informe</option>
+            <option value="solicitud">Solicitud</option>
+            <option value="carta">Carta</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Entidad */}
+      <div className="p-4 bg-gray-50 rounded-xl space-y-3">
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Entidad / Institución</p>
+        <SelectorEntidad
+          entidades={entidades} entidadSel={entidadSel}
+          onSelect={e => { setEntidadId(e.id); setEntidadSel(e); setForm(f => ({ ...f, empresa: e.nombre })); }}
+          onClear={() => { setEntidadId(null); setEntidadSel(null); }}
+        />
         <div className="grid grid-cols-2 gap-3">
           <Campo label="Nombre empresa" icon={Building2}>
             <input type="text" value={form.empresa} onChange={e => setForm(f => ({ ...f, empresa: e.target.value }))} placeholder="Nombre" className={inputCls} />
@@ -404,16 +458,17 @@ function FlujoAdmin({
         </div>
       </div>
 
+      {/* Contenido */}
       <div className="p-4 bg-gray-50 rounded-xl space-y-3">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Solicitud</p>
-        <Campo label="Tema *" icon={FileText}>
-          <input type="text" required value={form.tema} onChange={e => setForm(f => ({ ...f, tema: e.target.value }))} placeholder="Ej: Primeros auxilios" className={inputCls} />
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Contenido del documento</p>
+        <Campo label="Asunto / Tema" icon={FileText}>
+          <input type="text" value={form.tema} onChange={e => setForm(f => ({ ...f, tema: e.target.value }))} placeholder="Asunto principal" className={inputCls} />
         </Campo>
         <Campo label="Descripción" icon={FileText}>
           <textarea rows={2} value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} placeholder="Detalle..." className={`${inputCls} resize-none`} />
         </Campo>
         <div className="grid grid-cols-2 gap-3">
-          <Campo label="Fecha solicitada" icon={CalendarDays}>
+          <Campo label="Fecha" icon={CalendarDays}>
             <input type="date" value={form.fecha_solicitada} onChange={e => setForm(f => ({ ...f, fecha_solicitada: e.target.value }))} className={inputCls} />
           </Campo>
           <Campo label="N.° participantes" icon={Users}>
@@ -429,7 +484,7 @@ function FlujoAdmin({
         <Campo label="Lugar" icon={MapPin}>
           <input type="text" value={form.lugar} onChange={e => setForm(f => ({ ...f, lugar: e.target.value }))} placeholder="Lugar propuesto" className={inputCls} />
         </Campo>
-        <Campo label="Notas" icon={MessageSquare}>
+        <Campo label="Notas internas" icon={MessageSquare}>
           <textarea rows={2} value={form.notas} onChange={e => setForm(f => ({ ...f, notas: e.target.value }))} placeholder="Observaciones..." className={`${inputCls} resize-none`} />
         </Campo>
       </div>
@@ -441,7 +496,7 @@ function FlujoAdmin({
         <button type="submit" disabled={loading}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-red-700 hover:bg-red-800 disabled:opacity-50 rounded-lg">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          {loading ? "Guardando..." : "Guardar solicitud"}
+          {loading ? "Guardando..." : "Guardar documento"}
         </button>
       </div>
     </form>
@@ -451,20 +506,23 @@ function FlujoAdmin({
 /* ─────────────────────────────────────────────
    Éxito genérico
 ───────────────────────────────────────────── */
-function PasoExito({ esAdmin, onReiniciar, onAgendar }: { esAdmin: boolean; onReiniciar: () => void; onAgendar?: () => void }) {
+function PasoExito({ esAdmin, onReiniciar, onAgendar, esCapacitacion }: {
+  esAdmin: boolean; onReiniciar: () => void;
+  onAgendar?: () => void; esCapacitacion?: boolean;
+}) {
   return (
     <div className="flex flex-col items-center gap-5 py-6 text-center">
       <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
         <CheckCircle2 className="w-8 h-8 text-green-600" />
       </div>
       <div>
-        <p className="text-base font-bold text-gray-900">{esAdmin ? "¡Solicitud guardada!" : "¡Solicitud enviada al jefe!"}</p>
+        <p className="text-base font-bold text-gray-900">{esAdmin ? "¡Documento guardado!" : "¡Documento enviado al jefe!"}</p>
         <p className="text-sm text-gray-500 mt-1">
-          {esAdmin ? "Ahora puedes agendar la capacitación en el calendario y asignar efectivos." : "El jefe de compañía revisará la solicitud y la aprobará."}
+          {esAdmin ? "Puedes gestionar el documento desde la bandeja." : "El jefe de compañía revisará el documento."}
         </p>
       </div>
       <div className="flex flex-col gap-3 w-full max-w-xs">
-        {esAdmin && onAgendar && (
+        {esAdmin && onAgendar && esCapacitacion && (
           <button onClick={onAgendar}
             className="flex items-center justify-center gap-2 w-full py-2.5 bg-red-700 hover:bg-red-800 text-white text-sm font-semibold rounded-lg">
             <CalendarDays className="w-4 h-4" /> Agendar en el calendario
@@ -472,7 +530,7 @@ function PasoExito({ esAdmin, onReiniciar, onAgendar }: { esAdmin: boolean; onRe
         )}
         <button onClick={onReiniciar}
           className="flex items-center justify-center gap-2 w-full py-2.5 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50">
-          <ScanLine className="w-4 h-4" /> Escanear otro documento
+          <ScanLine className="w-4 h-4" /> Subir otro documento
         </button>
       </div>
     </div>
@@ -480,24 +538,23 @@ function PasoExito({ esAdmin, onReiniciar, onAgendar }: { esAdmin: boolean; onRe
 }
 
 /* ─────────────────────────────────────────────
-   Modal Agendar
+   Modal Agendar (solo para capacitaciones)
 ───────────────────────────────────────────── */
 function ModalAgendar({ solicitudId, datos, onClose, onAgendado }: {
   solicitudId: number;
   datos: { tema: string; empresa: string | null; fecha_solicitada: string | null; hora_inicio: string | null; hora_fin: string | null; lugar: string | null; entidad_id: number | null; };
   onClose: () => void; onAgendado: () => void;
 }) {
-  const [bomberos, setBomberos]       = useState<Bombero[]>([]);
-  const [seleccionados, setSel]       = useState<number[]>([]);
-  const [busqueda, setBusqueda]       = useState("");
-  const [fecha, setFecha]             = useState(datos.fecha_solicitada ?? "");
-  const [hIni, setHIni]               = useState(datos.hora_inicio ?? "");
-  const [hFin, setHFin]               = useState(datos.hora_fin ?? "");
-  const [loading, setLoading]         = useState(false);
-  const [error, setError]             = useState("");
+  const [bomberos, setBomberos]   = useState<Bombero[]>([]);
+  const [seleccionados, setSel]   = useState<number[]>([]);
+  const [busqueda, setBusqueda]   = useState("");
+  const [fecha, setFecha]         = useState(datos.fecha_solicitada ?? "");
+  const [hIni, setHIni]           = useState(datos.hora_inicio ?? "");
+  const [hFin, setHFin]           = useState(datos.hora_fin ?? "");
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState("");
 
   useEffect(() => { fetch("/api/bomberos").then(r => r.json()).then(setBomberos); }, []);
-
   const filtrados = bomberos.filter(b => `${b.apellidos} ${b.nombres} ${b.codigo}`.toLowerCase().includes(busqueda.toLowerCase()));
 
   async function handleAgendar(e: React.FormEvent) {
@@ -520,7 +577,7 @@ function ModalAgendar({ solicitudId, datos, onClose, onAgendado }: {
       if (!resAct.ok) { setError(actData.error ?? "Error al crear actividad."); return; }
       await fetch(`/api/solicitudes-capacitacion/${solicitudId}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ estado: "APROBADA", actividad_id: actData.id }),
+        body: JSON.stringify({ estado: "APROBADO", actividad_id: actData.id }),
       });
       onAgendado();
     } catch { setError("Error de conexión."); }
@@ -598,69 +655,101 @@ function ModalAgendar({ solicitudId, datos, onClose, onAgendado }: {
 }
 
 /* ─────────────────────────────────────────────
-   Panel de solicitudes pendientes (solo admin)
+   Panel de documentos (solo admin)
 ───────────────────────────────────────────── */
-const ESTADO_BADGE: Record<string, string> = {
-  PENDIENTE: "bg-amber-100 text-amber-700",
-  APROBADA:  "bg-green-100 text-green-700",
-  RECHAZADA: "bg-red-100 text-red-600",
-};
+const ESTADOS_OPCIONES: { value: EstadoDoc; label: string }[] = [
+  { value: "PENDIENTE",   label: "Pendiente"   },
+  { value: "EN_REVISION", label: "En revisión" },
+  { value: "APROBADO",    label: "Aprobado"    },
+  { value: "ATENDIDO",    label: "Atendido"    },
+  { value: "RECHAZADO",   label: "Rechazado"   },
+];
 
-function PanelSolicitudes({ onAgendar }: { onAgendar: (s: Solicitud) => void }) {
-  const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
-  const [cargando, setCargando]       = useState(true);
-  const [expandida, setExpandida]     = useState<number | null>(null);
-  const [editando, setEditando]       = useState<number | null>(null);
+function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {
+  const [docs, setDocs]         = useState<Documento[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [expandida, setExp]     = useState<number | null>(null);
+  const [editando, setEdit]     = useState<number | null>(null);
+  const [filtroEstado, setFiltroEstado] = useState<string>("todos");
 
   function cargar() {
     setCargando(true);
     fetch("/api/solicitudes-capacitacion").then(r => r.json())
-      .then(data => { setSolicitudes(Array.isArray(data) ? data : []); setCargando(false); })
+      .then(data => { setDocs(Array.isArray(data) ? data : []); setCargando(false); })
       .catch(() => setCargando(false));
   }
   useEffect(() => { cargar(); }, []);
 
-  const pendientes = solicitudes.filter(s => s.estado === "PENDIENTE");
-  const resto      = solicitudes.filter(s => s.estado !== "PENDIENTE");
+  const docsFiltrados = filtroEstado === "todos" ? docs : docs.filter(d => d.estado === filtroEstado || (filtroEstado === "APROBADO" && d.estado === "APROBADA") || (filtroEstado === "RECHAZADO" && d.estado === "RECHAZADA"));
+  const pendientes = docsFiltrados.filter(d => d.estado === "PENDIENTE");
+  const resto      = docsFiltrados.filter(d => d.estado !== "PENDIENTE");
 
   if (cargando) return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>;
-  if (solicitudes.length === 0) return (
+  if (docs.length === 0) return (
     <div className="text-center py-10 text-gray-400">
       <InboxIcon className="w-8 h-8 mx-auto mb-2 opacity-40" />
-      <p className="text-sm">Sin solicitudes aún.</p>
+      <p className="text-sm">Sin documentos aún.</p>
     </div>
   );
 
-  function TarjetaSolicitud({ s }: { s: Solicitud }) {
+  function TarjetaDoc({ s }: { s: Documento }) {
     const abierta = expandida === s.id;
-    const [formEdit, setFormEdit] = useState({ tema: s.tema ?? "", empresa: s.empresa ?? "", fecha_solicitada: s.fecha_solicitada ?? "", hora_inicio: s.hora_inicio ?? "", hora_fin: s.hora_fin ?? "", lugar: s.lugar ?? "", num_participantes: s.num_participantes?.toString() ?? "", notas: s.notas ?? "", contacto: s.contacto ?? "", telefono: s.telefono ?? "", correo: s.correo ?? "" });
+    const [entidades, setEntidades] = useState<Entidad[]>([]);
+    const [entidadSel, setEntidadSel] = useState<Entidad | null>(null);
+    const [entidadId, setEntidadId] = useState<number | null>(s.entidad_id);
+    const [formEdit, setFormEdit] = useState({
+      tema: s.tema ?? "", empresa: s.empresa ?? "",
+      fecha_solicitada: s.fecha_solicitada ?? "", hora_inicio: s.hora_inicio ?? "",
+      hora_fin: s.hora_fin ?? "", lugar: s.lugar ?? "",
+      num_participantes: s.num_participantes?.toString() ?? "",
+      notas: s.notas ?? "", contacto: s.contacto ?? "",
+      telefono: s.telefono ?? "", correo: s.correo ?? "",
+      tipo_documento: s.tipo_documento ?? "otro",
+      estado: s.estado,
+    });
     const [guardando, setGuardando] = useState(false);
+
+    useEffect(() => {
+      if (editando === s.id) {
+        fetch("/api/entidades").then(r => r.json()).then((data: Entidad[]) => {
+          setEntidades(data);
+          if (s.entidad_id) {
+            const found = data.find((e: Entidad) => e.id === s.entidad_id);
+            if (found) setEntidadSel(found);
+          }
+        });
+      }
+    }, [editando, s.id, s.entidad_id]);
 
     async function guardarEdicion() {
       setGuardando(true);
       await fetch(`/api/solicitudes-capacitacion/${s.id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formEdit, num_participantes: formEdit.num_participantes ? Number(formEdit.num_participantes) : null }),
+        body: JSON.stringify({
+          ...formEdit,
+          num_participantes: formEdit.num_participantes ? Number(formEdit.num_participantes) : null,
+          entidad_id: entidadId,
+        }),
       });
-      setGuardando(false); setEditando(null); cargar();
+      setGuardando(false); setEdit(null); cargar();
     }
 
-    async function rechazar() {
-      if (!confirm("¿Rechazar esta solicitud?")) return;
+    async function cambiarEstado(nuevoEstado: EstadoDoc) {
       await fetch(`/api/solicitudes-capacitacion/${s.id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ estado: "RECHAZADA" }),
+        body: JSON.stringify({ estado: nuevoEstado }),
       });
       cargar();
     }
 
     const esEditar = editando === s.id;
+    const estadoBadge = ESTADO_BADGE[s.estado] ?? { cls: "bg-gray-100 text-gray-500", label: s.estado };
+    const tipoBadge = TIPO_COLOR[s.tipo_documento as TipoDoc] ?? "bg-gray-100 text-gray-600";
 
     return (
       <div className={`border rounded-xl overflow-hidden transition-all ${s.estado === "PENDIENTE" ? "border-amber-200 bg-amber-50/30" : "border-gray-200 bg-white"}`}>
         {/* Cabecera */}
-        <div className="flex items-start gap-3 px-4 py-3 cursor-pointer" onClick={() => setExpandida(abierta ? null : s.id)}>
-          {/* Miniatura de imagen */}
+        <div className="flex items-start gap-3 px-4 py-3 cursor-pointer" onClick={() => setExp(abierta ? null : s.id)}>
           <div className="w-12 h-12 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 shrink-0 flex items-center justify-center">
             {s.imagen_url
               ? <img src={s.imagen_url} alt="doc" className="w-full h-full object-cover" />
@@ -668,22 +757,24 @@ function PanelSolicitudes({ onAgendar }: { onAgendar: (s: Solicitud) => void }) 
             }
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ESTADO_BADGE[s.estado] ?? "bg-gray-100 text-gray-500"}`}>{s.estado}</span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${estadoBadge.cls}`}>{estadoBadge.label}</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tipoBadge}`}>{TIPO_LABEL[s.tipo_documento as TipoDoc] ?? s.tipo_documento}</span>
               {s.subido_por_rol === "BOMBERO"
                 ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">Bombero</span>
                 : <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">Admin</span>
               }
             </div>
-            <p className="text-sm font-semibold text-gray-900 mt-1 truncate">{s.tema ?? "Sin tema"}</p>
-            {s.empresa && <p className="text-xs text-gray-500 truncate">{s.empresa}</p>}
-            {/* Quién subió + fecha */}
+            <p className="text-sm font-semibold text-gray-900 mt-1 truncate">{s.tema ?? "Sin asunto"}</p>
+            {s.entidad_nombre
+              ? <p className="text-xs text-gray-500 truncate flex items-center gap-1"><Building2 className="w-3 h-3 shrink-0" />{s.entidad_nombre}</p>
+              : s.empresa && <p className="text-xs text-gray-500 truncate">{s.empresa}</p>
+            }
             <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1">
               <User className="w-3 h-3 shrink-0" />
               <span className="font-medium text-gray-500">{s.subido_por_nombre ?? "Desconocido"}</span>
               <span>·</span>
               <span>{new Date(s.creado_en).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" })}</span>
-              {s.fecha_solicitada && <><span>·</span><CalendarDays className="w-3 h-3 shrink-0" /><span>{new Date(s.fecha_solicitada + "T12:00:00").toLocaleDateString("es-PE", { day: "2-digit", month: "short" })}</span></>}
             </p>
           </div>
           {abierta ? <ChevronUp className="w-4 h-4 text-gray-400 shrink-0 mt-1" /> : <ChevronDown className="w-4 h-4 text-gray-400 shrink-0 mt-1" />}
@@ -695,9 +786,42 @@ function PanelSolicitudes({ onAgendar }: { onAgendar: (s: Solicitud) => void }) 
             {esEditar ? (
               <div className="space-y-3">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Editando</p>
+
+                {/* Tipo y estado */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Tipo</label>
+                    <select value={formEdit.tipo_documento} onChange={e => setFormEdit(f => ({ ...f, tipo_documento: e.target.value as TipoDoc }))} className={inputCls}>
+                      <option value="solicitud_capacitacion">Solicitud de Capacitación</option>
+                      <option value="oficio">Oficio</option>
+                      <option value="memorando">Memorando</option>
+                      <option value="informe">Informe</option>
+                      <option value="solicitud">Solicitud</option>
+                      <option value="carta">Carta</option>
+                      <option value="otro">Otro</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Estado</label>
+                    <select value={formEdit.estado} onChange={e => setFormEdit(f => ({ ...f, estado: e.target.value as EstadoDoc }))} className={inputCls}>
+                      {ESTADOS_OPCIONES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Entidad */}
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 mb-1 block">Entidad</label>
+                  <SelectorEntidad
+                    entidades={entidades} entidadSel={entidadSel}
+                    onSelect={e => { setEntidadId(e.id); setEntidadSel(e); setFormEdit(f => ({ ...f, empresa: e.nombre })); }}
+                    onClear={() => { setEntidadId(null); setEntidadSel(null); }}
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-2">
                   <div className="col-span-2">
-                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Tema</label>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Asunto / Tema</label>
                     <input type="text" value={formEdit.tema} onChange={e => setFormEdit(f => ({ ...f, tema: e.target.value }))} className={inputCls} />
                   </div>
                   <div className="col-span-2">
@@ -730,7 +854,7 @@ function PanelSolicitudes({ onAgendar }: { onAgendar: (s: Solicitud) => void }) 
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setEditando(null)} className="flex-1 py-2 text-xs text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
+                  <button onClick={() => setEdit(null)} className="flex-1 py-2 text-xs text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
                   <button onClick={guardarEdicion} disabled={guardando}
                     className="flex-1 py-2 text-xs font-semibold text-white bg-red-700 hover:bg-red-800 rounded-lg disabled:opacity-50 flex items-center justify-center gap-1">
                     {guardando ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Guardar
@@ -739,7 +863,6 @@ function PanelSolicitudes({ onAgendar }: { onAgendar: (s: Solicitud) => void }) 
               </div>
             ) : (
               <>
-                {/* Imagen del documento */}
                 {s.imagen_url && (
                   <a href={s.imagen_url} target="_blank" rel="noopener noreferrer"
                     className="block w-full rounded-xl overflow-hidden border border-gray-200 hover:opacity-90 transition-opacity">
@@ -747,6 +870,7 @@ function PanelSolicitudes({ onAgendar }: { onAgendar: (s: Solicitud) => void }) 
                     <p className="text-center text-[10px] text-gray-400 py-1 bg-gray-50 border-t border-gray-100">Ver imagen completa</p>
                   </a>
                 )}
+
                 {/* Quién subió */}
                 <div className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-lg">
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-white text-[10px] font-bold ${s.subido_por_rol === "BOMBERO" ? "bg-blue-600" : "bg-purple-600"}`}>
@@ -754,36 +878,52 @@ function PanelSolicitudes({ onAgendar }: { onAgendar: (s: Solicitud) => void }) 
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-gray-800 truncate">{s.subido_por_nombre ?? "Desconocido"}</p>
-                    <p className="text-[10px] text-gray-400">{s.subido_por_rol === "BOMBERO" ? "Bombero" : "Administración"} · Enviado {new Date(s.creado_en).toLocaleDateString("es-PE", { day: "2-digit", month: "long", year: "numeric" })}</p>
+                    <p className="text-[10px] text-gray-400">{s.subido_por_rol === "BOMBERO" ? "Bombero" : "Administración"} · {new Date(s.creado_en).toLocaleDateString("es-PE", { day: "2-digit", month: "long", year: "numeric" })}</p>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                  {s.contacto   && <p className="text-gray-500"><span className="font-semibold text-gray-700">Contacto:</span> {s.contacto}</p>}
-                  {s.telefono   && <p className="text-gray-500"><span className="font-semibold text-gray-700">Tel:</span> {s.telefono}</p>}
-                  {s.correo     && <p className="text-gray-500 col-span-2"><span className="font-semibold text-gray-700">Correo:</span> {s.correo}</p>}
-                  {s.hora_inicio && <p className="text-gray-500"><span className="font-semibold text-gray-700">Horario:</span> {s.hora_inicio}{s.hora_fin ? ` — ${s.hora_fin}` : ""}</p>}
-                  {s.lugar      && <p className="text-gray-500"><span className="font-semibold text-gray-700">Lugar:</span> {s.lugar}</p>}
-                  {s.num_participantes && <p className="text-gray-500"><span className="font-semibold text-gray-700">Participantes:</span> {s.num_participantes}</p>}
-                  {s.descripcion && <p className="text-gray-500 col-span-2"><span className="font-semibold text-gray-700">Descripción:</span> {s.descripcion}</p>}
-                  {s.notas      && <p className="text-gray-500 col-span-2 italic"><span className="font-semibold not-italic text-gray-700">Nota:</span> {s.notas}</p>}
                 </div>
 
-                {s.estado === "PENDIENTE" && (
-                  <div className="flex gap-2 pt-1">
-                    <button onClick={() => setEditando(s.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
-                      <Pencil className="w-3 h-3" /> Editar
-                    </button>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                  {s.contacto    && <p className="text-gray-500"><span className="font-semibold text-gray-700">Contacto:</span> {s.contacto}</p>}
+                  {s.telefono    && <p className="text-gray-500"><span className="font-semibold text-gray-700">Tel:</span> {s.telefono}</p>}
+                  {s.correo      && <p className="text-gray-500 col-span-2"><span className="font-semibold text-gray-700">Correo:</span> {s.correo}</p>}
+                  {s.hora_inicio && <p className="text-gray-500"><span className="font-semibold text-gray-700">Horario:</span> {s.hora_inicio}{s.hora_fin ? ` — ${s.hora_fin}` : ""}</p>}
+                  {s.lugar       && <p className="text-gray-500"><span className="font-semibold text-gray-700">Lugar:</span> {s.lugar}</p>}
+                  {s.num_participantes && <p className="text-gray-500"><span className="font-semibold text-gray-700">Participantes:</span> {s.num_participantes}</p>}
+                  {s.descripcion && <p className="text-gray-500 col-span-2"><span className="font-semibold text-gray-700">Descripción:</span> {s.descripcion}</p>}
+                  {s.notas       && <p className="text-gray-500 col-span-2 italic"><span className="font-semibold not-italic text-gray-700">Nota:</span> {s.notas}</p>}
+                </div>
+
+                {/* Acciones */}
+                <div className="flex gap-2 pt-1 flex-wrap">
+                  <button onClick={() => setEdit(s.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                    <Pencil className="w-3 h-3" /> Editar
+                  </button>
+                  {s.tipo_documento === "solicitud_capacitacion" && (s.estado === "PENDIENTE" || s.estado === "EN_REVISION") && (
                     <button onClick={() => onAgendar(s)}
                       className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-red-700 hover:bg-red-800 rounded-lg">
-                      <CalendarDays className="w-3 h-3" /> Aprobar y agendar
+                      <CalendarDays className="w-3 h-3" /> Agendar
                     </button>
-                    <button onClick={rechazar}
-                      className="px-3 py-1.5 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
-                      Rechazar
+                  )}
+                  {s.estado === "PENDIENTE" && (
+                    <button onClick={() => cambiarEstado("EN_REVISION")}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100">
+                      <FileClock className="w-3 h-3" /> En revisión
                     </button>
-                  </div>
-                )}
+                  )}
+                  {(s.estado === "PENDIENTE" || s.estado === "EN_REVISION") && (
+                    <button onClick={() => cambiarEstado("ATENDIDO")}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-teal-700 border border-teal-200 bg-teal-50 rounded-lg hover:bg-teal-100">
+                      <FileCheck className="w-3 h-3" /> Atendido
+                    </button>
+                  )}
+                  {s.estado !== "RECHAZADO" && s.estado !== "RECHAZADA" && s.estado !== "ATENDIDO" && (
+                    <button onClick={() => cambiarEstado("RECHAZADO")}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
+                      <FileX className="w-3 h-3" /> Rechazar
+                    </button>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -794,19 +934,34 @@ function PanelSolicitudes({ onAgendar }: { onAgendar: (s: Solicitud) => void }) 
 
   return (
     <div className="space-y-4">
+      {/* Filtro por estado */}
+      <div className="flex gap-1.5 flex-wrap">
+        {[{ v: "todos", l: "Todos" }, { v: "PENDIENTE", l: "Pendientes" }, { v: "EN_REVISION", l: "En revisión" }, { v: "APROBADO", l: "Aprobados" }, { v: "ATENDIDO", l: "Atendidos" }, { v: "RECHAZADO", l: "Rechazados" }].map(({ v, l }) => (
+          <button key={v} onClick={() => setFiltroEstado(v)}
+            className={`px-3 py-1 text-xs font-medium rounded-full border transition-all ${filtroEstado === v ? "bg-red-700 text-white border-red-700" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"}`}>
+            {l}
+          </button>
+        ))}
+      </div>
+
       {pendientes.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-bold text-amber-600 uppercase tracking-widest flex items-center gap-2">
             <span className="w-5 h-5 rounded-full bg-amber-400 text-gray-900 text-[10px] font-bold flex items-center justify-center">{pendientes.length}</span>
-            Pendientes de aprobación
+            Pendientes
           </p>
-          {pendientes.map(s => <TarjetaSolicitud key={s.id} s={s} />)}
+          {pendientes.map(s => <TarjetaDoc key={s.id} s={s} />)}
         </div>
       )}
       {resto.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Historial</p>
-          {resto.map(s => <TarjetaSolicitud key={s.id} s={s} />)}
+          {pendientes.length > 0 && <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Historial</p>}
+          {resto.map(s => <TarjetaDoc key={s.id} s={s} />)}
+        </div>
+      )}
+      {docsFiltrados.length === 0 && (
+        <div className="text-center py-6 text-gray-400">
+          <p className="text-sm">Sin documentos con ese filtro.</p>
         </div>
       )}
     </div>
@@ -817,15 +972,15 @@ function PanelSolicitudes({ onAgendar }: { onAgendar: (s: Solicitud) => void }) 
    Componente raíz
 ───────────────────────────────────────────── */
 export function EscanerDocumento({ esAdmin }: { esAdmin: boolean }) {
-  type Paso = "captura" | "analizando" | "noEsSolicitud" | "confirmar" | "exito" | "agendado";
+  type Paso = "captura" | "analizando" | "confirmar" | "exito" | "agendado";
 
   const [paso, setPaso]         = useState<Paso>("captura");
   const [imagen, setImagen]     = useState<string | null>(null);
   const [resultado, setRes]     = useState<ResultadoIA | null>(null);
   const [solicitudId, setSolId] = useState<number | null>(null);
-  const [solicitudAgendar, setSolicitudAgendar] = useState<Solicitud | null>(null);
+  const [solicitudAgendar, setSolicitudAgendar] = useState<Documento | null>(null);
   const [errorGlobal, setErrorGlobal]           = useState("");
-  const [tab, setTab]           = useState<"escanear" | "solicitudes">("escanear");
+  const [tab, setTab]           = useState<"escanear" | "documentos">("escanear");
 
   async function handleImagen(dataUrl: string) {
     setImagen(dataUrl); setPaso("analizando"); setErrorGlobal("");
@@ -837,7 +992,7 @@ export function EscanerDocumento({ esAdmin }: { esAdmin: boolean }) {
       const data: ResultadoIA = await res.json();
       if (!res.ok) throw new Error((data as { error?: string }).error ?? "Error");
       setRes(data);
-      setPaso(data.es_solicitud_capacitacion ? "confirmar" : "noEsSolicitud");
+      setPaso("confirmar");
     } catch (e: unknown) {
       setErrorGlobal(e instanceof Error ? e.message : "Error al analizar el documento.");
       setPaso("captura");
@@ -853,23 +1008,22 @@ export function EscanerDocumento({ esAdmin }: { esAdmin: boolean }) {
       {/* Tabs (solo admin) */}
       {esAdmin && (
         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
-          {(["escanear", "solicitudes"] as const).map(t => (
+          {(["escanear", "documentos"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${tab === t ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-              {t === "escanear" ? "Escanear documento" : "Solicitudes recibidas"}
+              {t === "escanear" ? "Subir documento" : "Bandeja de documentos"}
             </button>
           ))}
         </div>
       )}
 
-      {/* Tab Escanear */}
+      {/* Tab Subir */}
       {(tab === "escanear" || !esAdmin) && (
         <>
-          {/* Indicador de pasos */}
           {escaneando && (
             <div className="flex items-center gap-1">
               {[{ key: "captura", label: "Captura" }, { key: "confirmar", label: "Revisar" }, { key: "exito", label: esAdmin ? "Guardar" : "Enviar" }].map((s, i) => {
-                const orden = ["captura", "analizando", "noEsSolicitud", "confirmar", "exito"];
+                const orden = ["captura", "analizando", "confirmar", "exito"];
                 const activo = orden.indexOf(paso) >= orden.indexOf(s.key);
                 return (
                   <div key={s.key} className="flex items-center gap-1 flex-1">
@@ -890,10 +1044,9 @@ export function EscanerDocumento({ esAdmin }: { esAdmin: boolean }) {
 
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <div className={`${paso === "confirmar" ? "overflow-y-auto max-h-[calc(100vh-11rem)]" : ""} p-5`}>
-              {paso === "captura"       && <PasoCaptura onImagen={handleImagen} />}
-              {paso === "analizando"    && imagen && <PasoAnalizando imagen={imagen} />}
-              {paso === "noEsSolicitud" && resultado && <PasoNoEsSolicitud resultado={resultado} onReiniciar={reiniciar} />}
-              {paso === "confirmar"     && resultado && imagen && (
+              {paso === "captura"    && <PasoCaptura onImagen={handleImagen} />}
+              {paso === "analizando" && imagen && <PasoAnalizando imagen={imagen} />}
+              {paso === "confirmar"  && resultado && imagen && (
                 esAdmin
                   ? <FlujoAdmin resultado={resultado} imagen={imagen} onReiniciar={reiniciar} onEnviado={id => { setSolId(id); setPaso("exito"); }} />
                   : <FlujoBombero resultado={resultado} imagen={imagen} onReiniciar={reiniciar} onEnviado={() => setPaso("exito")} />
@@ -901,11 +1054,12 @@ export function EscanerDocumento({ esAdmin }: { esAdmin: boolean }) {
               {paso === "exito" && (
                 <PasoExito
                   esAdmin={esAdmin}
+                  esCapacitacion={resultado?.tipo_documento === "solicitud_capacitacion"}
                   onReiniciar={reiniciar}
                   onAgendar={esAdmin && solicitudId ? () => {
-                    const s = resultado?.datos;
-                    if (!s) return;
-                    setSolicitudAgendar({ id: solicitudId!, estado: "PENDIENTE", empresa: s.empresa, tema: s.tema, fecha_solicitada: s.fecha_solicitada, hora_inicio: s.hora_inicio, hora_fin: s.hora_fin, lugar: s.lugar, num_participantes: s.num_participantes, contacto: s.contacto, telefono: s.telefono, correo: s.correo, descripcion: s.descripcion, notas: null, entidad_id: null, entidad_nombre: null, subido_por_rol: null, subido_por_nombre: null, imagen_key: null, imagen_url: null, creado_en: new Date().toISOString() });
+                    const d = resultado?.datos;
+                    if (!d) return;
+                    setSolicitudAgendar({ id: solicitudId!, estado: "PENDIENTE", tipo_documento: resultado!.tipo_documento, empresa: d.empresa, tema: d.tema, fecha_solicitada: d.fecha_solicitada, hora_inicio: d.hora_inicio, hora_fin: d.hora_fin, lugar: d.lugar, num_participantes: d.num_participantes, contacto: d.contacto, telefono: d.telefono, correo: d.correo, descripcion: d.descripcion, notas: null, entidad_id: null, entidad_nombre: null, subido_por_rol: null, subido_por_nombre: null, imagen_key: null, imagen_url: null, creado_en: new Date().toISOString() });
                   } : undefined}
                 />
               )}
@@ -919,7 +1073,7 @@ export function EscanerDocumento({ esAdmin }: { esAdmin: boolean }) {
                     <p className="text-sm text-gray-500 mt-1">La capacitación aparece en Programación con los efectivos asignados.</p>
                   </div>
                   <button onClick={reiniciar} className="flex items-center gap-2 px-5 py-2.5 bg-red-700 text-white text-sm font-semibold rounded-lg hover:bg-red-800">
-                    <ScanLine className="w-4 h-4" /> Escanear otro
+                    <ScanLine className="w-4 h-4" /> Subir otro documento
                   </button>
                 </div>
               )}
@@ -928,10 +1082,10 @@ export function EscanerDocumento({ esAdmin }: { esAdmin: boolean }) {
         </>
       )}
 
-      {/* Tab Solicitudes (solo admin) */}
-      {esAdmin && tab === "solicitudes" && (
+      {/* Tab Bandeja (solo admin) */}
+      {esAdmin && tab === "documentos" && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 overflow-y-auto max-h-[calc(100vh-11rem)]">
-          <PanelSolicitudes onAgendar={s => setSolicitudAgendar(s)} />
+          <PanelDocumentos onAgendar={s => setSolicitudAgendar(s)} />
         </div>
       )}
 
@@ -941,7 +1095,11 @@ export function EscanerDocumento({ esAdmin }: { esAdmin: boolean }) {
           solicitudId={solicitudAgendar.id}
           datos={{ tema: solicitudAgendar.tema ?? "Capacitación", empresa: solicitudAgendar.empresa, fecha_solicitada: solicitudAgendar.fecha_solicitada, hora_inicio: solicitudAgendar.hora_inicio, hora_fin: solicitudAgendar.hora_fin, lugar: solicitudAgendar.lugar, entidad_id: solicitudAgendar.entidad_id }}
           onClose={() => setSolicitudAgendar(null)}
-          onAgendado={() => { setSolicitudAgendar(null); if (tab === "escanear") setPaso("agendado"); else { /* recargar panel */ setTab("escanear"); setTimeout(() => setTab("solicitudes"), 50); } }}
+          onAgendado={() => {
+            setSolicitudAgendar(null);
+            if (tab === "escanear") setPaso("agendado");
+            else { setTab("escanear"); setTimeout(() => setTab("documentos"), 50); }
+          }}
         />
       )}
     </div>
