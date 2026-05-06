@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   const {
     empresa, contacto, telefono, correo, tema, descripcion,
     fecha_solicitada, hora_inicio, hora_fin, lugar,
-    num_participantes, notas, entidad_id, imagen_key, tipo_documento,
+    num_participantes, notas, entidad_id, imagen_key, tipo_documento, subtipo_oficio,
   } = body;
 
   const { rows } = await pool.query<{ id: number }>(`
@@ -51,8 +51,8 @@ export async function POST(req: Request) {
       (empresa, contacto, telefono, correo, tema, descripcion,
        fecha_solicitada, hora_inicio, hora_fin, lugar,
        num_participantes, notas, entidad_id, estado,
-       subido_por_rol, subido_por_nombre, imagen_key, tipo_documento)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'PENDIENTE',$14,$15,$16,$17)
+       subido_por_rol, subido_por_nombre, imagen_key, tipo_documento, subtipo_oficio)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'PENDIENTE',$14,$15,$16,$17,$18)
     RETURNING id
   `, [
     empresa ?? null, contacto ?? null, telefono ?? null, correo ?? null,
@@ -64,6 +64,7 @@ export async function POST(req: Request) {
     session.user.nombres ?? null,
     imagen_key ?? null,
     tipo_documento ?? "otro",
+    subtipo_oficio ?? null,
   ]);
 
   return NextResponse.json({ id: rows[0].id }, { status: 201 });

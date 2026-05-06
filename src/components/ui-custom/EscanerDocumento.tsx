@@ -29,6 +29,7 @@ interface Entidad { id: number; nombre: string; tipo: string; }
 interface Bombero { id: number; apellidos: string; nombres: string; grado: string; codigo: string; }
 interface Documento {
   id: number; estado: EstadoDoc; tipo_documento: TipoDoc;
+  subtipo_oficio: "INSTITUCIONAL" | "VARIOS" | null;
   empresa: string | null; tema: string | null;
   fecha_solicitada: string | null; hora_inicio: string | null; hora_fin: string | null;
   lugar: string | null; num_participantes: number | null;
@@ -366,6 +367,7 @@ function FlujoAdmin({
     hora_fin: d.hora_fin ?? "", lugar: d.lugar ?? "",
     num_participantes: d.num_participantes?.toString() ?? "", notas: "",
     tipo_documento: resultado.tipo_documento,
+    subtipo_oficio: "" as "",
   });
   const [entidades, setEntidades]     = useState<Entidad[]>([]);
   const [entidadId, setEntidadId]     = useState<number | null>(null);
@@ -392,6 +394,7 @@ function FlujoAdmin({
           ...form,
           num_participantes: form.num_participantes ? Number(form.num_participantes) : null,
           entidad_id: entidadId, imagen_key,
+          subtipo_oficio: form.subtipo_oficio || null,
         }),
       });
       const data = await res.json();
@@ -417,20 +420,29 @@ function FlujoAdmin({
       {/* Tipo de documento */}
       <div className="p-4 bg-gray-50 rounded-xl space-y-3">
         <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Clasificación</p>
-        <div>
-          <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 mb-1.5">
-            <Tag className="w-3.5 h-3.5 text-gray-400" />Tipo de documento
-          </label>
-          <select value={form.tipo_documento} onChange={e => setForm(f => ({ ...f, tipo_documento: e.target.value as TipoDoc }))}
-            className={inputCls}>
-            <option value="solicitud_capacitacion">Solicitud de Capacitación</option>
-            <option value="oficio">Oficio</option>
-            <option value="memorando">Memorando</option>
-            <option value="informe">Informe</option>
-            <option value="solicitud">Solicitud</option>
-            <option value="carta">Carta</option>
-            <option value="otro">Otro</option>
-          </select>
+        <div className="grid grid-cols-2 gap-3">
+          <Campo label="Tipo de documento" icon={Tag}>
+            <select value={form.tipo_documento} onChange={e => setForm(f => ({ ...f, tipo_documento: e.target.value as TipoDoc, subtipo_oficio: "" as "" }))}
+              className={inputCls}>
+              <option value="solicitud_capacitacion">Solicitud de Capacitación</option>
+              <option value="oficio">Oficio</option>
+              <option value="memorando">Memorando</option>
+              <option value="informe">Informe</option>
+              <option value="solicitud">Solicitud</option>
+              <option value="carta">Carta</option>
+              <option value="otro">Otro</option>
+            </select>
+          </Campo>
+          {form.tipo_documento === "oficio" && (
+            <Campo label="Categoría de oficio" icon={Tag}>
+              <select value={form.subtipo_oficio} onChange={e => setForm(f => ({ ...f, subtipo_oficio: e.target.value as "" }))}
+                className={inputCls}>
+                <option value="">— Seleccionar —</option>
+                <option value="INSTITUCIONAL">Oficio Institucional</option>
+                <option value="VARIOS">Oficio Varios</option>
+              </select>
+            </Campo>
+          )}
         </div>
       </div>
 
@@ -681,8 +693,11 @@ function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {
   useEffect(() => { cargar(); }, []);
 
   const docsFiltrados = filtroEstado === "todos" ? docs : docs.filter(d => d.estado === filtroEstado || (filtroEstado === "APROBADO" && d.estado === "APROBADA") || (filtroEstado === "RECHAZADO" && d.estado === "RECHAZADA"));
-  const pendientes = docsFiltrados.filter(d => d.estado === "PENDIENTE");
-  const resto      = docsFiltrados.filter(d => d.estado !== "PENDIENTE");
+  const pendientes        = docsFiltrados.filter(d => d.estado === "PENDIENTE");
+  const oficiosInst       = docsFiltrados.filter(d => d.tipo_documento === "oficio" && d.subtipo_oficio === "INSTITUCIONAL" && d.estado !== "PENDIENTE");
+  const oficiosVarios     = docsFiltrados.filter(d => d.tipo_documento === "oficio" && d.subtipo_oficio === "VARIOS" && d.estado !== "PENDIENTE");
+  const oficiosSinClasif  = docsFiltrados.filter(d => d.tipo_documento === "oficio" && !d.subtipo_oficio && d.estado !== "PENDIENTE");
+  const resto             = docsFiltrados.filter(d => d.tipo_documento !== "oficio" && d.estado !== "PENDIENTE");
 
   if (cargando) return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>;
   if (docs.length === 0) return (
@@ -705,6 +720,7 @@ function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {
       notas: s.notas ?? "", contacto: s.contacto ?? "",
       telefono: s.telefono ?? "", correo: s.correo ?? "",
       tipo_documento: s.tipo_documento ?? "otro",
+      subtipo_oficio: s.subtipo_oficio ?? "",
       estado: s.estado,
     });
     const [guardando, setGuardando] = useState(false);
@@ -729,6 +745,7 @@ function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {
           ...formEdit,
           num_participantes: formEdit.num_participantes ? Number(formEdit.num_participantes) : null,
           entidad_id: entidadId,
+          subtipo_oficio: formEdit.subtipo_oficio || null,
         }),
       });
       setGuardando(false); setEdit(null); cargar();
@@ -759,7 +776,11 @@ function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${estadoBadge.cls}`}>{estadoBadge.label}</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tipoBadge}`}>{TIPO_LABEL[s.tipo_documento as TipoDoc] ?? s.tipo_documento}</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tipoBadge}`}>
+                {s.tipo_documento === "oficio" && s.subtipo_oficio
+                  ? `Oficio ${s.subtipo_oficio === "INSTITUCIONAL" ? "Institucional" : "Varios"}`
+                  : (TIPO_LABEL[s.tipo_documento as TipoDoc] ?? s.tipo_documento)}
+              </span>
               {s.subido_por_rol === "BOMBERO"
                 ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold">Bombero</span>
                 : <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">Admin</span>
@@ -791,7 +812,7 @@ function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1 block">Tipo</label>
-                    <select value={formEdit.tipo_documento} onChange={e => setFormEdit(f => ({ ...f, tipo_documento: e.target.value as TipoDoc }))} className={inputCls}>
+                    <select value={formEdit.tipo_documento} onChange={e => setFormEdit(f => ({ ...f, tipo_documento: e.target.value as TipoDoc, subtipo_oficio: "" }))} className={inputCls}>
                       <option value="solicitud_capacitacion">Solicitud de Capacitación</option>
                       <option value="oficio">Oficio</option>
                       <option value="memorando">Memorando</option>
@@ -801,6 +822,16 @@ function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {
                       <option value="otro">Otro</option>
                     </select>
                   </div>
+                  {formEdit.tipo_documento === "oficio" && (
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Categoría</label>
+                      <select value={formEdit.subtipo_oficio} onChange={e => setFormEdit(f => ({ ...f, subtipo_oficio: e.target.value }))} className={inputCls}>
+                        <option value="">— Seleccionar —</option>
+                        <option value="INSTITUCIONAL">Institucional</option>
+                        <option value="VARIOS">Varios</option>
+                      </select>
+                    </div>
+                  )}
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1 block">Estado</label>
                     <select value={formEdit.estado} onChange={e => setFormEdit(f => ({ ...f, estado: e.target.value as EstadoDoc }))} className={inputCls}>
@@ -948,14 +979,41 @@ function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {
         <div className="space-y-2">
           <p className="text-xs font-bold text-amber-600 uppercase tracking-widest flex items-center gap-2">
             <span className="w-5 h-5 rounded-full bg-amber-400 text-gray-900 text-[10px] font-bold flex items-center justify-center">{pendientes.length}</span>
-            Pendientes
+            Pendientes de revisión
           </p>
           {pendientes.map(s => <TarjetaDoc key={s.id} s={s} />)}
         </div>
       )}
+      {oficiosInst.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold flex items-center justify-center">{oficiosInst.length}</span>
+            Oficios Institucionales
+          </p>
+          {oficiosInst.map(s => <TarjetaDoc key={s.id} s={s} />)}
+        </div>
+      )}
+      {oficiosVarios.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-purple-600 uppercase tracking-widest flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-bold flex items-center justify-center">{oficiosVarios.length}</span>
+            Oficios Varios
+          </p>
+          {oficiosVarios.map(s => <TarjetaDoc key={s.id} s={s} />)}
+        </div>
+      )}
+      {oficiosSinClasif.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold flex items-center justify-center">{oficiosSinClasif.length}</span>
+            Oficios sin clasificar
+          </p>
+          {oficiosSinClasif.map(s => <TarjetaDoc key={s.id} s={s} />)}
+        </div>
+      )}
       {resto.length > 0 && (
         <div className="space-y-2">
-          {pendientes.length > 0 && <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Historial</p>}
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Otros documentos</p>
           {resto.map(s => <TarjetaDoc key={s.id} s={s} />)}
         </div>
       )}
@@ -1059,7 +1117,7 @@ export function EscanerDocumento({ esAdmin }: { esAdmin: boolean }) {
                   onAgendar={esAdmin && solicitudId ? () => {
                     const d = resultado?.datos;
                     if (!d) return;
-                    setSolicitudAgendar({ id: solicitudId!, estado: "PENDIENTE", tipo_documento: resultado!.tipo_documento, empresa: d.empresa, tema: d.tema, fecha_solicitada: d.fecha_solicitada, hora_inicio: d.hora_inicio, hora_fin: d.hora_fin, lugar: d.lugar, num_participantes: d.num_participantes, contacto: d.contacto, telefono: d.telefono, correo: d.correo, descripcion: d.descripcion, notas: null, entidad_id: null, entidad_nombre: null, subido_por_rol: null, subido_por_nombre: null, imagen_key: null, imagen_url: null, creado_en: new Date().toISOString() });
+                    setSolicitudAgendar({ id: solicitudId!, estado: "PENDIENTE", tipo_documento: resultado!.tipo_documento, subtipo_oficio: null, empresa: d.empresa, tema: d.tema, fecha_solicitada: d.fecha_solicitada, hora_inicio: d.hora_inicio, hora_fin: d.hora_fin, lugar: d.lugar, num_participantes: d.num_participantes, contacto: d.contacto, telefono: d.telefono, correo: d.correo, descripcion: d.descripcion, notas: null, entidad_id: null, entidad_nombre: null, subido_por_rol: null, subido_por_nombre: null, imagen_key: null, imagen_url: null, creado_en: new Date().toISOString() });
                   } : undefined}
                 />
               )}
