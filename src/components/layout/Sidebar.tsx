@@ -53,7 +53,8 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "Documentos",
     items: [
-      { label: "Subir Documento",  href: "/solicitar-capacitacion",  icon: ScanLine,  roles: TODOS },
+      { label: "Subir Documento",  href: "/solicitar-capacitacion",  icon: ScanLine,   roles: TODOS },
+      { label: "Ver Documentos",   href: "/documentos",              icon: FileText,   roles: TODOS },
     ],
   },
   {
