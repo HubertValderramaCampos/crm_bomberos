@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { FileText } from "lucide-react";
 import { PageHeader } from "@/components/ui-custom/PageHeader";
 import { DashboardShell } from "@/components/layout/DashboardShell";
-import { DocumentosTabla } from "@/components/ui-custom/DocumentosTabla";
+import { DocumentosVista } from "@/components/ui-custom/DocumentosVista";
 import pool from "@/lib/db";
 import { obtenerUrlFirmada } from "@/lib/storage";
 
@@ -37,10 +37,10 @@ export default async function DocumentosPage() {
       <div className="space-y-4 pb-6">
         <PageHeader
           icon={FileText}
-          title="Documentos"
-          subtitle={`${documentos.length} documento${documentos.length !== 1 ? "s" : ""} registrado${documentos.length !== 1 ? "s" : ""}`}
+          title="Oficios y Documentos"
+          subtitle="Gestión de oficios institucionales y varios"
         />
-        <DocumentosTabla documentos={documentos} esAdmin={esAdmin} />
+        <DocumentosVista documentos={documentos} esAdmin={esAdmin} />
       </div>
     </DashboardShell>
   );
