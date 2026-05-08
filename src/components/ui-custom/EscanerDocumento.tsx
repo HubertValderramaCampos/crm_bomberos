@@ -29,7 +29,7 @@ interface Entidad { id: number; nombre: string; tipo: string; }
 interface Bombero { id: number; apellidos: string; nombres: string; grado: string; codigo: string; }
 interface Documento {
   id: number; estado: EstadoDoc; tipo_documento: TipoDoc;
-  subtipo_oficio: "INSTITUCIONAL" | "VARIOS" | null;
+  subtipo_oficio: "CGBVP" | "MUNICIPALIDAD" | "VARIOS" | null;
   empresa: string | null; tema: string | null;
   fecha_solicitada: string | null; hora_inicio: string | null; hora_fin: string | null;
   lugar: string | null; num_participantes: number | null;
@@ -51,6 +51,12 @@ const TIPO_LABEL: Record<TipoDoc, string> = {
   solicitud: "Solicitud",
   carta:     "Carta",
   otro:      "Otro",
+};
+
+const SUBTIPO_OFICIO_LABEL: Record<string, string> = {
+  CGBVP:        "Oficio CGBVP",
+  MUNICIPALIDAD: "Oficio Municipalidad",
+  VARIOS:        "Oficio Varios",
 };
 const TIPO_COLOR: Record<TipoDoc, string> = {
   solicitud_capacitacion: "bg-red-100 text-red-700",
@@ -438,8 +444,9 @@ function FlujoAdmin({
               <select value={form.subtipo_oficio} onChange={e => setForm(f => ({ ...f, subtipo_oficio: e.target.value as "" }))}
                 className={inputCls}>
                 <option value="">— Seleccionar —</option>
-                <option value="INSTITUCIONAL">Oficio Institucional</option>
-                <option value="VARIOS">Oficio Varios</option>
+                <option value="CGBVP">Oficios CGBVP</option>
+                <option value="MUNICIPALIDAD">Oficios Municipalidad de Puente Piedra</option>
+                <option value="VARIOS">Oficios Varios</option>
               </select>
             </Campo>
           )}
@@ -694,7 +701,8 @@ function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {
 
   const docsFiltrados = filtroEstado === "todos" ? docs : docs.filter(d => d.estado === filtroEstado || (filtroEstado === "APROBADO" && d.estado === "APROBADA") || (filtroEstado === "RECHAZADO" && d.estado === "RECHAZADA"));
   const pendientes        = docsFiltrados.filter(d => d.estado === "PENDIENTE");
-  const oficiosInst       = docsFiltrados.filter(d => d.tipo_documento === "oficio" && d.subtipo_oficio === "INSTITUCIONAL" && d.estado !== "PENDIENTE");
+  const oficiosCGBVP      = docsFiltrados.filter(d => d.tipo_documento === "oficio" && d.subtipo_oficio === "CGBVP" && d.estado !== "PENDIENTE");
+  const oficiosMuni       = docsFiltrados.filter(d => d.tipo_documento === "oficio" && d.subtipo_oficio === "MUNICIPALIDAD" && d.estado !== "PENDIENTE");
   const oficiosVarios     = docsFiltrados.filter(d => d.tipo_documento === "oficio" && d.subtipo_oficio === "VARIOS" && d.estado !== "PENDIENTE");
   const oficiosSinClasif  = docsFiltrados.filter(d => d.tipo_documento === "oficio" && !d.subtipo_oficio && d.estado !== "PENDIENTE");
   const resto             = docsFiltrados.filter(d => d.tipo_documento !== "oficio" && d.estado !== "PENDIENTE");
@@ -778,7 +786,7 @@ function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${estadoBadge.cls}`}>{estadoBadge.label}</span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tipoBadge}`}>
                 {s.tipo_documento === "oficio" && s.subtipo_oficio
-                  ? `Oficio ${s.subtipo_oficio === "INSTITUCIONAL" ? "Institucional" : "Varios"}`
+                  ? (SUBTIPO_OFICIO_LABEL[s.subtipo_oficio] ?? "Oficio")
                   : (TIPO_LABEL[s.tipo_documento as TipoDoc] ?? s.tipo_documento)}
               </span>
               {s.subido_por_rol === "BOMBERO"
@@ -984,13 +992,22 @@ function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {
           {pendientes.map(s => <TarjetaDoc key={s.id} s={s} />)}
         </div>
       )}
-      {oficiosInst.length > 0 && (
+      {oficiosCGBVP.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold flex items-center justify-center">{oficiosInst.length}</span>
-            Oficios Institucionales
+            <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold flex items-center justify-center">{oficiosCGBVP.length}</span>
+            Oficios CGBVP
           </p>
-          {oficiosInst.map(s => <TarjetaDoc key={s.id} s={s} />)}
+          {oficiosCGBVP.map(s => <TarjetaDoc key={s.id} s={s} />)}
+        </div>
+      )}
+      {oficiosMuni.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold flex items-center justify-center">{oficiosMuni.length}</span>
+            Oficios Municipalidad de Puente Piedra
+          </p>
+          {oficiosMuni.map(s => <TarjetaDoc key={s.id} s={s} />)}
         </div>
       )}
       {oficiosVarios.length > 0 && (

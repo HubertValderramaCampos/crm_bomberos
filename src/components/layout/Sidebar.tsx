@@ -8,7 +8,7 @@ import {
   Home, UserCircle, Radio, BarChart3, FileText, Users,
   ShoppingBag, GraduationCap, CalendarCheck,
   LogOut, ChevronRight, ShieldCheck, TrendingUp,
-  Scroll, Gift, CalendarDays, Building2, ScanLine,
+  Scroll, Gift, CalendarDays, Building2, ScanLine, ChevronDown,
 } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
 
@@ -76,6 +76,28 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const rol = session?.user?.rol ?? "";
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0);
 
+  // Determinar qué sección contiene la ruta activa para abrirla por defecto
+  function getSectionWithActive(r: string): string | null {
+    for (const sec of NAV_SECTIONS) {
+      if (sec.title === "__root__") continue;
+      for (const item of sec.items) {
+        if (item.href !== "#" && (r === item.href || (item.href !== "/inicio" && item.href !== "/perfil" && r.startsWith(item.href)))) {
+          return sec.title;
+        }
+      }
+    }
+    return null;
+  }
+
+  const [openSection, setOpenSection] = useState<string | null>(() => getSectionWithActive(pathname));
+
+  // Si navegamos a otra página, abrir la sección correspondiente
+  useEffect(() => {
+    const sec = getSectionWithActive(pathname);
+    if (sec) setOpenSection(sec);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
   useEffect(() => {
     const rolesAdmin = ["JEFE_COMPANIA", "ADMINISTRACION"];
     if (!rolesAdmin.includes(rol)) return;
@@ -89,6 +111,10 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
     const t = setInterval(cargar, 30000);
     return () => clearInterval(t);
   }, [rol]);
+
+  function toggleSection(title: string) {
+    setOpenSection(prev => prev === title ? null : title);
+  }
 
   return (
     <div className="flex flex-col h-full w-64 bg-[#111827] text-white">
@@ -104,7 +130,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
+      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
         {NAV_SECTIONS.map((section) => {
           const sectionRoles = section.roles;
           if (sectionRoles && !sectionRoles.includes(rol)) return null;
@@ -113,63 +139,87 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           if (visibleItems.length === 0) return null;
 
           const isRoot = section.title === "__root__";
+          const isOpen = isRoot || openSection === section.title;
+
+          // Verificar si algún item de esta sección está activo
+          const hasActive = visibleItems.some(item =>
+            item.href !== "#" && (pathname === item.href || (item.href !== "/inicio" && item.href !== "/perfil" && pathname.startsWith(item.href)))
+          );
 
           return (
             <div key={section.title}>
+              {/* Cabecera de sección colapsable */}
               {!isRoot && (
-                <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
-                  {section.title}
-                </p>
+                <button
+                  onClick={() => toggleSection(section.title)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-left transition-colors mt-1 ${
+                    hasActive
+                      ? "text-white bg-white/5"
+                      : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
+                  }`}
+                >
+                  <span className="flex-1 text-[10px] font-semibold uppercase tracking-widest">
+                    {section.title}
+                  </span>
+                  <ChevronDown className={`w-3 h-3 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                </button>
               )}
-              {visibleItems.map((item) => {
-                const Icon = item.icon;
-                const isPlaceholder = item.href === "#";
-                const active = !isPlaceholder && (
-                  pathname === item.href ||
-                  (item.href !== "/inicio" && item.href !== "/perfil" && pathname.startsWith(item.href))
-                );
 
-                if (isPlaceholder) {
-                  return (
-                    <div
-                      key={item.label}
-                      className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-gray-600 cursor-default"
-                    >
-                      <Icon className="w-4 h-4 shrink-0 opacity-40" />
-                      <span className="flex-1 opacity-40">{item.label}</span>
-                      <span className="text-[9px] px-1.5 py-0.5 bg-gray-700 text-gray-400 rounded font-medium">Pronto</span>
-                    </div>
-                  );
-                }
+              {/* Items */}
+              {isOpen && (
+                <div className={isRoot ? "" : "mt-0.5"}>
+                  {visibleItems.map((item) => {
+                    const Icon = item.icon;
+                    const isPlaceholder = item.href === "#";
+                    const active = !isPlaceholder && (
+                      pathname === item.href ||
+                      (item.href !== "/inicio" && item.href !== "/perfil" && pathname.startsWith(item.href))
+                    );
 
-                const tourAttr = item.href === "/dashboard" ? "nav-operatividad"
-                  : item.href === "/perfil" ? "nav-perfil"
-                  : undefined;
-                const esScanear = item.href === "/solicitar-capacitacion" && ["JEFE_COMPANIA","ADMINISTRACION"].includes(rol);
-                const badge = esScanear && solicitudesPendientes > 0 ? solicitudesPendientes : 0;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onClose}
-                    {...(tourAttr ? { "data-tour": tourAttr } : {})}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all group ${
-                      active
-                        ? "bg-red-700 text-white font-medium"
-                        : "text-gray-400 hover:text-white hover:bg-white/5"
-                    }`}
-                  >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span className="flex-1">{item.label}</span>
-                    {badge > 0 && (
-                      <span className="w-5 h-5 rounded-full bg-amber-400 text-gray-900 text-[10px] font-bold flex items-center justify-center shrink-0">
-                        {badge > 9 ? "9+" : badge}
-                      </span>
-                    )}
-                    {active && !badge && <ChevronRight className="w-3 h-3 opacity-60" />}
-                  </Link>
-                );
-              })}
+                    if (isPlaceholder) {
+                      return (
+                        <div
+                          key={item.label}
+                          className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-gray-600 cursor-default"
+                        >
+                          <Icon className="w-4 h-4 shrink-0 opacity-40" />
+                          <span className="flex-1 opacity-40">{item.label}</span>
+                          <span className="text-[9px] px-1.5 py-0.5 bg-gray-700 text-gray-400 rounded font-medium">Pronto</span>
+                        </div>
+                      );
+                    }
+
+                    const tourAttr = item.href === "/dashboard" ? "nav-operatividad"
+                      : item.href === "/perfil" ? "nav-perfil"
+                      : undefined;
+                    const esScanear = item.href === "/solicitar-capacitacion" && ["JEFE_COMPANIA","ADMINISTRACION"].includes(rol);
+                    const badge = esScanear && solicitudesPendientes > 0 ? solicitudesPendientes : 0;
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={onClose}
+                        {...(tourAttr ? { "data-tour": tourAttr } : {})}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all group ${
+                          active
+                            ? "bg-red-700 text-white font-medium"
+                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 shrink-0" />
+                        <span className="flex-1">{item.label}</span>
+                        {badge > 0 && (
+                          <span className="w-5 h-5 rounded-full bg-amber-400 text-gray-900 text-[10px] font-bold flex items-center justify-center shrink-0">
+                            {badge > 9 ? "9+" : badge}
+                          </span>
+                        )}
+                        {active && !badge && <ChevronRight className="w-3 h-3 opacity-60" />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
