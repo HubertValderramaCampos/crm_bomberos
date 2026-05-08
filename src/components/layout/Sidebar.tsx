@@ -8,16 +8,19 @@ import {
   Home, UserCircle, Radio, BarChart3, FileText, Users,
   ShoppingBag, GraduationCap, CalendarCheck,
   LogOut, ChevronRight, ShieldCheck, TrendingUp,
-  Scroll, Gift, CalendarDays, Building2, ScanLine, ChevronDown,
+  Scroll, Gift, CalendarDays, Building2, ScanLine, ChevronDown, Lock,
 } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
 
-type NavItem = { label: string; href: string; icon: React.ElementType; roles: string[] };
+type NavItem = { label: string; href: string; icon: React.ElementType; roles: string[]; seccion?: string };
 type NavSection = { title: string; roles?: string[]; items: NavItem[] };
 
 const TODOS = ["JEFE_COMPANIA","ADMINISTRACION","SERVICIOS_GENERALES","INSTRUCCION","SANIDAD","OPERACIONES","IMAGEN","BOMBERO"];
 const OPERATIVOS = ["JEFE_COMPANIA","OPERACIONES"];
 const OPERATIVOS_Y_BOMBERO = ["JEFE_COMPANIA","OPERACIONES","BOMBERO"];
+
+// Roles que usan permisos individuales (cuentas de área sin bombero_id)
+const ROLES_CON_PERMISOS = ["ADMINISTRACION","OPERACIONES","SERVICIOS_GENERALES","INSTRUCCION","SANIDAD","IMAGEN"];
 
 const NAV_SECTIONS: NavSection[] = [
   {
@@ -31,30 +34,31 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Gestión Operativa",
     roles: OPERATIVOS_Y_BOMBERO,
     items: [
-      { label: "Operatividad",         href: "/dashboard",                icon: Radio,         roles: OPERATIVOS_Y_BOMBERO },
-      { label: "Estadísticas",         href: "/operaciones/estadisticas", icon: TrendingUp,    roles: OPERATIVOS_Y_BOMBERO },
-      { label: "Partes de Emergencia", href: "/operaciones/partes",       icon: FileText,      roles: OPERATIVOS_Y_BOMBERO },
-      { label: "Bomberos",             href: "/operaciones/personal",     icon: Users,         roles: OPERATIVOS },
-      { label: "Asistencias",          href: "/operaciones/asistencias",  icon: CalendarCheck, roles: OPERATIVOS_Y_BOMBERO },
-      { label: "Análisis",             href: "/operaciones/analisis",     icon: BarChart3,     roles: OPERATIVOS_Y_BOMBERO },
+      { label: "Operatividad",         href: "/dashboard",                icon: Radio,         roles: OPERATIVOS_Y_BOMBERO,   seccion: "dashboard" },
+      { label: "Estadísticas",         href: "/operaciones/estadisticas", icon: TrendingUp,    roles: OPERATIVOS_Y_BOMBERO,   seccion: "estadisticas" },
+      { label: "Partes de Emergencia", href: "/operaciones/partes",       icon: FileText,      roles: OPERATIVOS_Y_BOMBERO,   seccion: "partes" },
+      { label: "Bomberos",             href: "/operaciones/personal",     icon: Users,         roles: OPERATIVOS,             seccion: "personal" },
+      { label: "Asistencias",          href: "/operaciones/asistencias",  icon: CalendarCheck, roles: OPERATIVOS_Y_BOMBERO,   seccion: "asistencias" },
+      { label: "Análisis",             href: "/operaciones/analisis",     icon: BarChart3,     roles: OPERATIVOS_Y_BOMBERO,   seccion: "analisis" },
     ],
   },
   {
     title: "Gestión Administrativa",
     roles: ["JEFE_COMPANIA", "ADMINISTRACION"],
     items: [
-      { label: "Oficios Institucionales", href: "/administracion/oficios-institucionales", icon: Scroll,       roles: ["JEFE_COMPANIA", "ADMINISTRACION"] },
-      { label: "Oficios Varios",          href: "/administracion/oficios-varios",          icon: FileText,     roles: ["JEFE_COMPANIA", "ADMINISTRACION"] },
-      { label: "Donaciones",              href: "/administracion/donaciones",               icon: Gift,         roles: ["JEFE_COMPANIA", "ADMINISTRACION"] },
-      { label: "Programación",            href: "/administracion/programacion",             icon: CalendarDays, roles: ["JEFE_COMPANIA", "ADMINISTRACION"] },
-      { label: "Entidades",               href: "/administracion/entidades",                icon: Building2,    roles: ["JEFE_COMPANIA", "ADMINISTRACION"] },
+      { label: "Oficios Institucionales", href: "/administracion/oficios-institucionales", icon: Scroll,       roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "oficios-institucionales" },
+      { label: "Oficios Varios",          href: "/administracion/oficios-varios",          icon: FileText,     roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "oficios-varios" },
+      { label: "Donaciones",              href: "/administracion/donaciones",               icon: Gift,         roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "donaciones" },
+      { label: "Programación",            href: "/administracion/programacion",             icon: CalendarDays, roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "programacion" },
+      { label: "Entidades",               href: "/administracion/entidades",                icon: Building2,    roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "entidades" },
+      { label: "Permisos",                href: "/administracion/permisos",                 icon: Lock,         roles: ["JEFE_COMPANIA"],                  seccion: "permisos" },
     ],
   },
   {
     title: "Documentos",
     items: [
-      { label: "Subir Documento",  href: "/solicitar-capacitacion",  icon: ScanLine,   roles: TODOS },
-      { label: "Ver Documentos",   href: "/documentos",              icon: FileText,   roles: TODOS },
+      { label: "Subir Documento",  href: "/solicitar-capacitacion", icon: ScanLine, roles: TODOS, seccion: "solicitar-capacitacion" },
+      { label: "Ver Documentos",   href: "/documentos",             icon: FileText, roles: TODOS, seccion: "documentos" },
     ],
   },
   {
@@ -76,8 +80,24 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const { data: session } = useSession();
   const rol = session?.user?.rol ?? "";
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0);
+  // null = aún cargando, string[] = permisos cargados (vacío = sin permisos individuales asignados)
+  const [misPermisos, setMisPermisos] = useState<string[] | null>(null);
 
-  // Determinar qué sección contiene la ruta activa para abrirla por defecto
+  const usaPermisosIndividuales = ROLES_CON_PERMISOS.includes(rol);
+
+  function canSeeItem(item: NavItem): boolean {
+    if (!item.roles.includes(rol)) return false;
+    // JEFE y BOMBERO siempre usan lógica de roles
+    if (!usaPermisosIndividuales) return true;
+    // Si aún cargando, ocultar para evitar flash
+    if (misPermisos === null) return false;
+    // Si no tiene seccion asignada (ej. placeholders), mostrar
+    if (!item.seccion) return true;
+    // Inicio siempre visible
+    if (item.href === "/inicio") return true;
+    return misPermisos.includes(item.seccion);
+  }
+
   function getSectionWithActive(r: string): string | null {
     for (const sec of NAV_SECTIONS) {
       if (sec.title === "__root__") continue;
@@ -92,12 +112,20 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
 
   const [openSection, setOpenSection] = useState<string | null>(() => getSectionWithActive(pathname));
 
-  // Si navegamos a otra página, abrir la sección correspondiente
   useEffect(() => {
     const sec = getSectionWithActive(pathname);
     if (sec) setOpenSection(sec);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
+
+  // Cargar permisos individuales si aplica
+  useEffect(() => {
+    if (!usaPermisosIndividuales) { setMisPermisos([]); return; }
+    fetch("/api/usuarios/mis-permisos")
+      .then(r => r.json())
+      .then(d => setMisPermisos(Array.isArray(d) ? d : []))
+      .catch(() => setMisPermisos([]));
+  }, [usaPermisosIndividuales]);
 
   useEffect(() => {
     const rolesAdmin = ["JEFE_COMPANIA", "ADMINISTRACION"];
@@ -136,20 +164,18 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
           const sectionRoles = section.roles;
           if (sectionRoles && !sectionRoles.includes(rol)) return null;
 
-          const visibleItems = section.items.filter(item => item.roles.includes(rol));
+          const visibleItems = section.items.filter(item => canSeeItem(item));
           if (visibleItems.length === 0) return null;
 
           const isRoot = section.title === "__root__";
           const isOpen = isRoot || openSection === section.title;
 
-          // Verificar si algún item de esta sección está activo
           const hasActive = visibleItems.some(item =>
             item.href !== "#" && (pathname === item.href || (item.href !== "/inicio" && item.href !== "/perfil" && pathname.startsWith(item.href)))
           );
 
           return (
             <div key={section.title}>
-              {/* Cabecera de sección colapsable */}
               {!isRoot && (
                 <button
                   onClick={() => toggleSection(section.title)}
@@ -166,7 +192,6 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
                 </button>
               )}
 
-              {/* Items */}
               {isOpen && (
                 <div className={isRoot ? "" : "mt-0.5"}>
                   {visibleItems.map((item) => {
@@ -179,10 +204,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
 
                     if (isPlaceholder) {
                       return (
-                        <div
-                          key={item.label}
-                          className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-gray-600 cursor-default"
-                        >
+                        <div key={item.label} className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-gray-600 cursor-default">
                           <Icon className="w-4 h-4 shrink-0 opacity-40" />
                           <span className="flex-1 opacity-40">{item.label}</span>
                           <span className="text-[9px] px-1.5 py-0.5 bg-gray-700 text-gray-400 rounded font-medium">Pronto</span>
