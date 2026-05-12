@@ -200,7 +200,7 @@ export function PermisosGestion({ selfId }: { selfId: number }) {
   if (cargando) return <p className="text-sm text-gray-400 py-12 text-center">Cargando cuentas...</p>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 overflow-y-auto pb-6">
       <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
         <strong>Nota:</strong> Los cambios tienen efecto en la próxima sesión de cada cuenta. Las cuentas de bomberos no se gestionan aquí.
       </div>

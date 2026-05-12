@@ -12,12 +12,13 @@ import {
 } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
 
-type NavItem = { label: string; href: string; icon: React.ElementType; roles: string[]; seccion?: string };
+type NavItem = { label: string; href: string; icon: React.ElementType; roles: string[]; seccion?: string; rachaMin?: number };
 type NavSection = { title: string; roles?: string[]; items: NavItem[] };
 
 const TODOS = ["JEFE_COMPANIA","ADMINISTRACION","SERVICIOS_GENERALES","INSTRUCCION","SANIDAD","OPERACIONES","IMAGEN","BOMBERO"];
 const OPERATIVOS = ["JEFE_COMPANIA","OPERACIONES"];
 const OPERATIVOS_Y_BOMBERO = ["JEFE_COMPANIA","OPERACIONES","BOMBERO"];
+const ADMIN_Y_BOMBERO_RACHA = ["JEFE_COMPANIA","ADMINISTRACION","BOMBERO"];
 
 // Roles que usan permisos individuales (cuentas de área sin bombero_id)
 const ROLES_CON_PERMISOS = ["ADMINISTRACION","OPERACIONES","SERVICIOS_GENERALES","INSTRUCCION","SANIDAD","IMAGEN"];
@@ -48,8 +49,8 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Oficios Institucionales", href: "/administracion/oficios-institucionales", icon: Scroll,       roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "oficios-institucionales" },
       { label: "Oficios Varios",          href: "/administracion/oficios-varios",          icon: FileText,     roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "oficios-varios" },
-      { label: "Donaciones",              href: "/administracion/donaciones",               icon: Gift,         roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "donaciones" },
-      { label: "Programación",            href: "/administracion/programacion",             icon: CalendarDays, roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "programacion" },
+      { label: "Donaciones",              href: "/administracion/donaciones",               icon: Gift,         roles: ADMIN_Y_BOMBERO_RACHA,               seccion: "donaciones",   rachaMin: 4 },
+      { label: "Programación",            href: "/administracion/programacion",             icon: CalendarDays, roles: ADMIN_Y_BOMBERO_RACHA,               seccion: "programacion", rachaMin: 4 },
       { label: "Entidades",               href: "/administracion/entidades",                icon: Building2,    roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "entidades" },
       { label: "Permisos",                href: "/administracion/permisos",                 icon: Lock,         roles: ["JEFE_COMPANIA"],                  seccion: "permisos" },
     ],
@@ -82,20 +83,28 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0);
   // null = aún cargando, string[] = permisos cargados (vacío = sin permisos individuales asignados)
   const [misPermisos, setMisPermisos] = useState<string[] | null>(null);
+  const [rachaAcceso, setRachaAcceso] = useState<number | null>(null);
 
   const usaPermisosIndividuales = ROLES_CON_PERMISOS.includes(rol);
 
   function canSeeItem(item: NavItem): boolean {
     if (!item.roles.includes(rol)) return false;
-    // JEFE y BOMBERO siempre usan lógica de roles
-    if (!usaPermisosIndividuales) return true;
-    // Si aún cargando, ocultar para evitar flash
-    if (misPermisos === null) return false;
-    // Si no tiene seccion asignada (ej. placeholders), mostrar
-    if (!item.seccion) return true;
-    // Inicio siempre visible
-    if (item.href === "/inicio") return true;
-    return misPermisos.includes(item.seccion);
+
+    // Para bomberos: items con rachaMin requieren racha suficiente
+    if (rol === "BOMBERO" && item.rachaMin) {
+      if (rachaAcceso === null) return false; // aún cargando
+      return rachaAcceso >= item.rachaMin;
+    }
+
+    // Cuentas de área usan permisos individuales
+    if (usaPermisosIndividuales) {
+      if (misPermisos === null) return false;
+      if (!item.seccion) return true;
+      if (item.href === "/inicio") return true;
+      return misPermisos.includes(item.seccion);
+    }
+
+    return true;
   }
 
   function getSectionWithActive(r: string): string | null {
@@ -126,6 +135,15 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       .then(d => setMisPermisos(Array.isArray(d) ? d : []))
       .catch(() => setMisPermisos([]));
   }, [usaPermisosIndividuales]);
+
+  // Cargar racha para bomberos
+  useEffect(() => {
+    if (rol !== "BOMBERO") { setRachaAcceso(0); return; }
+    fetch("/api/usuarios/racha-acceso")
+      .then(r => r.json())
+      .then(d => setRachaAcceso(d.rachaActual ?? 0))
+      .catch(() => setRachaAcceso(0));
+  }, [rol]);
 
   useEffect(() => {
     const rolesAdmin = ["JEFE_COMPANIA", "ADMINISTRACION"];
