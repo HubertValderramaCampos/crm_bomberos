@@ -18,7 +18,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
     return <DashboardShell scrollable>{children}</DashboardShell>;
   }
 
-  // Bomberos con racha >= 4 pueden acceder solo a ciertas rutas
+  // Bomberos con racha >= 4 pueden acceder a donaciones y programacion
   if (rol === "BOMBERO" && session.user.bomberoId) {
     const headersList = await headers();
     const pathname = headersList.get("x-pathname") ?? "";
