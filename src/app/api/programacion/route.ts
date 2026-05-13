@@ -16,10 +16,12 @@ export async function GET(req: Request) {
     lugar: string | null; es_capacitacion: boolean;
     hora_inicio: string | null; hora_fin: string | null;
     efectivos_asistentes: number; participantes: number;
+    finalizado: boolean; reprogramada_de: number | null;
   }>(`
     SELECT a.id, a.fecha::text, a.tipo, a.descripcion, a.lugar,
            a.es_capacitacion, a.hora_inicio::text, a.hora_fin::text,
            a.efectivos_asistentes, a.entidad_id, e.nombre AS entidad_nombre,
+           a.finalizado, a.reprogramada_de,
            COUNT(p.id)::int AS participantes
     FROM programacion_actividad a
     LEFT JOIN programacion_participante p ON p.actividad_id = a.id

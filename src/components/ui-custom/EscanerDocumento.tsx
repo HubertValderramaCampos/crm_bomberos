@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 type TipoDoc = "solicitud_capacitacion" | "oficio" | "memorando" | "informe" | "solicitud" | "carta" | "otro";
-type EstadoDoc = "PENDIENTE" | "EN_REVISION" | "APROBADO" | "ATENDIDO" | "RECHAZADO" | "APROBADA" | "RECHAZADA";
+type EstadoDoc = "PENDIENTE" | "EN_REVISION" | "APROBADO" | "ATENDIDO" | "RECHAZADO" | "APROBADA" | "RECHAZADA" | "FINALIZADO" | "REPROGRAMADO";
 
 interface DatosIA {
   empresa: string | null; contacto: string | null; telefono: string | null;
@@ -71,13 +71,15 @@ const TIPO_COLOR: Record<TipoDoc, string> = {
   otro:      "bg-gray-100 text-gray-600",
 };
 const ESTADO_BADGE: Record<string, { cls: string; label: string }> = {
-  PENDIENTE:   { cls: "bg-amber-100 text-amber-700",  label: "Pendiente"   },
-  EN_REVISION: { cls: "bg-blue-100 text-blue-700",    label: "En revisión" },
-  APROBADO:    { cls: "bg-green-100 text-green-700",  label: "Aprobado"    },
-  APROBADA:    { cls: "bg-green-100 text-green-700",  label: "Aprobada"    },
-  ATENDIDO:    { cls: "bg-teal-100 text-teal-700",    label: "Atendido"    },
-  RECHAZADO:   { cls: "bg-red-100 text-red-600",      label: "Rechazado"   },
-  RECHAZADA:   { cls: "bg-red-100 text-red-600",      label: "Rechazada"   },
+  PENDIENTE:    { cls: "bg-amber-100 text-amber-700",   label: "Pendiente"    },
+  EN_REVISION:  { cls: "bg-blue-100 text-blue-700",     label: "En revisión"  },
+  APROBADO:     { cls: "bg-green-100 text-green-700",   label: "Aprobado"     },
+  APROBADA:     { cls: "bg-green-100 text-green-700",   label: "Aprobada"     },
+  ATENDIDO:     { cls: "bg-teal-100 text-teal-700",     label: "Atendido"     },
+  RECHAZADO:    { cls: "bg-red-100 text-red-600",       label: "Rechazado"    },
+  RECHAZADA:    { cls: "bg-red-100 text-red-600",       label: "Rechazada"    },
+  FINALIZADO:   { cls: "bg-green-200 text-green-800",   label: "Finalizado"   },
+  REPROGRAMADO: { cls: "bg-amber-200 text-amber-800",   label: "Reprogramado" },
 };
 
 async function subirImagenCliente(imagen: string): Promise<string | null> {
@@ -755,11 +757,13 @@ function ModalAgendar({ solicitudId, datos, onClose, onAgendado }: {
    Panel de documentos (solo admin)
 ───────────────────────────────────────────── */
 const ESTADOS_OPCIONES: { value: EstadoDoc; label: string }[] = [
-  { value: "PENDIENTE",   label: "Pendiente"   },
-  { value: "EN_REVISION", label: "En revisión" },
-  { value: "APROBADO",    label: "Aprobado"    },
-  { value: "ATENDIDO",    label: "Atendido"    },
-  { value: "RECHAZADO",   label: "Rechazado"   },
+  { value: "PENDIENTE",    label: "Pendiente"    },
+  { value: "EN_REVISION",  label: "En revisión"  },
+  { value: "APROBADO",     label: "Aprobado"     },
+  { value: "ATENDIDO",     label: "Atendido"     },
+  { value: "RECHAZADO",    label: "Rechazado"    },
+  { value: "FINALIZADO",   label: "Finalizado"   },
+  { value: "REPROGRAMADO", label: "Reprogramado" },
 ];
 
 function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {

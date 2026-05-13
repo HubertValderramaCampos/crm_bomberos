@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   ChevronLeft, ChevronRight, Plus, X, Clock, MapPin,
   Users, BookOpen, Calendar, Check, Loader2, Building2, Search,
+  CheckCircle2, AlertCircle, CalendarClock, RotateCcw,
 } from "lucide-react";
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -30,6 +31,7 @@ interface Actividad {
   lugar: string | null; es_capacitacion: boolean;
   hora_inicio: string | null; hora_fin: string | null;
   efectivos_asistentes: number; participantes: number;
+  finalizado: boolean; reprogramada_de: number | null;
 }
 
 interface Bombero { id: number; apellidos: string; nombres: string; grado: string; codigo: string; }
@@ -40,18 +42,116 @@ interface Detalle extends Omit<Actividad, "participantes"> {
   participantes: { bombero_id: number; apellidos: string; nombres: string; grado: string; asistio: boolean | null }[];
 }
 
-function hhmm(t: string | null) {
-  if (!t) return "";
-  return t.slice(0, 5);
+function hhmm(t: string | null) { return t ? t.slice(0, 5) : ""; }
+
+function fechaHaPasado(fecha: string) {
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const f = new Date(fecha + "T00:00:00"); f.setHours(0,0,0,0);
+  return f < hoy;
+}
+
+const inputCls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400";
+
+/* ── Modal Reprogramar ── */
+function ModalReprogramar({ actividad, onClose, onReprogramado }: {
+  actividad: Detalle; onClose: () => void; onReprogramado: (nuevaId: number) => void;
+}) {
+  const [nuevaFecha, setNuevaFecha] = useState("");
+  const [horaIni, setHoraIni]       = useState(hhmm(actividad.hora_inicio));
+  const [horaFin, setHoraFin]       = useState(hhmm(actividad.hora_fin));
+  const [lugar, setLugar]           = useState(actividad.lugar ?? "");
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nuevaFecha) { setError("La nueva fecha es obligatoria."); return; }
+    setError(""); setLoading(true);
+    try {
+      const res = await fetch(`/api/programacion/${actividad.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accion: "reprogramar",
+          nueva_fecha: nuevaFecha,
+          hora_inicio: horaIni || null,
+          hora_fin: horaFin || null,
+          lugar: lugar || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Error al reprogramar."); return; }
+      onReprogramado(data.id);
+    } catch { setError("Error de conexión."); }
+    finally { setLoading(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="bg-gradient-to-br from-amber-500 to-amber-600 px-5 py-4 text-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CalendarClock className="w-5 h-5" />
+            <h2 className="text-base font-bold">Reprogramar actividad</h2>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
+          <div className="p-3 bg-amber-50 rounded-xl text-xs text-amber-800">
+            <p className="font-semibold">{actividad.descripcion ?? actividad.tipo}</p>
+            <p className="opacity-70 mt-0.5">
+              Fecha original: {new Date(actividad.fecha + "T12:00:00").toLocaleDateString("es-PE", { day: "2-digit", month: "long", year: "numeric" })}
+            </p>
+          </div>
+          {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{error}</div>}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Nueva fecha *</label>
+            <input type="date" required value={nuevaFecha} onChange={e => setNuevaFecha(e.target.value)} className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Hora inicio</label>
+              <input type="time" value={horaIni} onChange={e => setHoraIni(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Hora fin</label>
+              <input type="time" value={horaFin} onChange={e => setHoraFin(e.target.value)} className={inputCls} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Lugar</label>
+            <input type="text" value={lugar} onChange={e => setLugar(e.target.value)} placeholder="Cuartel B-150" className={inputCls} />
+          </div>
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2.5 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button type="submit" disabled={loading}
+              className="flex-1 py-2.5 text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 disabled:opacity-50 rounded-lg flex items-center justify-center gap-2">
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+              {loading ? "Reprogramando..." : "Confirmar"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 /* ── Modal Ver Actividad ── */
-function ModalVer({ id, onClose }: { id: number; onClose: () => void }) {
-  const [data, setData] = useState<Detalle | null>(null);
+function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
+  id: number; puedeCrear: boolean; onClose: () => void; onActualizado: () => void;
+}) {
+  const [data, setData]             = useState<Detalle | null>(null);
+  const [finalizando, setFin]       = useState(false);
+  const [confirmFin, setConfirmFin] = useState(false);
+  const [reprogramar, setReprogram] = useState(false);
 
-  useEffect(() => {
+  function cargar() {
     fetch(`/api/programacion/${id}`).then(r => r.json()).then(setData);
-  }, [id]);
+  }
+  useEffect(() => { cargar(); }, [id]);
 
   if (!data) return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -59,90 +159,191 @@ function ModalVer({ id, onClose }: { id: number; onClose: () => void }) {
     </div>
   );
 
-  const badge = COLOR[data.tipo] ?? COLOR["Otro"];
-  const partics = Array.isArray(data.participantes) ? data.participantes : [];
+  const badge    = COLOR[data.tipo] ?? COLOR["Otro"];
+  const partics  = Array.isArray(data.participantes) ? data.participantes : [];
+  const vencida  = fechaHaPasado(data.fecha) && !data.finalizado;
+  const pasada   = fechaHaPasado(data.fecha);
+
+  async function finalizar() {
+    setFin(true);
+    await fetch(`/api/programacion/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accion: "finalizar" }),
+    });
+    setFin(false);
+    setConfirmFin(false);
+    onActualizado();
+    cargar();
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
 
-        {/* Header */}
-        <div className="bg-gradient-to-br from-red-700 to-red-800 px-5 py-4 text-white flex items-start justify-between gap-3">
-          <div>
-            <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded border mb-1.5 ${badge}`}>{data.tipo}</span>
-            <h2 className="text-base font-bold leading-tight">{data.descripcion ?? data.tipo}</h2>
-            <p className="text-xs text-red-200 mt-1">
-              {new Date(data.fecha + "T12:00:00").toLocaleDateString("es-PE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
-            </p>
-          </div>
-          <button onClick={onClose} className="text-white/70 hover:text-white mt-0.5 shrink-0">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-          {/* Info */}
-          <div className="grid grid-cols-2 gap-3">
-            {(data.hora_inicio || data.hora_fin) && (
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <Clock className="w-4 h-4 text-gray-400" />
-                <span>{hhmm(data.hora_inicio)}{data.hora_fin ? ` — ${hhmm(data.hora_fin)}` : ""}</span>
-              </div>
-            )}
-            {data.lugar && (
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <MapPin className="w-4 h-4 text-gray-400" />
-                <span className="truncate">{data.lugar}</span>
-              </div>
-            )}
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <Users className="w-4 h-4 text-gray-400" />
-              <span>{data.es_capacitacion ? partics.length : data.efectivos_asistentes} efectivos</span>
-            </div>
-            {data.es_capacitacion && (
-              <div className="flex items-center gap-2 text-sm text-blue-700">
-                <BookOpen className="w-4 h-4 text-blue-400" />
-                <span className="font-medium">Capacitación</span>
-              </div>
-            )}
-            {data.entidad_nombre && (
-              <div className="flex items-center gap-2 text-sm text-gray-700 col-span-2">
-                <Building2 className="w-4 h-4 text-gray-400" />
-                <span className="truncate">{data.entidad_nombre}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Participantes */}
-          {data.es_capacitacion && partics.length > 0 && (
+          {/* Header */}
+          <div className={`px-5 py-4 text-white flex items-start justify-between gap-3 ${data.finalizado ? "bg-gradient-to-br from-green-600 to-green-700" : vencida ? "bg-gradient-to-br from-red-800 to-red-900" : "bg-gradient-to-br from-red-700 to-red-800"}`}>
             <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Participantes ({partics.length})</p>
-              <div className="space-y-1 max-h-52 overflow-y-auto">
-                {partics.map(p => (
-                  <div key={p.bombero_id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50">
-                    <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                      <span className="text-[9px] font-bold text-red-700">{p.apellidos[0]}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-900 truncate">{p.apellidos.split(",")[0]}, {p.nombres.split(" ")[0]}</p>
-                      <p className="text-[10px] text-gray-400">{p.grado}</p>
-                    </div>
-                    {p.asistio === true  && <Check className="w-3.5 h-3.5 text-green-500 shrink-0" />}
-                    {p.asistio === false && <X    className="w-3.5 h-3.5 text-red-400 shrink-0"   />}
-                  </div>
-                ))}
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded border ${badge}`}>{data.tipo}</span>
+                {data.finalizado && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-green-200 text-green-800 border border-green-300">
+                    <CheckCircle2 className="w-3 h-3" /> Finalizado
+                  </span>
+                )}
+                {vencida && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-red-200 text-red-800 border border-red-300">
+                    <AlertCircle className="w-3 h-3" /> Vencido — pendiente de cierre
+                  </span>
+                )}
+                {data.reprogramada_de && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-200 text-amber-800 border border-amber-300">
+                    <RotateCcw className="w-3 h-3" /> Reprogramada
+                  </span>
+                )}
               </div>
+              <h2 className="text-base font-bold leading-tight">{data.descripcion ?? data.tipo}</h2>
+              <p className="text-xs text-white/70 mt-1">
+                {new Date(data.fecha + "T12:00:00").toLocaleDateString("es-PE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+              </p>
             </div>
-          )}
-        </div>
+            <button onClick={onClose} className="text-white/70 hover:text-white mt-0.5 shrink-0">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
-        <div className="px-5 py-3 border-t border-gray-100">
-          <button onClick={onClose} className="w-full py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-            Cerrar
-          </button>
+          <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+            {/* Alerta vencida */}
+            {vencida && puedeCrear && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-red-800">Esta actividad ya pasó</p>
+                  <p className="text-xs text-red-600 mt-0.5">¿Se realizó la actividad? Márcala como finalizada, o reprograma si no se llevó a cabo.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Info */}
+            <div className="grid grid-cols-2 gap-3">
+              {(data.hora_inicio || data.hora_fin) && (
+                <div className="flex items-center gap-2 text-sm text-gray-700">
+                  <Clock className="w-4 h-4 text-gray-400" />
+                  <span>{hhmm(data.hora_inicio)}{data.hora_fin ? ` — ${hhmm(data.hora_fin)}` : ""}</span>
+                </div>
+              )}
+              {data.lugar && (
+                <div className="flex items-center gap-2 text-sm text-gray-700">
+                  <MapPin className="w-4 h-4 text-gray-400" />
+                  <span className="truncate">{data.lugar}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-sm text-gray-700">
+                <Users className="w-4 h-4 text-gray-400" />
+                <span>{data.es_capacitacion ? partics.length : data.efectivos_asistentes} efectivos</span>
+              </div>
+              {data.es_capacitacion && (
+                <div className="flex items-center gap-2 text-sm text-blue-700">
+                  <BookOpen className="w-4 h-4 text-blue-400" />
+                  <span className="font-medium">Capacitación</span>
+                </div>
+              )}
+              {data.entidad_nombre && (
+                <div className="flex items-center gap-2 text-sm text-gray-700 col-span-2">
+                  <Building2 className="w-4 h-4 text-gray-400" />
+                  <span className="truncate">{data.entidad_nombre}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Participantes */}
+            {data.es_capacitacion && partics.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Participantes ({partics.length})</p>
+                <div className="space-y-1 max-h-44 overflow-y-auto">
+                  {partics.map(p => (
+                    <div key={p.bombero_id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50">
+                      <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                        <span className="text-[9px] font-bold text-red-700">{p.apellidos[0]}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-gray-900 truncate">{p.apellidos.split(",")[0]}, {p.nombres.split(" ")[0]}</p>
+                        <p className="text-[10px] text-gray-400">{p.grado}</p>
+                      </div>
+                      {p.asistio === true  && <Check className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+                      {p.asistio === false && <X    className="w-3.5 h-3.5 text-red-400 shrink-0"   />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Confirmación de finalizar */}
+            {confirmFin && (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-xl space-y-3">
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                  <p className="text-xs font-semibold text-green-800">¿Confirmar que la actividad se realizó?</p>
+                </div>
+                <p className="text-xs text-green-700">Se marcará como finalizada y la solicitud vinculada pasará a estado <strong>Finalizado</strong>.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setConfirmFin(false)}
+                    className="flex-1 py-2 text-xs text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                    Cancelar
+                  </button>
+                  <button onClick={finalizar} disabled={finalizando}
+                    className="flex-1 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg flex items-center justify-center gap-1.5">
+                    {finalizando ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                    {finalizando ? "Finalizando..." : "Sí, finalizar"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer con acciones */}
+          <div className="px-5 py-3 border-t border-gray-100 flex gap-2 flex-wrap">
+            {puedeCrear && pasada && !data.finalizado && !confirmFin && (
+              <>
+                <button onClick={() => setReprogram(true)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors">
+                  <RotateCcw className="w-4 h-4" /> Reprogramar
+                </button>
+                <button onClick={() => setConfirmFin(true)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors">
+                  <CheckCircle2 className="w-4 h-4" /> Marcar finalizado
+                </button>
+              </>
+            )}
+            {(!pasada || data.finalizado || confirmFin) && (
+              <button onClick={onClose}
+                className="flex-1 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                Cerrar
+              </button>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {reprogramar && (
+        <ModalReprogramar
+          actividad={data}
+          onClose={() => setReprogram(false)}
+          onReprogramado={(nuevaId) => {
+            setReprogram(false);
+            onActualizado();
+            onClose();
+            // Navegar al modal de la nueva actividad
+            setTimeout(() => {
+              // El calendario se recarga; el usuario puede hacer clic en la nueva fecha
+            }, 200);
+            void nuevaId;
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -190,26 +391,17 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
   }
 
   function seleccionarEntidad(e: Entidad) {
-    setEntidadId(e.id);
-    setEntidadSeleccionada(e);
-    setBusqEntidad("");
-    setMostrarEntidades(false);
+    setEntidadId(e.id); setEntidadSeleccionada(e); setBusqEntidad(""); setMostrarEntidades(false);
   }
 
   function limpiarEntidad() {
-    setEntidadId(null);
-    setEntidadSeleccionada(null);
-    setBusqEntidad("");
+    setEntidadId(null); setEntidadSeleccionada(null); setBusqEntidad("");
   }
 
   async function crearEntidadInline() {
     if (!nuevaEntidad.nombre.trim()) return;
     try {
-      const res = await fetch("/api/entidades", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(nuevaEntidad),
-      });
+      const res = await fetch("/api/entidades", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(nuevaEntidad) });
       const data = await res.json();
       if (!res.ok) return;
       const creada: Entidad = { id: data.id, nombre: nuevaEntidad.nombre, tipo: nuevaEntidad.tipo };
@@ -242,15 +434,11 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
     finally { setLoading(false); }
   }
 
-  const inputCls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400";
-
   const TIPOS_ENTIDAD = ["EMPRESA", "INSTITUCIÓN PÚBLICA", "ONG", "HOSPITAL", "MUNICIPALIDAD", "OTRO"];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[95vh] flex flex-col">
-
-        {/* Header */}
         <div className="bg-gradient-to-br from-red-700 to-red-800 px-5 py-4 text-white flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Calendar className="w-5 h-5" />
@@ -261,12 +449,8 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className="px-5 py-4 space-y-4">
+            {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{error}</div>}
 
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{error}</div>
-            )}
-
-            {/* Tipo de actividad */}
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">Tipo de actividad</label>
               <select value={form.tipo} onChange={e => {
@@ -277,42 +461,34 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
               </select>
             </div>
 
-            {/* Descripción */}
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">Descripción / Tema</label>
               <input type="text" value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
                 placeholder="Ej: Primeros auxilios básicos" className={inputCls} />
             </div>
 
-            {/* Fecha + Lugar */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Fecha</label>
-                <input type="date" value={form.fecha} onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))}
-                  required className={inputCls} />
+                <input type="date" value={form.fecha} onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} required className={inputCls} />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Lugar</label>
-                <input type="text" value={form.lugar} onChange={e => setForm(f => ({ ...f, lugar: e.target.value }))}
-                  placeholder="Cuartel B-150" className={inputCls} />
+                <input type="text" value={form.lugar} onChange={e => setForm(f => ({ ...f, lugar: e.target.value }))} placeholder="Cuartel B-150" className={inputCls} />
               </div>
             </div>
 
-            {/* Horario */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Hora inicio</label>
-                <input type="time" value={form.hora_inicio} onChange={e => setForm(f => ({ ...f, hora_inicio: e.target.value }))}
-                  className={inputCls} />
+                <input type="time" value={form.hora_inicio} onChange={e => setForm(f => ({ ...f, hora_inicio: e.target.value }))} className={inputCls} />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Hora fin</label>
-                <input type="time" value={form.hora_fin} onChange={e => setForm(f => ({ ...f, hora_fin: e.target.value }))}
-                  className={inputCls} />
+                <input type="time" value={form.hora_fin} onChange={e => setForm(f => ({ ...f, hora_fin: e.target.value }))} className={inputCls} />
               </div>
             </div>
 
-            {/* Entidad */}
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">Empresa / Institución (opcional)</label>
               {entidadSeleccionada ? (
@@ -320,9 +496,7 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
                   <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
                   <span className="flex-1 text-sm text-gray-900 truncate">{entidadSeleccionada.nombre}</span>
                   <span className="text-[10px] text-gray-400">{entidadSeleccionada.tipo}</span>
-                  <button type="button" onClick={limpiarEntidad} className="text-gray-400 hover:text-gray-600">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+                  <button type="button" onClick={limpiarEntidad} className="text-gray-400 hover:text-gray-600"><X className="w-3.5 h-3.5" /></button>
                 </div>
               ) : creandoEntidad ? (
                 <div className="border border-blue-200 rounded-lg p-3 bg-blue-50 space-y-2">
@@ -370,18 +544,14 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
               )}
             </div>
 
-            {/* Es capacitación toggle */}
             <label className="flex items-center gap-3 cursor-pointer select-none">
-              <div
-                onClick={() => setForm(f => ({ ...f, es_capacitacion: !f.es_capacitacion }))}
-                className={`w-10 h-5 rounded-full transition-colors relative ${esCap ? "bg-red-600" : "bg-gray-300"}`}
-              >
+              <div onClick={() => setForm(f => ({ ...f, es_capacitacion: !f.es_capacitacion }))}
+                className={`w-10 h-5 rounded-full transition-colors relative ${esCap ? "bg-red-600" : "bg-gray-300"}`}>
                 <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${esCap ? "translate-x-5" : "translate-x-0.5"}`} />
               </div>
               <span className="text-sm font-medium text-gray-700">Es una capacitación (seleccionar bomberos)</span>
             </label>
 
-            {/* Efectivos si NO es capacitación */}
             {!esCap && (
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Efectivos asistentes</label>
@@ -391,7 +561,6 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
               </div>
             )}
 
-            {/* Selector de bomberos */}
             {esCap && (
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -399,14 +568,12 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
                     Bomberos participantes
                     <span className="ml-2 text-red-600 font-bold">{seleccionados.length} seleccionados</span>
                   </p>
-                  <button type="button" onClick={toggleTodos}
-                    className="text-xs text-red-700 hover:underline font-medium">
+                  <button type="button" onClick={toggleTodos} className="text-xs text-red-700 hover:underline font-medium">
                     {seleccionados.length === filtrados.length ? "Deseleccionar todos" : "Seleccionar todos"}
                   </button>
                 </div>
                 <input type="text" placeholder="Buscar bombero..." value={busqueda}
-                  onChange={e => setBusqueda(e.target.value)}
-                  className={`${inputCls} mb-2`} />
+                  onChange={e => setBusqueda(e.target.value)} className={`${inputCls} mb-2`} />
                 <div className="border border-gray-200 rounded-lg overflow-y-auto max-h-52 divide-y divide-gray-50">
                   {filtrados.length === 0 ? (
                     <p className="px-4 py-6 text-center text-sm text-gray-400">Sin resultados.</p>
@@ -419,9 +586,7 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
                           {sel && <Check className="w-2.5 h-2.5 text-white" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-gray-900 truncate">
-                            {b.apellidos.split(",")[0]}, {b.nombres.split(" ")[0]}
-                          </p>
+                          <p className="text-xs font-semibold text-gray-900 truncate">{b.apellidos.split(",")[0]}, {b.nombres.split(" ")[0]}</p>
                           <p className="text-[10px] text-gray-400">{b.grado} · {b.codigo}</p>
                         </div>
                       </div>
@@ -432,7 +597,6 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
             )}
           </div>
 
-          {/* Footer */}
           <div className="px-5 py-4 border-t border-gray-100 flex gap-3">
             <button type="button" onClick={onClose}
               className="flex-1 py-2.5 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
@@ -472,14 +636,12 @@ export function ProgramacionCalendario({ puedeCrear }: { puedeCrear: boolean }) 
     setMes(m); setAnio(a);
   }
 
-  // Construir grid del calendario
   const primerDia = new Date(anio, mes - 1, 1).getDay();
   const diasEnMes = new Date(anio, mes, 0).getDate();
   const celdas: (number | null)[] = [
     ...Array(primerDia).fill(null),
     ...Array.from({ length: diasEnMes }, (_, i) => i + 1),
   ];
-  // Completar hasta múltiplo de 7
   while (celdas.length % 7 !== 0) celdas.push(null);
 
   const actPorDia = (dia: number) => {
@@ -490,8 +652,22 @@ export function ProgramacionCalendario({ puedeCrear }: { puedeCrear: boolean }) 
   const esHoy = (dia: number) =>
     dia === hoy.getDate() && mes === hoy.getMonth() + 1 && anio === hoy.getFullYear();
 
+  // Cuántas actividades vencidas sin finalizar hay este mes
+  const vencidasSinCerrar = actividades.filter(a => fechaHaPasado(a.fecha) && !a.finalizado).length;
+
   return (
     <div className="space-y-4">
+      {/* Alerta de actividades vencidas */}
+      {puedeCrear && vencidasSinCerrar > 0 && (
+        <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl">
+          <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+          <p className="text-xs text-red-700 flex-1">
+            <span className="font-semibold">{vencidasSinCerrar} actividad{vencidasSinCerrar > 1 ? "es" : ""} vencida{vencidasSinCerrar > 1 ? "s" : ""}</span>
+            {" "}sin confirmar. Haz clic en cada una para marcarla finalizada o reprogramarla.
+          </p>
+        </div>
+      )}
+
       {/* Controles */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -512,10 +688,7 @@ export function ProgramacionCalendario({ puedeCrear }: { puedeCrear: boolean }) 
             Hoy
           </button>
           {puedeCrear && (
-            <button onClick={() => {
-              const d = new Date(); d.setDate(d.getDate());
-              setCrearDia(`${anio}-${String(mes).padStart(2,"0")}-${String(hoy.getDate()).padStart(2,"0")}`);
-            }}
+            <button onClick={() => setCrearDia(`${anio}-${String(mes).padStart(2,"0")}-${String(hoy.getDate()).padStart(2,"0")}`)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-red-700 hover:bg-red-800 text-white text-xs font-semibold rounded-lg transition-colors">
               <Plus className="w-3.5 h-3.5" /> Nueva actividad
             </button>
@@ -528,30 +701,31 @@ export function ProgramacionCalendario({ puedeCrear }: { puedeCrear: boolean }) 
         {Object.entries(COLOR).slice(0, 6).map(([tipo, cls]) => (
           <span key={tipo} className={`text-[10px] font-medium px-2 py-0.5 rounded border ${cls}`}>{tipo}</span>
         ))}
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded border bg-green-100 text-green-700 border-green-200 flex items-center gap-1">
+          <CheckCircle2 className="w-3 h-3" /> Finalizado
+        </span>
       </div>
 
       {/* Grid */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {/* Cabecera días */}
         <div className="grid grid-cols-7 border-b border-gray-100">
           {DIAS.map(d => (
             <div key={d} className="py-2 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wide">{d}</div>
           ))}
         </div>
 
-        {/* Celdas */}
         <div className="grid grid-cols-7 divide-x divide-y divide-gray-100">
           {celdas.map((dia, i) => {
             if (!dia) return <div key={`empty-${i}`} className="min-h-[90px] bg-gray-50/50" />;
             const acts = actPorDia(dia);
             const hoyFlag = esHoy(dia);
+            const tieneVencidas = acts.some(a => fechaHaPasado(a.fecha) && !a.finalizado);
             return (
               <div key={dia}
-                className={`min-h-[90px] p-1.5 flex flex-col gap-1 ${hoyFlag ? "bg-red-50" : "hover:bg-gray-50/60"} transition-colors`}>
-                {/* Número del día */}
+                className={`min-h-[90px] p-1.5 flex flex-col gap-1 ${hoyFlag ? "bg-red-50" : tieneVencidas ? "bg-orange-50/40" : "hover:bg-gray-50/60"} transition-colors`}>
                 <div className="flex items-center justify-between">
                   <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${
-                    hoyFlag ? "bg-red-600 text-white" : "text-gray-700"
+                    hoyFlag ? "bg-red-600 text-white" : tieneVencidas ? "text-orange-600" : "text-gray-700"
                   }`}>{dia}</span>
                   {puedeCrear && (
                     <button onClick={() => setCrearDia(`${anio}-${String(mes).padStart(2,"0")}-${String(dia).padStart(2,"0")}`)}
@@ -561,13 +735,23 @@ export function ProgramacionCalendario({ puedeCrear }: { puedeCrear: boolean }) 
                   )}
                 </div>
 
-                {/* Actividades del día */}
-                {acts.slice(0, 3).map(a => (
-                  <button key={a.id} onClick={() => setVerId(a.id)}
-                    className={`w-full text-left text-[10px] font-medium px-1.5 py-0.5 rounded border truncate ${COLOR[a.tipo] ?? COLOR["Otro"]} hover:opacity-80 transition-opacity`}>
-                    {a.hora_inicio ? `${hhmm(a.hora_inicio)} ` : ""}{a.descripcion ?? a.tipo}
-                  </button>
-                ))}
+                {acts.slice(0, 3).map(a => {
+                  const esVencida = fechaHaPasado(a.fecha) && !a.finalizado;
+                  const esFinalizada = a.finalizado;
+                  const clsBase = esFinalizada
+                    ? "bg-green-100 text-green-700 border-green-200"
+                    : esVencida
+                    ? "bg-red-100 text-red-700 border-red-200"
+                    : (COLOR[a.tipo] ?? COLOR["Otro"]);
+                  return (
+                    <button key={a.id} onClick={() => setVerId(a.id)}
+                      className={`w-full text-left text-[10px] font-medium px-1.5 py-0.5 rounded border truncate hover:opacity-80 transition-opacity flex items-center gap-1 ${clsBase}`}>
+                      {esFinalizada && <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />}
+                      {esVencida    && <AlertCircle  className="w-2.5 h-2.5 shrink-0" />}
+                      <span className="truncate">{a.hora_inicio ? `${hhmm(a.hora_inicio)} ` : ""}{a.descripcion ?? a.tipo}</span>
+                    </button>
+                  );
+                })}
                 {acts.length > 3 && (
                   <span className="text-[10px] text-gray-400 pl-1">+{acts.length - 3} más</span>
                 )}
@@ -578,8 +762,21 @@ export function ProgramacionCalendario({ puedeCrear }: { puedeCrear: boolean }) 
       </div>
 
       {/* Modales */}
-      {verId    && <ModalVer id={verId} onClose={() => setVerId(null)} />}
-      {crearDia && <ModalCrear fecha={crearDia} onClose={() => setCrearDia(null)} onCreated={() => { setCrearDia(null); cargar(); }} />}
+      {verId && (
+        <ModalVer
+          id={verId}
+          puedeCrear={puedeCrear}
+          onClose={() => setVerId(null)}
+          onActualizado={() => cargar()}
+        />
+      )}
+      {crearDia && (
+        <ModalCrear
+          fecha={crearDia}
+          onClose={() => setCrearDia(null)}
+          onCreated={() => { setCrearDia(null); cargar(); }}
+        />
+      )}
     </div>
   );
 }
