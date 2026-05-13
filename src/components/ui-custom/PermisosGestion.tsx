@@ -91,7 +91,7 @@ function TarjetaCuenta({
   }
 
   return (
-    <div className={`bg-white border rounded-xl overflow-hidden ${esSelf ? "border-red-200" : "border-gray-200"}`}>
+    <div className={`bg-white border rounded-xl ${esSelf ? "border-red-200" : "border-gray-200"}`}>
       {/* Cabecera */}
       <button
         onClick={() => setExpandido(p => !p)}
