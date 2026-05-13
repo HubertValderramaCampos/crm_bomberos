@@ -11,12 +11,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const { id } = await params;
-  const { fecha, entidad, tipo_donacion, entidad_id } = await req.json();
+  const { fecha, tipo_donacion, entidad_id } = await req.json();
+
+  if (!fecha || !tipo_donacion || !entidad_id) {
+    return NextResponse.json({ error: "Campos obligatorios: fecha, tipo_donacion, entidad_id" }, { status: 400 });
+  }
 
   const { rows } = await pool.query(
-    `UPDATE donacion SET fecha = $1, entidad = $2, tipo_donacion = $3, entidad_id = $4
-     WHERE id = $5 RETURNING id`,
-    [fecha, entidad, tipo_donacion, entidad_id ?? null, id]
+    `UPDATE donacion SET fecha = $1, tipo_donacion = $2, entidad_id = $3 WHERE id = $4 RETURNING id`,
+    [fecha, tipo_donacion, entidad_id, id]
   );
   if (rows.length === 0) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   return NextResponse.json(rows[0]);
