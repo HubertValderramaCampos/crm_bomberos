@@ -2,8 +2,25 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import pool from "@/lib/db";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+function normalizar(s: string) {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9\s]/g, "").trim();
+}
+
+function similitud(a: string, b: string): number {
+  const na = normalizar(a);
+  const nb = normalizar(b);
+  if (na === nb) return 1;
+  if (na.includes(nb) || nb.includes(na)) return 0.85;
+  const wordsA = new Set(na.split(/\s+/));
+  const wordsB = nb.split(/\s+/);
+  const matches = wordsB.filter(w => w.length > 3 && wordsA.has(w)).length;
+  const score = matches / Math.max(wordsA.size, wordsB.length);
+  return score;
+}
 
 const PROMPT = `Analiza esta imagen de un documento oficial y clasifícalo.
 
@@ -70,7 +87,33 @@ export async function POST(req: Request) {
     const text = response.choices[0]?.message?.content ?? "";
     const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const result = JSON.parse(cleaned);
-    return NextResponse.json(result);
+
+    // Buscar entidad sugerida en la base de datos
+    const empresa = result.datos?.empresa as string | null;
+    let entidad_sugerida: { id: number; nombre: string; tipo: string; confianza: "alta" | "media" } | null = null;
+    let entidad_sugerida_nombre: string | null = null;
+
+    if (empresa && empresa.trim().length > 2) {
+      try {
+        const { rows } = await pool.query<{ id: number; nombre: string; tipo: string }>(
+          "SELECT id, nombre, tipo FROM entidad ORDER BY nombre"
+        );
+        let mejorScore = 0;
+        let mejorEntidad: { id: number; nombre: string; tipo: string } | null = null;
+        for (const e of rows) {
+          const score = similitud(empresa, e.nombre);
+          if (score > mejorScore) { mejorScore = score; mejorEntidad = e; }
+        }
+        if (mejorEntidad && mejorScore >= 0.8) {
+          entidad_sugerida = { ...mejorEntidad, confianza: mejorScore >= 0.95 ? "alta" : "media" };
+        } else {
+          // Sin coincidencia — sugerir nombre para crear
+          entidad_sugerida_nombre = empresa.trim();
+        }
+      } catch { /* no bloquear si falla el match */ }
+    }
+
+    return NextResponse.json({ ...result, entidad_sugerida, entidad_sugerida_nombre });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Error al analizar";
     return NextResponse.json({ error: msg }, { status: 500 });

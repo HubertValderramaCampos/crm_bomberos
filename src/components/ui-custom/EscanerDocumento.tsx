@@ -18,12 +18,15 @@ interface DatosIA {
   fecha_solicitada: string | null; hora_inicio: string | null;
   hora_fin: string | null; lugar: string | null; num_participantes: number | null;
 }
+interface EntidadSugerida { id: number; nombre: string; tipo: string; confianza: "alta" | "media"; }
 interface ResultadoIA {
   es_solicitud_capacitacion: boolean;
   confianza: "alta" | "media" | "baja";
   tipo_documento: TipoDoc;
   descripcion_documento: string;
   datos: DatosIA;
+  entidad_sugerida: EntidadSugerida | null;
+  entidad_sugerida_nombre: string | null;
 }
 interface Entidad { id: number; nombre: string; tipo: string; }
 interface Bombero { id: number; apellidos: string; nombres: string; grado: string; codigo: string; }
@@ -328,6 +331,20 @@ function FlujoBombero({
             {d.fecha_solicitada && <p className="text-xs text-gray-400">{new Date(d.fecha_solicitada + "T12:00:00").toLocaleDateString("es-PE", { day: "2-digit", month: "long", year: "numeric" })}</p>}
           </div>
         </div>
+        {resultado.entidad_sugerida && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-xs text-green-800">
+            <Building2 className="w-3.5 h-3.5 shrink-0 text-green-600" />
+            <span>Posible entidad: <span className="font-semibold">{resultado.entidad_sugerida.nombre}</span></span>
+            <span className="ml-auto text-[10px] text-green-600 font-medium">El jefe vinculará</span>
+          </div>
+        )}
+        {!resultado.entidad_sugerida && resultado.entidad_sugerida_nombre && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+            <Building2 className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+            <span><span className="font-semibold">{resultado.entidad_sugerida_nombre}</span> no está registrada</span>
+            <span className="ml-auto text-[10px] text-amber-600 font-medium">El jefe creará</span>
+          </div>
+        )}
         <p className="text-[10px] text-amber-600 bg-amber-50 rounded px-2 py-1 mt-1">
           El jefe revisará y gestionará este documento.
         </p>
@@ -380,13 +397,23 @@ function FlujoAdmin({
   const [entidadSel, setEntidadSel]   = useState<Entidad | null>(null);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState("");
+  // Sugerencia de entidad del servidor: null = pendiente de respuesta del usuario
+  const [sugerenciaAceptada, setSugerenciaAceptada] = useState<boolean | null>(
+    resultado.entidad_sugerida ? null : false
+  );
 
   useEffect(() => { fetch("/api/entidades").then(r => r.json()).then(setEntidades); }, []);
+
+  // Aplicar sugerencia del servidor automáticamente si el admin la acepta
   useEffect(() => {
-    if (!d.empresa || entidades.length === 0) return;
-    const m = entidades.find(e => e.nombre.toLowerCase().includes(d.empresa!.toLowerCase()) || d.empresa!.toLowerCase().includes(e.nombre.toLowerCase()));
-    if (m) { setEntidadId(m.id); setEntidadSel(m); }
-  }, [entidades, d.empresa]);
+    if (sugerenciaAceptada && resultado.entidad_sugerida) {
+      const s = resultado.entidad_sugerida;
+      setEntidadId(s.id);
+      setEntidadSel({ id: s.id, nombre: s.nombre, tipo: s.tipo });
+      setForm(f => ({ ...f, empresa: s.nombre }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sugerenciaAceptada]);
 
   async function handleEnviar(e: React.FormEvent) {
     e.preventDefault();
@@ -413,6 +440,57 @@ function FlujoAdmin({
   return (
     <form onSubmit={handleEnviar} className="space-y-4">
       <BannerIA resultado={resultado} />
+
+      {/* Sugerencia de entidad existente */}
+      {resultado.entidad_sugerida && sugerenciaAceptada === null && (
+        <div className="p-3 bg-green-50 border border-green-200 rounded-xl space-y-2">
+          <div className="flex items-start gap-2">
+            <Building2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-green-800">Entidad encontrada en el sistema</p>
+              <p className="text-xs text-green-700 truncate">
+                <span className="font-bold">{resultado.entidad_sugerida.nombre}</span>
+                {" "}<span className="opacity-70">({resultado.entidad_sugerida.tipo})</span>
+                {" — "}confianza {resultado.entidad_sugerida.confianza}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setSugerenciaAceptada(true)}
+              className="flex-1 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg flex items-center justify-center gap-1.5">
+              <Check className="w-3.5 h-3.5" /> Vincular a esta entidad
+            </button>
+            <button type="button" onClick={() => setSugerenciaAceptada(false)}
+              className="flex-1 py-1.5 text-xs font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+              No es la misma
+            </button>
+          </div>
+        </div>
+      )}
+      {resultado.entidad_sugerida && sugerenciaAceptada === true && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-xs text-green-800">
+          <Check className="w-3.5 h-3.5 text-green-600" />
+          <span>Vinculado a <span className="font-semibold">{resultado.entidad_sugerida.nombre}</span></span>
+          <button type="button" onClick={() => { setSugerenciaAceptada(null); setEntidadId(null); setEntidadSel(null); }}
+            className="ml-auto text-green-600 hover:text-green-800"><X className="w-3 h-3" /></button>
+        </div>
+      )}
+
+      {/* Sugerencia de crear nueva entidad */}
+      {!resultado.entidad_sugerida && resultado.entidad_sugerida_nombre && !entidadSel && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1.5">
+          <div className="flex items-start gap-2">
+            <Building2 className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-amber-800">Entidad no registrada</p>
+              <p className="text-xs text-amber-700 truncate">
+                La IA detectó: <span className="font-bold">{resultado.entidad_sugerida_nombre}</span>
+              </p>
+            </div>
+          </div>
+          <p className="text-[10px] text-amber-600">Puedes buscar una entidad existente abajo o dejar el campo libre para registrarla después.</p>
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         <div className="w-14 h-14 rounded-lg overflow-hidden border border-gray-200 shrink-0">
