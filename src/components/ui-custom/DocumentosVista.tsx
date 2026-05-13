@@ -363,12 +363,35 @@ function DataField({ label, value, span, italic }: { label: string; value: strin
 }
 
 /* ── Componente raíz ── */
-export function DocumentosVista({ documentos, esAdmin }: { documentos: Documento[]; esAdmin: boolean }) {
-  const [tab, setTab] = useState<"institucionales" | "varios" | "otros">("institucionales");
+export function DocumentosVista({
+  documentos, esAdmin, vistaOficio,
+}: {
+  documentos: Documento[];
+  esAdmin: boolean;
+  vistaOficio?: "institucionales" | "varios";
+}) {
+  const [tab, setTab] = useState<"institucionales" | "varios" | "otros">(
+    vistaOficio ?? "institucionales"
+  );
 
-  const inst    = documentos.filter(d => d.tipo_documento === "oficio" && ["CGBVP", "MUNICIPALIDAD"].includes(d.subtipo_oficio ?? ""));
-  const varios  = documentos.filter(d => d.tipo_documento === "oficio" && d.subtipo_oficio === "VARIOS");
-  const otros   = documentos.filter(d => d.tipo_documento !== "oficio");
+  const inst   = documentos.filter(d => d.tipo_documento === "oficio" && ["CGBVP", "MUNICIPALIDAD"].includes(d.subtipo_oficio ?? ""));
+  const varios = documentos.filter(d => d.tipo_documento === "oficio" && d.subtipo_oficio === "VARIOS");
+  const otros  = documentos.filter(d => d.tipo_documento !== "oficio");
+
+  // En vistas de oficio específicas no mostramos tabs, solo la tabla directa
+  if (vistaOficio) {
+    const docs = vistaOficio === "institucionales" ? inst : varios;
+    return (
+      <div className="space-y-4">
+        <KPIs docs={docs} />
+        <TablaDocumentos
+          docs={docs}
+          esAdmin={esAdmin}
+          mostrarSubtipo={vistaOficio === "institucionales"}
+        />
+      </div>
+    );
+  }
 
   const tabs = [
     { key: "institucionales" as const, label: "Oficios Institucionales", count: inst.length },
@@ -380,10 +403,8 @@ export function DocumentosVista({ documentos, esAdmin }: { documentos: Documento
 
   return (
     <div className="space-y-4">
-      {/* KPIs sobre todos los documentos */}
       <KPIs docs={documentos} />
 
-      {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
@@ -398,7 +419,6 @@ export function DocumentosVista({ documentos, esAdmin }: { documentos: Documento
         ))}
       </div>
 
-      {/* Tabla según pestaña */}
       <TablaDocumentos
         docs={docsActivos}
         esAdmin={esAdmin}

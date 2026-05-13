@@ -49,17 +49,12 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Oficios Institucionales", href: "/administracion/oficios-institucionales", icon: Scroll,       roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "oficios-institucionales" },
       { label: "Oficios Varios",          href: "/administracion/oficios-varios",          icon: FileText,     roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "oficios-varios" },
+      { label: "Subir Documento",         href: "/solicitar-capacitacion",                 icon: ScanLine,     roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "solicitar-capacitacion" },
+      { label: "Ver Documentos",          href: "/documentos",                             icon: FileText,     roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "documentos" },
       { label: "Donaciones",              href: "/administracion/donaciones",               icon: Gift,         roles: ADMIN_Y_BOMBERO_RACHA,               seccion: "donaciones",   rachaMin: 4 },
       { label: "Programación",            href: "/administracion/programacion",             icon: CalendarDays, roles: ADMIN_Y_BOMBERO_RACHA,               seccion: "programacion", rachaMin: 4 },
       { label: "Entidades",               href: "/administracion/entidades",                icon: Building2,    roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "entidades" },
       { label: "Permisos",                href: "/administracion/permisos",                 icon: Lock,         roles: ["JEFE_COMPANIA"],                  seccion: "permisos" },
-    ],
-  },
-  {
-    title: "Documentos",
-    items: [
-      { label: "Subir Documento",  href: "/solicitar-capacitacion", icon: ScanLine, roles: TODOS, seccion: "solicitar-capacitacion" },
-      { label: "Ver Documentos",   href: "/documentos",             icon: FileText, roles: TODOS, seccion: "documentos" },
     ],
   },
   {

@@ -4,65 +4,38 @@ import { redirect } from "next/navigation";
 import { FileText } from "lucide-react";
 import pool from "@/lib/db";
 import { PageHeader } from "@/components/ui-custom/PageHeader";
-
-async function getData() {
-  const { rows } = await pool.query<{
-    id: number; fecha: string; entidad: string; resumen: string | null; respuesta: string | null;
-  }>(`SELECT id, fecha::text, entidad, resumen, respuesta FROM oficio_varios ORDER BY fecha DESC`);
-  return rows;
-}
-
-function fmt(d: string) {
-  return new Date(d).toLocaleDateString("es-PE", { day: "2-digit", month: "long", year: "numeric" });
-}
+import { obtenerUrlFirmada } from "@/lib/storage";
+import { DocumentosVista } from "@/components/ui-custom/DocumentosVista";
 
 export default async function OficiosVariosPage() {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
-  const rows = await getData().catch(() => []);
+  const esAdmin = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol);
+
+  const { rows } = await pool.query(`
+    SELECT s.*, e.nombre AS entidad_nombre
+    FROM solicitud_capacitacion s
+    LEFT JOIN entidad e ON e.id = s.entidad_id
+    WHERE s.tipo_documento = 'oficio'
+      AND s.subtipo_oficio = 'VARIOS'
+    ORDER BY s.creado_en DESC
+  `);
+
+  const documentos = await Promise.all(
+    rows.map(async (row) => {
+      if (row.imagen_key) {
+        try { row.imagen_url = await obtenerUrlFirmada(row.imagen_key, 3600); }
+        catch { row.imagen_url = null; }
+      }
+      return row;
+    })
+  );
 
   return (
     <div className="space-y-4 pb-6">
-      <PageHeader icon={FileText} title="Oficios Varios" subtitle={`${rows.length} registros`} />
-
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {rows.length === 0 ? (
-          <p className="px-6 py-14 text-center text-sm text-gray-400">Sin registros aún.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  {["Fecha", "Entidad", "Resumen", "Respuesta"].map(h => (
-                    <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {rows.map(r => (
-                  <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3.5 text-xs text-gray-500 whitespace-nowrap">{fmt(r.fecha)}</td>
-                    <td className="px-5 py-3.5 font-medium text-gray-900 max-w-[200px]">
-                      <p className="truncate">{r.entidad}</p>
-                    </td>
-                    <td className="px-5 py-3.5 text-xs text-gray-600 max-w-xs">
-                      <p className="line-clamp-2">{r.resumen ?? "—"}</p>
-                    </td>
-                    <td className="px-5 py-3.5 text-xs max-w-xs">
-                      {r.respuesta ? (
-                        <p className="line-clamp-2 text-green-700">{r.respuesta}</p>
-                      ) : (
-                        <span className="text-amber-500 font-medium">Pendiente</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <PageHeader icon={FileText} title="Oficios Varios" subtitle="Oficios de otras instituciones y particulares" />
+      <DocumentosVista documentos={documentos} esAdmin={esAdmin} vistaOficio="varios" />
     </div>
   );
 }
