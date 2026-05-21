@@ -1,0 +1,15 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { DashboardShell } from "@/components/layout/DashboardShell";
+
+export default async function Layout({ children }: { children: React.ReactNode }) {
+  const session = await getServerSession(authOptions);
+  if (!session) redirect("/login");
+
+  if (["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol)) {
+    return <DashboardShell scrollable>{children}</DashboardShell>;
+  }
+
+  redirect("/dashboard");
+}
