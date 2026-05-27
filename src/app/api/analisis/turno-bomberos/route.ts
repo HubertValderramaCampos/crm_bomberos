@@ -10,164 +10,110 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const anio   = Number(searchParams.get("anio"))  || new Date().getFullYear();
   const mes    = Number(searchParams.get("mes"))   || null;
-  const semana = searchParams.get("semana") || null; // fecha ISO inicio de semana YYYY-MM-DD
-  const dia    = searchParams.get("dia")    || null; // fecha ISO YYYY-MM-DD
+  const semana = searchParams.get("semana") || null;
+  const dia    = searchParams.get("dia")    || null;
 
-  let whereHora: string;
-  let whereHoraParams: (string | number)[];
-
-  let whereDia: string;
-  let whereDiaParams: (string | number)[];
-
-  if (dia) {
-    // Día específico: datos por hora de ese día
-    whereHora = `cambiado_en >= $1::date AND cambiado_en < ($1::date + INTERVAL '1 day')`;
-    whereHoraParams = [dia];
-    whereDia = whereHora;
-    whereDiaParams = [dia];
-  } else if (semana) {
-    // Semana específica: datos por hora y por día de esa semana
-    whereHora = `cambiado_en >= $1::date AND cambiado_en < ($1::date + INTERVAL '7 days')`;
-    whereHoraParams = [semana];
-    whereDia = whereHora;
-    whereDiaParams = [semana];
-  } else if (mes) {
-    // Mes completo: datos por hora y por día agregados
-    whereHora = `EXTRACT(year FROM cambiado_en) = $1 AND EXTRACT(month FROM cambiado_en) = $2`;
-    whereHoraParams = [anio, mes];
-    whereDia = whereHora;
-    whereDiaParams = [anio, mes];
-  } else {
-    // Todo el año
-    whereHora = `EXTRACT(year FROM cambiado_en) = $1`;
-    whereHoraParams = [anio];
-    whereDia = whereHora;
-    whereDiaParams = [anio];
-  }
-
-  // Construir WHERE para el rango completo (usado en joins de entrada/salida)
-  let rangoWhere: string;
+  // rangoInicio / rangoFin: expresiones SQL sin parámetros extra,
+  // los parámetros $1 / $2 son los de rangoParams
+  let rangoInicio: string;
+  let rangoFin: string;
   let rangoParams: (string | number)[];
+
   if (dia) {
-    rangoWhere = `$1::date AND ($1::date + INTERVAL '1 day')`;
+    rangoInicio = `$1::date`;
+    rangoFin    = `$1::date + INTERVAL '1 day'`;
     rangoParams = [dia];
   } else if (semana) {
-    rangoWhere = `$1::date AND ($1::date + INTERVAL '7 days')`;
+    rangoInicio = `$1::date`;
+    rangoFin    = `$1::date + INTERVAL '7 days'`;
     rangoParams = [semana];
   } else if (mes) {
-    rangoWhere = `DATE_TRUNC('month', MAKE_DATE($1::int, $2::int, 1)) AND DATE_TRUNC('month', MAKE_DATE($1::int, $2::int, 1)) + INTERVAL '1 month'`;
+    rangoInicio = `DATE_TRUNC('month', MAKE_DATE($1::int, $2::int, 1))`;
+    rangoFin    = `DATE_TRUNC('month', MAKE_DATE($1::int, $2::int, 1)) + INTERVAL '1 month'`;
     rangoParams = [anio, mes];
   } else {
-    rangoWhere = `DATE_TRUNC('year', MAKE_DATE($1::int, 1, 1)) AND DATE_TRUNC('year', MAKE_DATE($1::int, 1, 1)) + INTERVAL '1 year'`;
+    rangoInicio = `DATE_TRUNC('year', MAKE_DATE($1::int, 1, 1))`;
+    rangoFin    = `DATE_TRUNC('year', MAKE_DATE($1::int, 1, 1)) + INTERVAL '1 year'`;
     rangoParams = [anio];
   }
 
+  // CTE base reutilizable: expande cada turno en franjas
+  // Un turno = registro en_turno seguido de su siguiente registro franco
+  const cteBase = `
+    WITH entradas AS (
+      SELECT bombero_id, cambiado_en AS inicio
+      FROM bombero_historial_estado
+      WHERE estado_nuevo = 'en_turno'
+        AND cambiado_en >= ${rangoInicio}
+        AND cambiado_en <  ${rangoFin}
+    ),
+    salidas AS (
+      SELECT bombero_id, cambiado_en AS fin
+      FROM bombero_historial_estado
+      WHERE estado_nuevo = 'franco'
+    ),
+    turnos AS (
+      SELECT e.bombero_id,
+             e.inicio,
+             MIN(s.fin) AS fin
+      FROM entradas e
+      JOIN salidas s ON s.bombero_id = e.bombero_id AND s.fin > e.inicio
+      GROUP BY e.bombero_id, e.inicio
+    )
+  `;
+
   const [horasRes, diasRes, semanasRes] = await Promise.all([
-    // Por hora: bomberos activos en esa franja (entrada <= franja < salida)
+    // Por hora: cuántos bomberos estaban activos en cada franja horaria
     pool.query<{ hora: number; total: number }>(`
-      WITH entradas AS (
-        SELECT bombero_id, cambiado_en AS inicio
-        FROM bombero_historial_estado
-        WHERE estado_nuevo = 'en_turno'
-      ),
-      salidas AS (
-        SELECT bombero_id, cambiado_en AS fin
-        FROM bombero_historial_estado
-        WHERE estado_nuevo = 'franco'
-      ),
-      turnos AS (
-        SELECT e.bombero_id,
-               e.inicio,
-               MIN(s.fin) AS fin
-        FROM entradas e
-        JOIN salidas s ON s.bombero_id = e.bombero_id AND s.fin > e.inicio
-        GROUP BY e.bombero_id, e.inicio
-      ),
-      franjas AS (
+      ${cteBase},
+      franjas_hora AS (
         SELECT generate_series(
           DATE_TRUNC('hour', inicio),
           fin - INTERVAL '1 second',
           INTERVAL '1 hour'
         ) AS franja, bombero_id
         FROM turnos
-        WHERE inicio >= ${rangoWhere}
       )
       SELECT EXTRACT(HOUR FROM franja)::int AS hora,
              COUNT(DISTINCT bombero_id)::int AS total
-      FROM franjas
+      FROM franjas_hora
       GROUP BY hora ORDER BY hora
     `, rangoParams),
 
-    // Por día: bomberos únicos (DOW si es mes/año, fecha real si es semana/día)
+    // Por día
     semana || dia
       ? pool.query<{ fecha: string; total: number }>(`
-          WITH entradas AS (
-            SELECT bombero_id, cambiado_en AS inicio
-            FROM bombero_historial_estado
-            WHERE estado_nuevo = 'en_turno'
-          ),
-          salidas AS (
-            SELECT bombero_id, cambiado_en AS fin
-            FROM bombero_historial_estado
-            WHERE estado_nuevo = 'franco'
-          ),
-          turnos AS (
-            SELECT e.bombero_id,
-                   e.inicio,
-                   MIN(s.fin) AS fin
-            FROM entradas e
-            JOIN salidas s ON s.bombero_id = e.bombero_id AND s.fin > e.inicio
-            GROUP BY e.bombero_id, e.inicio
-          ),
-          franjas AS (
+          ${cteBase},
+          franjas_dia AS (
             SELECT generate_series(
               DATE_TRUNC('day', inicio),
               fin - INTERVAL '1 second',
               INTERVAL '1 day'
             )::date AS fecha, bombero_id
             FROM turnos
-            WHERE inicio >= ${rangoWhere}
           )
           SELECT fecha,
                  COUNT(DISTINCT bombero_id)::int AS total
-          FROM franjas
+          FROM franjas_dia
           GROUP BY fecha ORDER BY fecha
         `, rangoParams)
       : pool.query<{ dow: number; total: number }>(`
-          WITH entradas AS (
-            SELECT bombero_id, cambiado_en AS inicio
-            FROM bombero_historial_estado
-            WHERE estado_nuevo = 'en_turno'
-          ),
-          salidas AS (
-            SELECT bombero_id, cambiado_en AS fin
-            FROM bombero_historial_estado
-            WHERE estado_nuevo = 'franco'
-          ),
-          turnos AS (
-            SELECT e.bombero_id,
-                   e.inicio,
-                   MIN(s.fin) AS fin
-            FROM entradas e
-            JOIN salidas s ON s.bombero_id = e.bombero_id AND s.fin > e.inicio
-            GROUP BY e.bombero_id, e.inicio
-          ),
-          franjas AS (
+          ${cteBase},
+          franjas_dia AS (
             SELECT generate_series(
               DATE_TRUNC('day', inicio),
               fin - INTERVAL '1 second',
               INTERVAL '1 day'
             ) AS franja, bombero_id
             FROM turnos
-            WHERE inicio >= ${rangoWhere}
           )
           SELECT EXTRACT(DOW FROM franja)::int AS dow,
                  COUNT(DISTINCT bombero_id)::int AS total
-          FROM franjas
+          FROM franjas_dia
           GROUP BY dow ORDER BY dow
         `, rangoParams),
 
-    // Semanas disponibles (solo cuando hay mes seleccionado)
+    // Semanas disponibles para el mes seleccionado
     mes
       ? pool.query<{ semana_inicio: string }>(`
           SELECT DISTINCT DATE_TRUNC('week', cambiado_en)::date AS semana_inicio
@@ -182,14 +128,12 @@ export async function GET(req: Request) {
 
   const DIAS_ES = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 
-  // Construir array de 24h con zeros donde no hay dato
   const horaMap = Object.fromEntries(horasRes.rows.map(r => [r.hora, r.total]));
   const porHora = Array.from({ length: 24 }, (_, h) => ({
     hora: `${String(h).padStart(2,"0")}h`,
     total: horaMap[h] ?? 0,
   }));
 
-  // Construir array de días
   let porDia: { dia: string; total: number }[];
   if (semana || dia) {
     porDia = (diasRes.rows as { fecha: string; total: number }[]).map(r => {
@@ -209,7 +153,6 @@ export async function GET(req: Request) {
     porHora,
     porDia,
     semanas: semanasRes.rows.map(r => {
-      // pg returns ::date columns as Date objects at runtime despite the string type
       const v = r.semana_inicio as unknown;
       if (v instanceof Date) return (v as Date).toISOString().slice(0, 10);
       return String(v).slice(0, 10);
