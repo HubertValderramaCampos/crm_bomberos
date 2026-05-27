@@ -63,6 +63,31 @@ function TimelineStep({ label, ts, color }: { label: string; ts: string | null; 
 
 function ParteRow({ parte, esBombero }: { parte: Parte; esBombero: boolean }) {
   const [open, setOpen] = useState(false);
+  const [navLoading, setNavLoading] = useState(false);
+
+  async function abrirNav(destino: "gmaps" | "waze") {
+    setNavLoading(true);
+    try {
+      const res = await fetch(`/api/sgnorte-coords?numparte=${encodeURIComponent(parte.numero_parte)}`);
+      const data = await res.json();
+      const coords = data?.coords as { lat: string; lng: string } | null;
+
+      let url: string;
+      if (coords) {
+        url = destino === "gmaps"
+          ? `https://www.google.com/maps?q=${coords.lat},${coords.lng}`
+          : `https://waze.com/ul?ll=${coords.lat},${coords.lng}&navigate=yes`;
+      } else {
+        const query = [parte.direccion, parte.distrito, "Perú"].filter(Boolean).join(", ");
+        url = destino === "gmaps"
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+          : `https://waze.com/ul?q=${encodeURIComponent(query)}&navigate=yes`;
+      }
+      window.open(url, "_blank", "noopener,noreferrer");
+    } finally {
+      setNavLoading(false);
+    }
+  }
   const tipoBadge  = TIPO_BADGE[parte.tipo]    ?? "bg-gray-100 text-gray-600 border-gray-200";
   const estadoBadge = ESTADO_BADGE[parte.estado] ?? "bg-gray-100 text-gray-600 border-gray-200";
   const fechaRef   = parte.fecha_salida ?? parte.fecha_despacho;
@@ -245,9 +270,6 @@ function ParteRow({ parte, esBombero }: { parte: Parte; esBombero: boolean }) {
                 </p>
                 <div className="space-y-2 text-xs">
                   {(parte.distrito || parte.direccion) && (() => {
-                    const query = [parte.direccion, parte.distrito, "Perú"].filter(Boolean).join(", ");
-                    const gmUrl   = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-                    const wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(query)}&navigate=yes`;
                     return (
                       <div className="bg-white rounded-lg border border-gray-200 px-3 py-2 space-y-2">
                         {parte.distrito && (
@@ -264,24 +286,22 @@ function ParteRow({ parte, esBombero }: { parte: Parte; esBombero: boolean }) {
                         )}
                         {/* Botones de navegación */}
                         <div className="flex gap-2 pt-1">
-                          <a
-                            href={gmUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                          <button
+                            onClick={() => abrirNav("gmaps")}
+                            disabled={navLoading}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white transition-colors"
                           >
                             <Navigation className="w-3 h-3" />
-                            Google Maps
-                          </a>
-                          <a
-                            href={wazeUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold bg-cyan-500 hover:bg-cyan-600 text-white transition-colors"
+                            {navLoading ? "Cargando…" : "Google Maps"}
+                          </button>
+                          <button
+                            onClick={() => abrirNav("waze")}
+                            disabled={navLoading}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold bg-cyan-500 hover:bg-cyan-600 disabled:opacity-60 text-white transition-colors"
                           >
                             <Navigation className="w-3 h-3" />
-                            Waze
-                          </a>
+                            {navLoading ? "Cargando…" : "Waze"}
+                          </button>
                         </div>
                       </div>
                     );

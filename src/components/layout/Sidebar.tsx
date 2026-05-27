@@ -60,12 +60,12 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: "Gestión Comercial",
-    roles: ["JEFE_COMPANIA", "ADMINISTRACION"],
+    roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"],
     items: [
-      { label: "Socios Estratégicos",    href: "/comercial/socios",             icon: Briefcase, roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "socios" },
-      { label: "Clasificación de Socios", href: "/comercial/clasificacion",    icon: Tag,       roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "clasificacion" },
-      { label: "Proyección Social",       href: "/comercial/proyeccion-social", icon: Heart,         roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "proyeccion-social" },
-      { label: "Encuestas",              href: "/comercial/encuestas",         icon: ClipboardList, roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "encuestas" },
+      { label: "Socios Estratégicos",     href: "/comercial/socios",             icon: Briefcase,     roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"], seccion: "socios" },
+      { label: "Clasificación de Socios", href: "/comercial/clasificacion",      icon: Tag,           roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"], seccion: "clasificacion" },
+      { label: "Proyección Social",       href: "/comercial/proyeccion-social",  icon: Heart,         roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"], seccion: "proyeccion-social" },
+      { label: "Encuestas",               href: "/comercial/encuestas",          icon: ClipboardList, roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"], seccion: "encuestas" },
     ],
   },
   {
@@ -84,16 +84,22 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   // null = aún cargando, string[] = permisos cargados (vacío = sin permisos individuales asignados)
   const [misPermisos, setMisPermisos] = useState<string[] | null>(null);
   const [rachaAcceso, setRachaAcceso] = useState<number | null>(null);
+  const [rachaConfig, setRachaConfig] = useState<Record<string, number> | null>(null);
 
   const usaPermisosIndividuales = ROLES_CON_PERMISOS.includes(rol);
 
   function canSeeItem(item: NavItem): boolean {
     if (!item.roles.includes(rol)) return false;
 
-    // Para bomberos: items con rachaMin requieren racha suficiente
-    if (rol === "BOMBERO" && item.rachaMin) {
-      if (rachaAcceso === null) return false; // aún cargando
-      return rachaAcceso >= item.rachaMin;
+    // Para bomberos: racha mínima desde BD (con fallback al rachaMin hardcodeado)
+    if (rol === "BOMBERO") {
+      if (rachaAcceso === null || rachaConfig === null) return false; // aún cargando
+      const seccion = item.seccion;
+      const minReq = seccion && rachaConfig[seccion] !== undefined
+        ? rachaConfig[seccion]
+        : (item.rachaMin ?? 0);
+      if (minReq === -1) return false; // bloqueado explícitamente
+      return rachaAcceso >= minReq;
     }
 
     // Cuentas de área usan permisos individuales
@@ -136,13 +142,20 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       .catch(() => setMisPermisos([]));
   }, [usaPermisosIndividuales]);
 
-  // Cargar racha para bomberos
+  // Cargar racha y config de acceso para bomberos
   useEffect(() => {
-    if (rol !== "BOMBERO") { setRachaAcceso(0); return; }
-    fetch("/api/usuarios/racha-acceso")
-      .then(r => r.json())
-      .then(d => setRachaAcceso(d.rachaActual ?? 0))
-      .catch(() => setRachaAcceso(0));
+    if (rol !== "BOMBERO") { setRachaAcceso(0); setRachaConfig({}); return; }
+    Promise.all([
+      fetch("/api/usuarios/racha-acceso").then(r => r.json()),
+      fetch("/api/bombero-acceso-racha").then(r => r.json()),
+    ]).then(([racha, config]) => {
+      setRachaAcceso(racha.rachaActual ?? 0);
+      const map: Record<string, number> = {};
+      if (Array.isArray(config)) {
+        for (const row of config) map[row.seccion] = row.racha_min;
+      }
+      setRachaConfig(map);
+    }).catch(() => { setRachaAcceso(0); setRachaConfig({}); });
   }, [rol]);
 
   useEffect(() => {

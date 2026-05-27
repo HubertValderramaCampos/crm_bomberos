@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { Heart, Plus, MapPin, Clock, Calendar, Pencil, Trash2, Loader2, X, Check } from "lucide-react";
 
 interface Evento {
@@ -91,6 +92,9 @@ function FormEvento({
 }
 
 export default function ProyeccionSocialPage() {
+  const { data: session } = useSession();
+  const puedeAdmin = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session?.user?.rol ?? "");
+
   const [eventos,    setEventos]    = useState<Evento[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [creando,    setCreando]    = useState(false);
@@ -168,7 +172,7 @@ export default function ProyeccionSocialPage() {
           </h1>
           <p className="text-sm text-gray-400 mt-0.5">Eventos de impacto comunitario — aparecen en Programación</p>
         </div>
-        {!creando && !editando && (
+        {puedeAdmin && !creando && !editando && (
           <button
             onClick={() => setCreando(true)}
             className="flex items-center gap-2 px-4 py-2 bg-red-700 text-white text-sm rounded-lg hover:bg-red-800 transition-colors"
@@ -220,6 +224,7 @@ export default function ProyeccionSocialPage() {
                 <EventoCard
                   key={e.id}
                   evento={e}
+                  puedeAdmin={puedeAdmin}
                   editando={editando?.id === e.id}
                   guardando={guardando}
                   eliminando={eliminando === e.id}
@@ -238,6 +243,7 @@ export default function ProyeccionSocialPage() {
                 <EventoCard
                   key={e.id}
                   evento={e}
+                  puedeAdmin={puedeAdmin}
                   editando={editando?.id === e.id}
                   guardando={guardando}
                   eliminando={eliminando === e.id}
@@ -256,10 +262,11 @@ export default function ProyeccionSocialPage() {
 }
 
 function EventoCard({
-  evento, editando, guardando, eliminando,
+  evento, puedeAdmin, editando, guardando, eliminando,
   onEditar, onEliminar, onGuardar, onCancelarEdicion,
 }: {
   evento: Evento;
+  puedeAdmin: boolean;
   editando: boolean;
   guardando: boolean;
   eliminando: boolean;
@@ -309,7 +316,7 @@ function EventoCard({
         </div>
       </div>
 
-      {!evento.finalizado && (
+      {puedeAdmin && !evento.finalizado && (
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={onEditar}

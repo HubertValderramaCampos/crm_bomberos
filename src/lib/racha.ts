@@ -59,10 +59,21 @@ export async function calcularRacha(bomberoId: number): Promise<RachaData> {
       AND ec.created_at >= NOW() - INTERVAL '28 days'
   `, [bomberoId]);
 
-  // Racha actual: contar semanas consecutivas hacia atrás desde la más reciente
-  // (si no asistió esta semana, empieza desde la semana anterior)
+  // Racha actual: contar semanas consecutivas hacia atrás.
+  // Si asistió en los últimos 7 días naturales se considera semana activa,
+  // así un bombero que asistió el viernes no pierde acceso el lunes siguiente.
+  const asistioUltimos7Dias = await pool.query<{ asistio: boolean }>(`
+    SELECT EXISTS (
+      SELECT 1 FROM asistencia_turno at
+      JOIN estado_compania ec ON ec.id = at.estado_compania_id
+      WHERE at.bombero_id = $1
+        AND ec.created_at >= NOW() - INTERVAL '7 days'
+    ) AS asistio
+  `, [bomberoId]);
+  const activo7Dias = asistioUltimos7Dias.rows[0]?.asistio ?? false;
+
   let rachaActual = 0;
-  const startOffset = asistioEstaSemana ? 0 : 1;
+  const startOffset = (asistioEstaSemana || activo7Dias) ? 0 : 1;
   for (let i = startOffset; i < 104; i++) { // máximo 2 años atrás
     if (semanasSet.has(semanaOffset(i))) {
       rachaActual++;

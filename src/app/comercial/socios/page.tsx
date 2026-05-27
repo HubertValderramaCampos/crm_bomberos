@@ -38,7 +38,7 @@ function formatFecha(s: string) {
 export default async function SociosPage() {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
-  if (!["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol)) redirect("/dashboard");
+  if (!["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"].includes(session.user.rol)) redirect("/dashboard");
 
   const socios = await getData().catch(() => []);
   const totalDonaciones = socios.reduce((s, e) => s + e.total_donaciones, 0);

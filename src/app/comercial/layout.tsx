@@ -7,7 +7,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
-  if (["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol)) {
+  if (["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"].includes(session.user.rol)) {
     return <DashboardShell scrollable>{children}</DashboardShell>;
   }
 

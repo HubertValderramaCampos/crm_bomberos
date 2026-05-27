@@ -30,10 +30,11 @@ export default async function ComercialDocumentosPage() {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
-  if (!["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol)) {
+  if (!["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"].includes(session.user.rol)) {
     redirect("/dashboard");
   }
 
+  const esAdmin = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol);
   const documentos = await getData().catch(() => []);
 
   return (
@@ -43,7 +44,7 @@ export default async function ComercialDocumentosPage() {
         title="Oficios y Documentos"
         subtitle="Gestión de oficios institucionales y varios"
       />
-      <DocumentosVista documentos={documentos} esAdmin={true} />
+      <DocumentosVista documentos={documentos} esAdmin={esAdmin} />
     </div>
   );
 }
