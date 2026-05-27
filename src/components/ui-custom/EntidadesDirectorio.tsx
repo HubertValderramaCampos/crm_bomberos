@@ -26,7 +26,7 @@ interface Entidad {
 
 const EMPTY_FORM = { nombre: "", tipo: "EMPRESA", contacto: "", telefono: "", correo: "", direccion: "", notas: "" };
 
-function ModalEntidad({ inicial, onClose, onSaved }: {
+export function ModalEntidad({ inicial, onClose, onSaved }: {
   inicial?: Partial<typeof EMPTY_FORM> & { id?: number };
   onClose: () => void;
   onSaved: (e: Entidad) => void;
