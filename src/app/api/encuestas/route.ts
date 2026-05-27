@@ -15,7 +15,7 @@ export async function GET() {
     entidad_id: number; entidad_nombre: string;
     total_respuestas: number; ultima_respuesta: string | null;
   }>(`
-    SELECT t.id, t.token::text, t.activo, t.created_at::text,
+    SELECT t.id, t.token, t.activo, t.created_at::text,
            e.id AS entidad_id, e.nombre AS entidad_nombre,
            COUNT(r.id)::int AS total_respuestas,
            MAX(r.created_at)::text AS ultima_respuesta
@@ -29,6 +29,15 @@ export async function GET() {
   return NextResponse.json(rows);
 }
 
+function slugNombre(nombre: string): string {
+  return nombre
+    .toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "") // quitar tildes
+    .replace(/[^a-z0-9]+/g, "-")                      // espacios/símbolos → guión
+    .replace(/^-+|-+$/g, "")                           // trim guiones
+    .slice(0, 20);                                      // máximo 20 chars
+}
+
 // POST: crear token para una entidad
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -39,10 +48,18 @@ export async function POST(req: Request) {
   const { entidad_id } = await req.json();
   if (!entidad_id) return NextResponse.json({ error: "entidad_id requerido" }, { status: 400 });
 
-  const { rows } = await pool.query<{ id: number; token: string }>(`
-    INSERT INTO encuesta_token (entidad_id) VALUES ($1)
-    RETURNING id, token::text
-  `, [entidad_id]);
+  // Obtener nombre de la entidad para el slug
+  const entRes = await pool.query<{ nombre: string }>(`SELECT nombre FROM entidad WHERE id = $1`, [entidad_id]);
+  if (!entRes.rows.length) return NextResponse.json({ error: "Entidad no encontrada" }, { status: 404 });
 
-  return NextResponse.json(rows[0], { status: 201 });
+  const slug = slugNombre(entRes.rows[0].nombre);
+  const suffix = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+  const token = `${slug}-${suffix}`;
+
+  const { rows } = await pool.query<{ id: number }>(`
+    INSERT INTO encuesta_token (entidad_id, token) VALUES ($1, $2)
+    RETURNING id
+  `, [entidad_id, token]);
+
+  return NextResponse.json({ id: rows[0].id, token }, { status: 201 });
 }

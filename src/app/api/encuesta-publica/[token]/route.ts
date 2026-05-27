@@ -9,7 +9,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
     SELECT t.id, e.nombre AS entidad_nombre, t.activo
     FROM encuesta_token t
     JOIN entidad e ON e.id = t.entidad_id
-    WHERE t.token = $1
+    WHERE t.token::text = $1
   `, [token]);
 
   if (!rows.length) return NextResponse.json({ error: "Enlace inválido" }, { status: 404 });
@@ -23,7 +23,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   const { token } = await params;
 
   const tokenRow = await pool.query<{ id: number; activo: boolean }>(`
-    SELECT id, activo FROM encuesta_token WHERE token = $1
+    SELECT id, activo FROM encuesta_token WHERE token::text = $1
   `, [token]);
 
   if (!tokenRow.rows.length) return NextResponse.json({ error: "Enlace inválido" }, { status: 404 });
