@@ -51,7 +51,7 @@ async function getAnalisisData(f: FiltrosAnalisis) {
     const [
       distritos, tiposDesc, tiposGrupo, vehiculos,
       tiempoXDescripcion, porHora, porDia, mesesStacked,
-      asistPorHora, asistPorDia, resumen,
+      resumen,
     ] = await Promise.all([
 
       // Por distrito
@@ -138,38 +138,6 @@ async function getAnalisisData(f: FiltrosAnalisis) {
         ORDER BY DATE_TRUNC('month', COALESCE(e.fecha_salida,e.fecha_despacho,e.created_at))
       `, f.distritoId ? [f.anio, f.distritoId] : [f.anio]),
 
-      // Promedio de bomberos en turno por hora del día
-      client.query<{ hora: string; total: string }>(`
-        SELECT hora, ROUND(AVG(cnt))::int AS total
-        FROM (
-          SELECT DATE_TRUNC('hour', cambiado_en) AS franja,
-                 EXTRACT(HOUR FROM cambiado_en)::int AS hora,
-                 COUNT(DISTINCT bombero_id) AS cnt
-          FROM bombero_historial_estado
-          WHERE estado_nuevo = 'en_turno'
-            AND EXTRACT(year FROM cambiado_en) = $1
-            ${f.mes ? `AND EXTRACT(month FROM cambiado_en) = $2` : ""}
-          GROUP BY franja, hora
-        ) sub
-        GROUP BY hora ORDER BY hora
-      `, f.mes ? [f.anio, f.mes] : [f.anio]),
-
-      // Promedio de bomberos en turno por día de la semana
-      client.query<{ dow: string; total: string }>(`
-        SELECT dow, ROUND(AVG(cnt))::int AS total
-        FROM (
-          SELECT DATE_TRUNC('day', cambiado_en) AS dia,
-                 EXTRACT(DOW FROM cambiado_en)::int AS dow,
-                 COUNT(DISTINCT bombero_id) AS cnt
-          FROM bombero_historial_estado
-          WHERE estado_nuevo = 'en_turno'
-            AND EXTRACT(year FROM cambiado_en) = $1
-            ${f.mes ? `AND EXTRACT(month FROM cambiado_en) = $2` : ""}
-          GROUP BY dia, dow
-        ) sub
-        GROUP BY dow ORDER BY dow
-      `, f.mes ? [f.anio, f.mes] : [f.anio]),
-
       // Resumen tiempos
       client.query<{ prom: string; min_t: string; max_t: string; con_datos: string }>(`
         SELECT
@@ -191,13 +159,6 @@ async function getAnalisisData(f: FiltrosAnalisis) {
     const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
     const diaMap = Object.fromEntries(porDia.rows.map(r => [Number(r.dow), Number(r.total)]));
     const diasFull = Array.from({ length: 7 }, (_, i) => ({ dia: DIAS[i], total: diaMap[i] ?? 0 }));
-
-    const asistHoraMap = Object.fromEntries(asistPorHora.rows.map(r => [Number(r.hora), Number(r.total)]));
-    const asistHoraFull = Array.from({ length: 24 }, (_, h) => ({
-      hora: `${String(h).padStart(2,"0")}h`, total: asistHoraMap[h] ?? 0,
-    }));
-    const asistDiaMap = Object.fromEntries(asistPorDia.rows.map(r => [Number(r.dow), Number(r.total)]));
-    const asistDiaFull = Array.from({ length: 7 }, (_, i) => ({ dia: DIAS[i], total: asistDiaMap[i] ?? 0 }));
 
     const categorias = [...new Set(mesesStacked.rows.map(r => r.categoria))];
     const mesesMap: Record<string, Record<string,number>> = {};
@@ -224,8 +185,6 @@ async function getAnalisisData(f: FiltrosAnalisis) {
         conDatos: Number(resumen.rows[0]?.con_datos ?? 0),
       },
       totalEmerg: distritos.rows.reduce((s,r) => s + Number(r.total), 0),
-      asistHora: asistHoraFull,
-      asistDia:  asistDiaFull,
     };
   } finally {
     client.release();
@@ -314,8 +273,6 @@ export default async function AnalisisPage({
         categorias={data.categorias}
         anio={anio}
         mes={mes}
-        asistHora={data.asistHora}
-        asistDia={data.asistDia}
       />
     </div>
   );

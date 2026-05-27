@@ -3,6 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
+import { TurnoCharts } from "./TurnoCharts";
 
 const COLORES_DISTRITO = ["#dc2626","#ea580c","#d97706","#65a30d","#0891b2","#7c3aed","#db2777","#475569","#16a34a","#0284c7","#9333ea"];
 const COLORES_CATEGORIA: Record<string, string> = {
@@ -44,7 +45,6 @@ function CustomTooltipDescripcion({ active, payload }: { active?: boolean; paylo
 export function AnalisisCharts({
   distritos, tiposDesc, tiposGrupo, vehiculos, tiempoXTipo,
   porHora, porDia, mesesData, categorias, anio, mes,
-  asistHora, asistDia,
 }: {
   distritos:   { nombre: string; total: number }[];
   tiposDesc:   { descripcion: string; total: number }[];
@@ -57,8 +57,6 @@ export function AnalisisCharts({
   categorias:  string[];
   anio:        number;
   mes:         number | null;
-  asistHora:   { hora: string; total: number }[];
-  asistDia:    { dia: string; total: number }[];
 }) {
   // Truncate largo para el eje Y
   const tiposDescTrunc = tiposDesc.map(d => ({
@@ -265,68 +263,8 @@ export function AnalisisCharts({
         </Card>
       )}
 
-      {/* 8. Entradas a turno por hora */}
-      {asistHora.some(d => d.total > 0) && (
-        <Card title="Bomberos en Turno por Hora" sub="Promedio de bomberos activos según la hora del día">
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={asistHora} barSize={14}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-              <XAxis dataKey="hora" tick={{ fontSize: 9, fill: "#6b7280" }} axisLine={false} tickLine={false} interval={2} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
-                formatter={(v) => [`${v} bomberos (prom.)`, ""]}
-              />
-              <Bar dataKey="total" radius={[3, 3, 0, 0]}>
-                {asistHora.map((d, i) => {
-                  const h = parseInt(d.hora);
-                  const fill = h < 6 ? "#7c3aed" : h < 12 ? "#0891b2" : h < 18 ? "#16a34a" : "#ea580c";
-                  return <Cell key={i} fill={fill} />;
-                })}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="flex gap-4 mt-2 flex-wrap">
-            {[
-              { color: "#7c3aed", label: "Madrugada (00–05)" },
-              { color: "#0891b2", label: "Mañana (06–11)" },
-              { color: "#16a34a", label: "Tarde (12–17)" },
-              { color: "#ea580c", label: "Noche (18–23)" },
-            ].map(({ color, label }) => (
-              <div key={label} className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: color }} />
-                <span className="text-[10px] text-gray-500">{label}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* 9. Entradas a turno por día de la semana */}
-      {asistDia.some(d => d.total > 0) && (
-        <Card title="Bomberos en Turno por Día" sub="Promedio de bomberos activos según el día de la semana">
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={asistDia} barSize={32}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-              <XAxis dataKey="dia" tick={{ fontSize: 12, fill: "#374151" }} axisLine={false} tickLine={false} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
-                formatter={(v) => [`${v} bomberos (prom.)`, ""]}
-              />
-              <Bar dataKey="total" radius={[4, 4, 0, 0]}>
-                {asistDia.map((d, i) => (
-                  <Cell key={i} fill={d.dia === "Dom" || d.dia === "Sáb" ? "#dc2626" : "#16a34a"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="flex gap-4 mt-2">
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-green-600" /><span className="text-[10px] text-gray-500">Semana</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-red-600" /><span className="text-[10px] text-gray-500">Fin de semana</span></div>
-          </div>
-        </Card>
-      )}
+      {/* 8–9. Bomberos en turno — datos directos con filtro semana/día */}
+      <TurnoCharts anio={anio} mes={mes} />
 
       {/* 10. Evolución mensual por categoría — solo si no hay filtro de mes */}
       {!mes && mesesData.length > 0 && (
