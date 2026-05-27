@@ -50,8 +50,8 @@ async function getAnalisisData(f: FiltrosAnalisis) {
 
     const [
       distritos, tiposDesc, tiposGrupo, vehiculos,
-      tiempoXDescripcion, porHora, porDia, mesesStacked, resumen,
-      asistPorHora, asistPorDia,
+      tiempoXDescripcion, porHora, porDia, mesesStacked,
+      asistPorHora, asistPorDia, resumen,
     ] = await Promise.all([
 
       // Por distrito

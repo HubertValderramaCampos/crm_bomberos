@@ -266,10 +266,10 @@ export function AnalisisCharts({
       )}
 
       {/* 8. Asistencia de bomberos por hora */}
-      {asistHora.length > 0 && (
+      {asistHora.some(d => d.total > 0) && (
         <Card title="Asistencia de Bomberos por Hora" sub="¿A qué hora se presentan más bomberos al turno?">
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={asistHora} barSize={10}>
+            <BarChart data={asistHora} barSize={14}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
               <XAxis dataKey="hora" tick={{ fontSize: 9, fill: "#6b7280" }} axisLine={false} tickLine={false} interval={2} />
               <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
@@ -303,7 +303,7 @@ export function AnalisisCharts({
       )}
 
       {/* 9. Asistencia de bomberos por día de la semana */}
-      {asistDia.length > 0 && (
+      {asistDia.some(d => d.total > 0) && (
         <Card title="Asistencia de Bomberos por Día" sub="¿Qué días asisten más bomberos al turno?">
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={asistDia} barSize={32}>
