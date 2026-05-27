@@ -23,6 +23,7 @@ const COLOR: Record<string, string> = {
   "Desfile / Acto cívico": "bg-purple-100 text-purple-700 border-purple-200",
   "Reunión de compañía":   "bg-gray-100 text-gray-600 border-gray-200",
   "Mantenimiento":         "bg-orange-100 text-orange-700 border-orange-200",
+  "Proyección social":     "bg-rose-100 text-rose-700 border-rose-200",
   "Otro":                  "bg-gray-100 text-gray-500 border-gray-200",
 };
 

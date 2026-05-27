@@ -9,7 +9,7 @@ import {
   ShoppingBag, GraduationCap, CalendarCheck,
   LogOut, ChevronRight, ShieldCheck, TrendingUp,
   Scroll, Gift, CalendarDays, Building2, ScanLine, ChevronDown, Lock,
-  Briefcase, Tag,
+  Briefcase, Tag, Heart,
 } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
 
@@ -62,8 +62,9 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Gestión Comercial",
     roles: ["JEFE_COMPANIA", "ADMINISTRACION"],
     items: [
-      { label: "Socios Estratégicos",    href: "/comercial/socios",        icon: Briefcase, roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "socios" },
-      { label: "Clasificación de Socios", href: "/comercial/clasificacion", icon: Tag,       roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "clasificacion" },
+      { label: "Socios Estratégicos",    href: "/comercial/socios",             icon: Briefcase, roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "socios" },
+      { label: "Clasificación de Socios", href: "/comercial/clasificacion",    icon: Tag,       roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "clasificacion" },
+      { label: "Proyección Social",       href: "/comercial/proyeccion-social", icon: Heart,     roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "proyeccion-social" },
     ],
   },
   {
