@@ -33,7 +33,7 @@ function fmt(ts: string | null, opts?: Intl.DateTimeFormatOptions): string {
 }
 
 function fmtHora(ts: string | null): string {
-  return fmt(ts, { hour: "2-digit", minute: "2-digit" });
+  return fmt(ts, { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Lima" });
 }
 
 function fmtFecha(ts: string | null): string {
