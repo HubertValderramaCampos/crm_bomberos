@@ -92,8 +92,8 @@ function RespuestaDetalle({ r }: { r: Respuesta }) {
   );
 }
 
-function TokenCard({ tk, baseUrl, onDesactivar }: {
-  tk: TokenRow; baseUrl: string; onDesactivar: (id: number) => void;
+function TokenCard({ tk, baseUrl, onDesactivar, onEliminar }: {
+  tk: TokenRow; baseUrl: string; onDesactivar: (id: number) => void; onEliminar: (id: number) => void;
 }) {
   const [copiado,     setCopiado]     = useState(false);
   const [abierto,     setAbierto]     = useState(false);
@@ -134,6 +134,17 @@ function TokenCard({ tk, baseUrl, onDesactivar }: {
     }
   }
 
+  async function eliminar() {
+    if (!confirm("¿Eliminar este enlace permanentemente? Se borrarán también sus respuestas.")) return;
+    setEliminando(true);
+    try {
+      await fetch(`/api/encuestas/${tk.id}?eliminar=1`, { method: "DELETE" });
+      onEliminar(tk.id);
+    } finally {
+      setEliminando(false);
+    }
+  }
+
   return (
     <div className={`bg-white rounded-xl border p-4 space-y-3 ${tk.activo ? "border-gray-200" : "border-gray-100 opacity-60"}`}>
       <div className="flex items-start justify-between gap-3">
@@ -157,11 +168,16 @@ function TokenCard({ tk, baseUrl, onDesactivar }: {
             </a>
           </div>
         </div>
-        {tk.activo && (
-          <button onClick={desactivar} disabled={eliminando} className="shrink-0 p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Desactivar">
-            {eliminando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-          </button>
-        )}
+        {eliminando
+          ? <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400 shrink-0" />
+          : tk.activo
+            ? <button onClick={desactivar} className="shrink-0 p-1.5 text-gray-300 hover:text-amber-500 hover:bg-amber-50 rounded-md transition-colors" title="Desactivar enlace">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            : <button onClick={eliminar} className="shrink-0 p-1.5 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Eliminar permanentemente">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+        }
       </div>
 
       {/* Respuestas */}
@@ -245,6 +261,10 @@ export default function EncuestasPage() {
 
   function desactivarLocal(id: number) {
     setTokens(prev => prev.map(t => t.id === id ? { ...t, activo: false } : t));
+  }
+
+  function eliminarLocal(id: number) {
+    setTokens(prev => prev.filter(t => t.id !== id));
   }
 
   // Agrupar por entidad
@@ -368,7 +388,7 @@ export default function EncuestasPage() {
               </div>
               <div className="space-y-2">
                 {tks.map(tk => (
-                  <TokenCard key={tk.id} tk={tk} baseUrl={baseUrl} onDesactivar={desactivarLocal} />
+                  <TokenCard key={tk.id} tk={tk} baseUrl={baseUrl} onDesactivar={desactivarLocal} onEliminar={eliminarLocal} />
                 ))}
               </div>
             </div>

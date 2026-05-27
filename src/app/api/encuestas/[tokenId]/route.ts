@@ -21,14 +21,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ tokenId
   return NextResponse.json(rows);
 }
 
-// DELETE: desactivar token
-export async function DELETE(_req: Request, { params }: { params: Promise<{ tokenId: string }> }) {
+// DELETE: desactivar (?eliminar no presente) o eliminar permanentemente (?eliminar=1)
+export async function DELETE(req: Request, { params }: { params: Promise<{ tokenId: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   if (!["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol))
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
 
   const { tokenId } = await params;
+  const { searchParams } = new URL(req.url);
+
+  if (searchParams.get("eliminar") === "1") {
+    await pool.query(`DELETE FROM encuesta_token WHERE id = $1`, [tokenId]);
+    return NextResponse.json({ ok: true, eliminado: true });
+  }
+
   await pool.query(`UPDATE encuesta_token SET activo = false WHERE id = $1`, [tokenId]);
   return NextResponse.json({ ok: true });
 }
