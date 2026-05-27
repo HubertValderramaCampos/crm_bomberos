@@ -13,109 +13,119 @@ export async function GET(req: Request) {
   const tipoEntidad = searchParams.get("tipo") ?? "";
   const entidadId   = searchParams.get("entidad_id") ?? "";
 
-  const where: string[] = [];
-  const params: unknown[] = [];
+  // Construir filtro como CTE para reutilizarlo en todas las queries
+  const filterParams: unknown[] = [];
+  const filterConditions: string[] = [];
+  if (tipoEntidad) { filterParams.push(tipoEntidad);       filterConditions.push(`e.tipo = $${filterParams.length}`); }
+  if (entidadId)   { filterParams.push(Number(entidadId)); filterConditions.push(`e.id = $${filterParams.length}`); }
+  const filterWhere = filterConditions.length ? filterConditions.join(" AND ") : "1=1";
 
-  if (tipoEntidad) { params.push(tipoEntidad);  where.push(`e.tipo = $${params.length}`); }
-  if (entidadId)   { params.push(Number(entidadId)); where.push(`e.id = $${params.length}`); }
-
-  const whereClause = where.length ? `AND ${where.join(" AND ")}` : "";
-
-  // Totales globales
-  const [totalesRes, califRes, booleansRes, aspectosRes, porMesRes, porEntidadRes] = await Promise.all([
-
-    pool.query<{ total_respuestas: number; total_tokens: number; total_entidades: number }>(`
-      SELECT
-        COUNT(DISTINCT r.id)::int           AS total_respuestas,
-        COUNT(DISTINCT t.id)::int           AS total_tokens,
-        COUNT(DISTINCT e.id)::int           AS total_entidades
+  // CTE base: IDs de tokens que pasan el filtro
+  const baseCteSql = `
+    WITH token_ids AS (
+      SELECT t.id AS token_id
       FROM encuesta_token t
       JOIN entidad e ON e.id = t.entidad_id
-      LEFT JOIN encuesta_respuesta r ON r.token_id = t.id
-      WHERE 1=1 ${whereClause}
-    `, params),
+      WHERE ${filterWhere}
+    )
+  `;
 
-    // Promedios de calificaciones (excelente/bueno/regular/malo)
-    pool.query<{ campo: string; valor: string; cnt: number }>(`
-      SELECT campo, valor, COUNT(*)::int AS cnt
-      FROM (
-        SELECT 'contenido'   AS campo, r.contenido_calif   AS valor FROM encuesta_respuesta r JOIN encuesta_token t ON t.id = r.token_id JOIN entidad e ON e.id = t.entidad_id WHERE r.contenido_calif IS NOT NULL   ${whereClause}
-        UNION ALL
-        SELECT 'materiales'  AS campo, r.materiales_calif  AS valor FROM encuesta_respuesta r JOIN encuesta_token t ON t.id = r.token_id JOIN entidad e ON e.id = t.entidad_id WHERE r.materiales_calif IS NOT NULL  ${whereClause}
-        UNION ALL
-        SELECT 'dinamica'    AS campo, r.dinamica_expositores AS valor FROM encuesta_respuesta r JOIN encuesta_token t ON t.id = r.token_id JOIN entidad e ON e.id = t.entidad_id WHERE r.dinamica_expositores IS NOT NULL ${whereClause}
-        UNION ALL
-        SELECT 'conocimiento' AS campo, r.conocimiento_expositores AS valor FROM encuesta_respuesta r JOIN encuesta_token t ON t.id = r.token_id JOIN entidad e ON e.id = t.entidad_id WHERE r.conocimiento_expositores IS NOT NULL ${whereClause}
-      ) sub
-      GROUP BY campo, valor
-      ORDER BY campo, valor
-    `, params),
+  try {
+    const [totalesRes, califRes, booleansRes, aspectosRes, porMesRes, porEntidadRes] = await Promise.all([
 
-    // Porcentaje sí/no de preguntas booleanas
-    pool.query<{ campo: string; si_count: number; no_count: number }>(`
-      SELECT
-        campo,
-        SUM(CASE WHEN valor THEN 1 ELSE 0 END)::int AS si_count,
-        SUM(CASE WHEN NOT valor THEN 1 ELSE 0 END)::int AS no_count
-      FROM (
-        SELECT 'objetivos'  AS campo, r.objetivos_alcanzados  AS valor FROM encuesta_respuesta r JOIN encuesta_token t ON t.id = r.token_id JOIN entidad e ON e.id = t.entidad_id WHERE r.objetivos_alcanzados IS NOT NULL  ${whereClause}
-        UNION ALL
-        SELECT 'duracion'   AS campo, r.duracion_adecuada     AS valor FROM encuesta_respuesta r JOIN encuesta_token t ON t.id = r.token_id JOIN entidad e ON e.id = t.entidad_id WHERE r.duracion_adecuada IS NOT NULL     ${whereClause}
-        UNION ALL
-        SELECT 'dinamicas'  AS campo, r.dinamicas_correctas   AS valor FROM encuesta_respuesta r JOIN encuesta_token t ON t.id = r.token_id JOIN entidad e ON e.id = t.entidad_id WHERE r.dinamicas_correctas IS NOT NULL   ${whereClause}
-        UNION ALL
-        SELECT 'recomendaria' AS campo, r.recomendaria        AS valor FROM encuesta_respuesta r JOIN encuesta_token t ON t.id = r.token_id JOIN entidad e ON e.id = t.entidad_id WHERE r.recomendaria IS NOT NULL          ${whereClause}
-      ) sub
-      GROUP BY campo
-    `, params),
+      pool.query<{ total_respuestas: number; total_tokens: number; total_entidades: number }>(`
+        ${baseCteSql}
+        SELECT
+          COUNT(DISTINCT r.id)::int        AS total_respuestas,
+          COUNT(DISTINCT t.id)::int        AS total_tokens,
+          COUNT(DISTINCT t.entidad_id)::int AS total_entidades
+        FROM token_ids ti
+        JOIN encuesta_token t ON t.id = ti.token_id
+        LEFT JOIN encuesta_respuesta r ON r.token_id = t.id
+      `, filterParams),
 
-    // Aspectos a mejorar más frecuentes
-    pool.query<{ aspecto: string; cnt: number }>(`
-      SELECT aspecto, COUNT(*)::int AS cnt
-      FROM (
-        SELECT UNNEST(r.aspectos_mejora) AS aspecto
+      pool.query<{ campo: string; valor: string; cnt: number }>(`
+        ${baseCteSql}
+        SELECT campo, valor, COUNT(*)::int AS cnt
+        FROM (
+          SELECT 'contenido'    AS campo, contenido_calif          AS valor FROM encuesta_respuesta WHERE token_id IN (SELECT token_id FROM token_ids) AND contenido_calif IS NOT NULL
+          UNION ALL
+          SELECT 'materiales'   AS campo, materiales_calif         AS valor FROM encuesta_respuesta WHERE token_id IN (SELECT token_id FROM token_ids) AND materiales_calif IS NOT NULL
+          UNION ALL
+          SELECT 'dinamica'     AS campo, dinamica_expositores     AS valor FROM encuesta_respuesta WHERE token_id IN (SELECT token_id FROM token_ids) AND dinamica_expositores IS NOT NULL
+          UNION ALL
+          SELECT 'conocimiento' AS campo, conocimiento_expositores AS valor FROM encuesta_respuesta WHERE token_id IN (SELECT token_id FROM token_ids) AND conocimiento_expositores IS NOT NULL
+        ) sub
+        GROUP BY campo, valor
+        ORDER BY campo, valor
+      `, filterParams),
+
+      pool.query<{ campo: string; si_count: number; no_count: number }>(`
+        ${baseCteSql}
+        SELECT
+          campo,
+          SUM(CASE WHEN valor = true  THEN 1 ELSE 0 END)::int AS si_count,
+          SUM(CASE WHEN valor = false THEN 1 ELSE 0 END)::int AS no_count
+        FROM (
+          SELECT 'objetivos'    AS campo, objetivos_alcanzados AS valor FROM encuesta_respuesta WHERE token_id IN (SELECT token_id FROM token_ids) AND objetivos_alcanzados IS NOT NULL
+          UNION ALL
+          SELECT 'duracion'     AS campo, duracion_adecuada    AS valor FROM encuesta_respuesta WHERE token_id IN (SELECT token_id FROM token_ids) AND duracion_adecuada IS NOT NULL
+          UNION ALL
+          SELECT 'dinamicas'    AS campo, dinamicas_correctas  AS valor FROM encuesta_respuesta WHERE token_id IN (SELECT token_id FROM token_ids) AND dinamicas_correctas IS NOT NULL
+          UNION ALL
+          SELECT 'recomendaria' AS campo, recomendaria         AS valor FROM encuesta_respuesta WHERE token_id IN (SELECT token_id FROM token_ids) AND recomendaria IS NOT NULL
+        ) sub
+        GROUP BY campo
+      `, filterParams),
+
+      pool.query<{ aspecto: string; cnt: number }>(`
+        ${baseCteSql}
+        SELECT aspecto, COUNT(*)::int AS cnt
+        FROM (
+          SELECT UNNEST(aspectos_mejora) AS aspecto
+          FROM encuesta_respuesta
+          WHERE token_id IN (SELECT token_id FROM token_ids)
+            AND aspectos_mejora IS NOT NULL
+            AND array_length(aspectos_mejora, 1) > 0
+        ) sub
+        GROUP BY aspecto
+        ORDER BY cnt DESC
+        LIMIT 6
+      `, filterParams),
+
+      pool.query<{ mes: string; cnt: number }>(`
+        ${baseCteSql}
+        SELECT TO_CHAR(r.created_at, 'YYYY-MM') AS mes, COUNT(*)::int AS cnt
         FROM encuesta_respuesta r
-        JOIN encuesta_token t ON t.id = r.token_id
+        WHERE r.token_id IN (SELECT token_id FROM token_ids)
+          AND r.created_at >= NOW() - INTERVAL '12 months'
+        GROUP BY mes
+        ORDER BY mes
+      `, filterParams),
+
+      pool.query<{ entidad_nombre: string; tipo: string; cnt: number }>(`
+        ${baseCteSql}
+        SELECT e.nombre AS entidad_nombre, e.tipo, COUNT(r.id)::int AS cnt
+        FROM token_ids ti
+        JOIN encuesta_token t ON t.id = ti.token_id
         JOIN entidad e ON e.id = t.entidad_id
-        WHERE r.aspectos_mejora IS NOT NULL AND array_length(r.aspectos_mejora, 1) > 0
-        ${whereClause}
-      ) sub
-      GROUP BY aspecto
-      ORDER BY cnt DESC
-      LIMIT 6
-    `, params),
+        LEFT JOIN encuesta_respuesta r ON r.token_id = t.id
+        GROUP BY e.id, e.nombre, e.tipo
+        ORDER BY cnt DESC
+        LIMIT 8
+      `, filterParams),
+    ]);
 
-    // Respuestas por mes (últimos 12 meses)
-    pool.query<{ mes: string; cnt: number }>(`
-      SELECT TO_CHAR(r.created_at, 'YYYY-MM') AS mes, COUNT(*)::int AS cnt
-      FROM encuesta_respuesta r
-      JOIN encuesta_token t ON t.id = r.token_id
-      JOIN entidad e ON e.id = t.entidad_id
-      WHERE r.created_at >= NOW() - INTERVAL '12 months'
-      ${whereClause}
-      GROUP BY mes
-      ORDER BY mes
-    `, params),
-
-    // Respuestas por entidad (top 8)
-    pool.query<{ entidad_nombre: string; tipo: string; cnt: number }>(`
-      SELECT e.nombre AS entidad_nombre, e.tipo, COUNT(r.id)::int AS cnt
-      FROM encuesta_token t
-      JOIN entidad e ON e.id = t.entidad_id
-      LEFT JOIN encuesta_respuesta r ON r.token_id = t.id
-      WHERE 1=1 ${whereClause}
-      GROUP BY e.id, e.nombre, e.tipo
-      ORDER BY cnt DESC
-      LIMIT 8
-    `, params),
-  ]);
-
-  return NextResponse.json({
-    totales:     totalesRes.rows[0],
-    calificaciones: califRes.rows,
-    booleanos:   booleansRes.rows,
-    aspectos:    aspectosRes.rows,
-    porMes:      porMesRes.rows,
-    porEntidad:  porEntidadRes.rows,
-  });
+    return NextResponse.json({
+      totales:        totalesRes.rows[0] ?? { total_respuestas: 0, total_tokens: 0, total_entidades: 0 },
+      calificaciones: califRes.rows,
+      booleanos:      booleansRes.rows,
+      aspectos:       aspectosRes.rows,
+      porMes:         porMesRes.rows,
+      porEntidad:     porEntidadRes.rows,
+    });
+  } catch (err) {
+    console.error("[encuestas/stats]", err);
+    return NextResponse.json({ error: "Error al cargar estadísticas" }, { status: 500 });
+  }
 }

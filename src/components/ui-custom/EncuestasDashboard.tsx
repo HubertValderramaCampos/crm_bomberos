@@ -80,17 +80,26 @@ function fmtMes(m: string) {
 export function EncuestasDashboard({ entidades }: { entidades: Entidad[] }) {
   const [stats,      setStats]      = useState<Stats | null>(null);
   const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState<string | null>(null);
   const [tipoFiltro, setTipoFiltro] = useState("");
   const [entFiltro,  setEntFiltro]  = useState("");
 
   const cargar = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const qs = new URLSearchParams();
       if (tipoFiltro) qs.set("tipo", tipoFiltro);
       if (entFiltro)  qs.set("entidad_id", entFiltro);
       const res = await fetch(`/api/encuestas/stats?${qs}`);
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? `Error ${res.status}`);
+        return;
+      }
       setStats(await res.json());
+    } catch (e) {
+      setError("Error de conexión al cargar estadísticas.");
     } finally {
       setLoading(false);
     }
@@ -111,10 +120,19 @@ export function EncuestasDashboard({ entidades }: { entidades: Entidad[] }) {
     ? entidades.filter(e => e.tipo === tipoFiltro)
     : entidades;
 
-  if (loading || !stats) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-52">
         <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="bg-white rounded-xl border border-red-200 px-6 py-10 text-center space-y-3">
+        <p className="text-sm text-red-600 font-medium">{error ?? "No se pudieron cargar las estadísticas."}</p>
+        <button onClick={cargar} className="text-xs text-red-700 underline hover:no-underline">Reintentar</button>
       </div>
     );
   }
