@@ -214,6 +214,7 @@ export default function EncuestasPage() {
   const [generando,     setGenerando]     = useState(false);
   const [baseUrl,       setBaseUrl]       = useState("");
   const [modalEntidad,  setModalEntidad]  = useState(false);
+  const [errorGen,      setErrorGen]      = useState("");
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -237,16 +238,21 @@ export default function EncuestasPage() {
   async function generarToken() {
     if (!entidadId) return;
     setGenerando(true);
+    setErrorGen("");
     try {
-      await fetch("/api/encuestas", {
+      const res = await fetch("/api/encuestas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entidad_id: Number(entidadId), descripcion: descripcion.trim() || null }),
       });
+      const data = await res.json();
+      if (!res.ok) { setErrorGen(data.error ?? `Error ${res.status}`); return; }
       setCreando(false);
       setEntidadId("");
       setDescripcion("");
-      cargar();
+      await cargar();
+    } catch (e) {
+      setErrorGen("Error de conexión.");
     } finally {
       setGenerando(false);
     }
@@ -315,6 +321,7 @@ export default function EncuestasPage() {
       {creando && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
           <h3 className="font-semibold text-gray-900 text-sm">Generar enlace de encuesta</h3>
+          {errorGen && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{errorGen}</p>}
 
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Empresa / Entidad</label>
