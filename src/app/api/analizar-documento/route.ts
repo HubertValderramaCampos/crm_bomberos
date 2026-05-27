@@ -29,6 +29,7 @@ Responde SIEMPRE con un JSON válido con esta estructura exacta:
   "es_solicitud_capacitacion": true/false,
   "confianza": "alta" | "media" | "baja",
   "tipo_documento": "solicitud_capacitacion" | "oficio" | "memorando" | "informe" | "solicitud" | "carta" | "otro",
+  "subtipo_oficio": "CGBVP" | "MUNICIPALIDAD" | "VARIOS" | null,
   "descripcion_documento": "breve descripción de lo que es el documento (máx 1 oración)",
   "datos": {
     "empresa": "nombre de la empresa, institución u organización remitente (o null)",
@@ -53,6 +54,12 @@ Instrucciones de clasificación:
 - "solicitud": solicitud formal que NO sea de capacitación
 - "carta": comunicación menos formal
 - "otro": cualquier otro tipo
+
+Instrucciones para subtipo_oficio (solo aplica si tipo_documento es "oficio"):
+- "CGBVP": el oficio proviene del Cuerpo General de Bomberos Voluntarios del Perú (CGBVP) o de una compañía de bomberos
+- "MUNICIPALIDAD": el oficio proviene de una municipalidad o gobierno local (Municipalidad de Puente Piedra, municipalidad distrital, etc.)
+- "VARIOS": cualquier otro remitente (empresa privada, institución educativa, ONG, asociación, etc.)
+- null: si tipo_documento no es "oficio"
 
 Extrae todos los datos posibles independientemente del tipo de documento.
 No incluyas texto fuera del JSON.`;

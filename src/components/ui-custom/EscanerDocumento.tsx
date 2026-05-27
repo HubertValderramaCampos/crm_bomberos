@@ -23,6 +23,7 @@ interface ResultadoIA {
   es_solicitud_capacitacion: boolean;
   confianza: "alta" | "media" | "baja";
   tipo_documento: TipoDoc;
+  subtipo_oficio: "CGBVP" | "MUNICIPALIDAD" | "VARIOS" | null;
   descripcion_documento: string;
   datos: DatosIA;
   entidad_sugerida: EntidadSugerida | null;
@@ -392,7 +393,7 @@ function FlujoAdmin({
     hora_fin: d.hora_fin ?? "", lugar: d.lugar ?? "",
     num_participantes: d.num_participantes?.toString() ?? "", notas: "",
     tipo_documento: resultado.tipo_documento,
-    subtipo_oficio: "" as "",
+    subtipo_oficio: (resultado.subtipo_oficio ?? "") as "",
   });
   const [entidades, setEntidades]     = useState<Entidad[]>([]);
   const [entidadId, setEntidadId]     = useState<number | null>(null);
