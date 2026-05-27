@@ -13,11 +13,16 @@ export async function GET(req: Request) {
     if (!res.ok) return NextResponse.json({ coords: null });
 
     const html = await res.text();
-    // Extrae la primera ocurrencia de L.marker([LAT, LNG]
-    const match = html.match(/L\.marker\(\s*\[\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\s*\]/);
-    if (!match) return NextResponse.json({ coords: null });
+    // Buscar específicamente el marker de la emergencia (emergencyIcon), no las estaciones
+    const emergencyMatch = html.match(/L\.marker\(\s*\[\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\s*\]\s*,\s*\{\s*icon:\s*emergencyIcon/);
+    if (!emergencyMatch) return NextResponse.json({ coords: null });
 
-    return NextResponse.json({ coords: { lat: match[1], lng: match[2] } });
+    const lat = emergencyMatch[1];
+    const lng = emergencyMatch[2];
+    // Si las coordenadas son 0,0 el parte no tiene ubicación GPS
+    if (lat === "0" || lng === "0") return NextResponse.json({ coords: null });
+
+    return NextResponse.json({ coords: { lat, lng } });
   } catch {
     return NextResponse.json({ coords: null });
   }
