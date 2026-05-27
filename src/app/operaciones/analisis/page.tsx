@@ -173,17 +173,6 @@ async function getAnalisisData(f: FiltrosAnalisis) {
       `, params),
     ]);
 
-    // Asistencia por hora (24h)
-    const asistHoraMap = Object.fromEntries(asistPorHora.rows.map(r => [Number(r.hora), Number(r.total)]));
-    const asistHoraFull = Array.from({ length: 24 }, (_, h) => ({
-      hora: `${String(h).padStart(2,"0")}h`, total: asistHoraMap[h] ?? 0,
-    }));
-
-    // Asistencia por día de semana
-    const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
-    const asistDiaMap = Object.fromEntries(asistPorDia.rows.map(r => [Number(r.dow), Number(r.total)]));
-    const asistDiaFull = Array.from({ length: 7 }, (_, i) => ({ dia: DIAS[i], total: asistDiaMap[i] ?? 0 }));
-
     const horaMap = Object.fromEntries(porHora.rows.map(r => [Number(r.hora), Number(r.total)]));
     const horasFull = Array.from({ length: 24 }, (_, h) => ({
       hora: `${String(h).padStart(2,"0")}h`, total: horaMap[h] ?? 0,
@@ -192,6 +181,13 @@ async function getAnalisisData(f: FiltrosAnalisis) {
     const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
     const diaMap = Object.fromEntries(porDia.rows.map(r => [Number(r.dow), Number(r.total)]));
     const diasFull = Array.from({ length: 7 }, (_, i) => ({ dia: DIAS[i], total: diaMap[i] ?? 0 }));
+
+    const asistHoraMap = Object.fromEntries(asistPorHora.rows.map(r => [Number(r.hora), Number(r.total)]));
+    const asistHoraFull = Array.from({ length: 24 }, (_, h) => ({
+      hora: `${String(h).padStart(2,"0")}h`, total: asistHoraMap[h] ?? 0,
+    }));
+    const asistDiaMap = Object.fromEntries(asistPorDia.rows.map(r => [Number(r.dow), Number(r.total)]));
+    const asistDiaFull = Array.from({ length: 7 }, (_, i) => ({ dia: DIAS[i], total: asistDiaMap[i] ?? 0 }));
 
     const categorias = [...new Set(mesesStacked.rows.map(r => r.categoria))];
     const mesesMap: Record<string, Record<string,number>> = {};
