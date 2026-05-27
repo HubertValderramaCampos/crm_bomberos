@@ -138,25 +138,23 @@ async function getAnalisisData(f: FiltrosAnalisis) {
         ORDER BY DATE_TRUNC('month', COALESCE(e.fecha_salida,e.fecha_despacho,e.created_at))
       `, f.distritoId ? [f.anio, f.distritoId] : [f.anio]),
 
-      // Asistencia por hora
+      // Entradas a turno por hora (historial de cambio a en_turno)
       client.query<{ hora: string; total: string }>(`
-        SELECT EXTRACT(HOUR FROM ec.created_at)::int AS hora, COUNT(*) AS total
-        FROM asistencia_turno at2
-        JOIN estado_compania ec ON ec.id = at2.estado_compania_id
-        WHERE at2.es_bombero = true
-          AND EXTRACT(year FROM ec.created_at) = $1
-          ${f.mes ? `AND EXTRACT(month FROM ec.created_at) = $2` : ""}
+        SELECT EXTRACT(HOUR FROM cambiado_en)::int AS hora, COUNT(*) AS total
+        FROM bombero_historial_estado
+        WHERE estado_nuevo = 'en_turno'
+          AND EXTRACT(year FROM cambiado_en) = $1
+          ${f.mes ? `AND EXTRACT(month FROM cambiado_en) = $2` : ""}
         GROUP BY hora ORDER BY hora
       `, f.mes ? [f.anio, f.mes] : [f.anio]),
 
-      // Asistencia por día de la semana
+      // Entradas a turno por día de la semana
       client.query<{ dow: string; total: string }>(`
-        SELECT EXTRACT(DOW FROM ec.created_at)::int AS dow, COUNT(*) AS total
-        FROM asistencia_turno at2
-        JOIN estado_compania ec ON ec.id = at2.estado_compania_id
-        WHERE at2.es_bombero = true
-          AND EXTRACT(year FROM ec.created_at) = $1
-          ${f.mes ? `AND EXTRACT(month FROM ec.created_at) = $2` : ""}
+        SELECT EXTRACT(DOW FROM cambiado_en)::int AS dow, COUNT(*) AS total
+        FROM bombero_historial_estado
+        WHERE estado_nuevo = 'en_turno'
+          AND EXTRACT(year FROM cambiado_en) = $1
+          ${f.mes ? `AND EXTRACT(month FROM cambiado_en) = $2` : ""}
         GROUP BY dow ORDER BY dow
       `, f.mes ? [f.anio, f.mes] : [f.anio]),
 
