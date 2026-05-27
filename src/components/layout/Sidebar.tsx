@@ -64,7 +64,6 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Socios Estratégicos",    href: "/comercial/socios",        icon: Briefcase, roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "socios" },
       { label: "Clasificación de Socios", href: "/comercial/clasificacion", icon: Tag,       roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "clasificacion" },
-      { label: "Oficios y Documentos",  href: "/comercial/documentos",    icon: FileText,  roles: ["JEFE_COMPANIA", "ADMINISTRACION"], seccion: "documentos-comercial" },
     ],
   },
   {
