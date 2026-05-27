@@ -267,7 +267,7 @@ export function AnalisisCharts({
 
       {/* 8. Entradas a turno por hora */}
       {asistHora.some(d => d.total > 0) && (
-        <Card title="Entradas a Turno por Hora" sub="¿A qué hora se incorporan más bomberos al turno?">
+        <Card title="Bomberos en Turno por Hora" sub="Promedio de bomberos activos según la hora del día">
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={asistHora} barSize={14}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
@@ -275,7 +275,7 @@ export function AnalisisCharts({
               <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
               <Tooltip
                 contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
-                formatter={(v) => [`${v} ingresos`, ""]}
+                formatter={(v) => [`${v} bomberos (prom.)`, ""]}
               />
               <Bar dataKey="total" radius={[3, 3, 0, 0]}>
                 {asistHora.map((d, i) => {
@@ -304,7 +304,7 @@ export function AnalisisCharts({
 
       {/* 9. Entradas a turno por día de la semana */}
       {asistDia.some(d => d.total > 0) && (
-        <Card title="Entradas a Turno por Día" sub="¿Qué días se incorporan más bomberos al turno?">
+        <Card title="Bomberos en Turno por Día" sub="Promedio de bomberos activos según el día de la semana">
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={asistDia} barSize={32}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
@@ -312,7 +312,7 @@ export function AnalisisCharts({
               <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
               <Tooltip
                 contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
-                formatter={(v) => [`${v} ingresos`, ""]}
+                formatter={(v) => [`${v} bomberos (prom.)`, ""]}
               />
               <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                 {asistDia.map((d, i) => (

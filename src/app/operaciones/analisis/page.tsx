@@ -138,23 +138,35 @@ async function getAnalisisData(f: FiltrosAnalisis) {
         ORDER BY DATE_TRUNC('month', COALESCE(e.fecha_salida,e.fecha_despacho,e.created_at))
       `, f.distritoId ? [f.anio, f.distritoId] : [f.anio]),
 
-      // Entradas a turno por hora (historial de cambio a en_turno)
+      // Promedio de bomberos en turno por hora del día
       client.query<{ hora: string; total: string }>(`
-        SELECT EXTRACT(HOUR FROM cambiado_en)::int AS hora, COUNT(*) AS total
-        FROM bombero_historial_estado
-        WHERE estado_nuevo = 'en_turno'
-          AND EXTRACT(year FROM cambiado_en) = $1
-          ${f.mes ? `AND EXTRACT(month FROM cambiado_en) = $2` : ""}
+        SELECT hora, ROUND(AVG(cnt))::int AS total
+        FROM (
+          SELECT DATE_TRUNC('hour', cambiado_en) AS franja,
+                 EXTRACT(HOUR FROM cambiado_en)::int AS hora,
+                 COUNT(DISTINCT bombero_id) AS cnt
+          FROM bombero_historial_estado
+          WHERE estado_nuevo = 'en_turno'
+            AND EXTRACT(year FROM cambiado_en) = $1
+            ${f.mes ? `AND EXTRACT(month FROM cambiado_en) = $2` : ""}
+          GROUP BY franja, hora
+        ) sub
         GROUP BY hora ORDER BY hora
       `, f.mes ? [f.anio, f.mes] : [f.anio]),
 
-      // Entradas a turno por día de la semana
+      // Promedio de bomberos en turno por día de la semana
       client.query<{ dow: string; total: string }>(`
-        SELECT EXTRACT(DOW FROM cambiado_en)::int AS dow, COUNT(*) AS total
-        FROM bombero_historial_estado
-        WHERE estado_nuevo = 'en_turno'
-          AND EXTRACT(year FROM cambiado_en) = $1
-          ${f.mes ? `AND EXTRACT(month FROM cambiado_en) = $2` : ""}
+        SELECT dow, ROUND(AVG(cnt))::int AS total
+        FROM (
+          SELECT DATE_TRUNC('day', cambiado_en) AS dia,
+                 EXTRACT(DOW FROM cambiado_en)::int AS dow,
+                 COUNT(DISTINCT bombero_id) AS cnt
+          FROM bombero_historial_estado
+          WHERE estado_nuevo = 'en_turno'
+            AND EXTRACT(year FROM cambiado_en) = $1
+            ${f.mes ? `AND EXTRACT(month FROM cambiado_en) = $2` : ""}
+          GROUP BY dia, dow
+        ) sub
         GROUP BY dow ORDER BY dow
       `, f.mes ? [f.anio, f.mes] : [f.anio]),
 
