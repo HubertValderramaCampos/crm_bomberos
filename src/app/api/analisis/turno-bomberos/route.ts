@@ -97,10 +97,14 @@ export async function GET(req: Request) {
   // Construir array de días
   let porDia: { dia: string; total: number }[];
   if (semana || dia) {
-    porDia = (diasRes.rows as { fecha: string; total: number }[]).map(r => ({
-      dia: new Date(r.fecha).toLocaleDateString("es-PE", { weekday: "short", day: "2-digit", month: "short", timeZone: "UTC" }),
-      total: r.total,
-    }));
+    porDia = (diasRes.rows as { fecha: string; total: number }[]).map(r => {
+      const f = r.fecha as unknown;
+      const isoFecha = f instanceof Date ? (f as Date).toISOString().slice(0, 10) : String(f).slice(0, 10);
+      return {
+        dia: new Date(isoFecha + "T00:00:00Z").toLocaleDateString("es-PE", { weekday: "short", day: "2-digit", month: "short", timeZone: "UTC" }),
+        total: r.total,
+      };
+    });
   } else {
     const diaMap = Object.fromEntries((diasRes.rows as { dow: number; total: number }[]).map(r => [r.dow, r.total]));
     porDia = Array.from({ length: 7 }, (_, i) => ({ dia: DIAS_ES[i], total: diaMap[i] ?? 0 }));
@@ -109,7 +113,12 @@ export async function GET(req: Request) {
   return NextResponse.json({
     porHora,
     porDia,
-    semanas: semanasRes.rows.map(r => r.semana_inicio),
+    semanas: semanasRes.rows.map(r => {
+      // pg returns ::date columns as Date objects at runtime despite the string type
+      const v = r.semana_inicio as unknown;
+      if (v instanceof Date) return (v as Date).toISOString().slice(0, 10);
+      return String(v).slice(0, 10);
+    }),
     modoSemana: !!(semana || dia),
   });
 }
