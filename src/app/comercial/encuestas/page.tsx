@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import {
   ClipboardList, Plus, Copy, Check, Trash2, Loader2,
   ChevronDown, ChevronUp, Building2, ExternalLink,
@@ -94,8 +95,8 @@ function RespuestaDetalle({ r }: { r: Respuesta }) {
   );
 }
 
-function TokenCard({ tk, baseUrl, onDesactivar, onEliminar }: {
-  tk: TokenRow; baseUrl: string; onDesactivar: (id: number) => void; onEliminar: (id: number) => void;
+function TokenCard({ tk, baseUrl, puedeEditar, onDesactivar, onEliminar }: {
+  tk: TokenRow; baseUrl: string; puedeEditar: boolean; onDesactivar: (id: number) => void; onEliminar: (id: number) => void;
 }) {
   const [copiado,     setCopiado]     = useState(false);
   const [abierto,     setAbierto]     = useState(false);
@@ -170,7 +171,7 @@ function TokenCard({ tk, baseUrl, onDesactivar, onEliminar }: {
             </a>
           </div>
         </div>
-        {eliminando
+        {puedeEditar && (eliminando
           ? <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400 shrink-0" />
           : tk.activo
             ? <button onClick={desactivar} className="shrink-0 p-1.5 text-gray-300 hover:text-amber-500 hover:bg-amber-50 rounded-md transition-colors" title="Desactivar enlace">
@@ -179,7 +180,7 @@ function TokenCard({ tk, baseUrl, onDesactivar, onEliminar }: {
             : <button onClick={eliminar} className="shrink-0 p-1.5 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Eliminar permanentemente">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
-        }
+        )}
       </div>
 
       {/* Respuestas */}
@@ -207,6 +208,9 @@ function TokenCard({ tk, baseUrl, onDesactivar, onEliminar }: {
 }
 
 export default function EncuestasPage() {
+  const { data: session } = useSession();
+  const puedeEditar = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session?.user?.rol ?? "");
+
   const [tab,       setTab]       = useState<"dashboard" | "enlaces">("dashboard");
   const [tokens,    setTokens]    = useState<TokenRow[]>([]);
   const [entidades, setEntidades] = useState<Entidad[]>([]);
@@ -299,7 +303,7 @@ export default function EncuestasPage() {
           </h1>
           <p className="text-sm text-gray-400 mt-0.5">Genera un enlace por empresa y monitorea sus respuestas</p>
         </div>
-        {tab === "enlaces" && !creando && (
+        {puedeEditar && tab === "enlaces" && !creando && (
           <button
             onClick={() => setCreando(true)}
             className="flex items-center gap-2 px-4 py-2 bg-red-700 text-white text-sm rounded-lg hover:bg-red-800 transition-colors"
@@ -463,7 +467,7 @@ export default function EncuestasPage() {
               </div>
               <div className="space-y-2">
                 {tks.map(tk => (
-                  <TokenCard key={tk.id} tk={tk} baseUrl={baseUrl} onDesactivar={desactivarLocal} onEliminar={eliminarLocal} />
+                  <TokenCard key={tk.id} tk={tk} baseUrl={baseUrl} puedeEditar={puedeEditar} onDesactivar={desactivarLocal} onEliminar={eliminarLocal} />
                 ))}
               </div>
             </div>

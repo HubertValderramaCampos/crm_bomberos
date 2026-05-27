@@ -6,7 +6,7 @@ import pool from "@/lib/db";
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  if (!["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol))
+  if (!["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"].includes(session.user.rol))
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
