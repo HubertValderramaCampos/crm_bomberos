@@ -13,9 +13,11 @@ export async function GET() {
   const { rows } = await pool.query<{
     id: number; token: string; activo: boolean; created_at: string;
     entidad_id: number; entidad_nombre: string;
+    descripcion: string | null;
     total_respuestas: number; ultima_respuesta: string | null;
   }>(`
     SELECT t.id, t.token, t.activo, t.created_at::text,
+           t.descripcion,
            e.id AS entidad_id, e.nombre AS entidad_nombre,
            COUNT(r.id)::int AS total_respuestas,
            MAX(r.created_at)::text AS ultima_respuesta
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
   if (!["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol))
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
 
-  const { entidad_id } = await req.json();
+  const { entidad_id, descripcion } = await req.json();
   if (!entidad_id) return NextResponse.json({ error: "entidad_id requerido" }, { status: 400 });
 
   // Obtener nombre de la entidad para el slug
@@ -57,9 +59,9 @@ export async function POST(req: Request) {
   const token = `${slug}-${suffix}`;
 
   const { rows } = await pool.query<{ id: number }>(`
-    INSERT INTO encuesta_token (entidad_id, token) VALUES ($1, $2)
+    INSERT INTO encuesta_token (entidad_id, token, descripcion) VALUES ($1, $2, $3)
     RETURNING id
-  `, [entidad_id, token]);
+  `, [entidad_id, token, descripcion ?? null]);
 
   return NextResponse.json({ id: rows[0].id, token }, { status: 201 });
 }

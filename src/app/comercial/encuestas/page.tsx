@@ -11,6 +11,7 @@ interface Entidad { id: number; nombre: string; tipo: string; }
 interface TokenRow {
   id: number; token: string; activo: boolean; created_at: string;
   entidad_id: number; entidad_nombre: string;
+  descripcion: string | null;
   total_respuestas: number; ultima_respuesta: string | null;
 }
 interface Respuesta {
@@ -142,6 +143,9 @@ function TokenCard({ tk, baseUrl, onDesactivar }: {
             </span>
             <span className="text-xs text-gray-400">Creado {new Date(tk.created_at).toLocaleDateString("es-PE")}</span>
           </div>
+          {tk.descripcion && (
+            <p className="text-sm font-semibold text-gray-800 mt-1">{tk.descripcion}</p>
+          )}
           <div className="flex items-center gap-2 mt-2">
             <code className="text-[11px] text-gray-500 bg-gray-50 border border-gray-200 rounded px-2 py-1 truncate max-w-xs">{url}</code>
             <button onClick={copiar} className="shrink-0 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors" title="Copiar enlace">
@@ -189,6 +193,7 @@ export default function EncuestasPage() {
   const [loading,   setLoading]   = useState(true);
   const [creando,       setCreando]       = useState(false);
   const [entidadId,     setEntidadId]     = useState<string>("");
+  const [descripcion,   setDescripcion]   = useState("");
   const [generando,     setGenerando]     = useState(false);
   const [baseUrl,       setBaseUrl]       = useState("");
   const [nuevaEntidad,  setNuevaEntidad]  = useState(false);
@@ -222,10 +227,11 @@ export default function EncuestasPage() {
       await fetch("/api/encuestas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entidad_id: Number(entidadId) }),
+        body: JSON.stringify({ entidad_id: Number(entidadId), descripcion: descripcion.trim() || null }),
       });
       setCreando(false);
       setEntidadId("");
+      setDescripcion("");
       cargar();
     } finally {
       setGenerando(false);
@@ -307,23 +313,38 @@ export default function EncuestasPage() {
           <h3 className="font-semibold text-gray-900 text-sm">Generar enlace de encuesta</h3>
 
           {!nuevaEntidad ? (
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Empresa / Entidad</label>
-              <select
-                value={entidadId}
-                onChange={e => setEntidadId(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400"
-              >
-                <option value="">Seleccionar entidad…</option>
-                {entidades.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
-              </select>
-              <button
-                onClick={() => setNuevaEntidad(true)}
-                className="mt-2 flex items-center gap-1.5 text-xs text-red-600 hover:text-red-800 transition-colors"
-              >
-                <PlusCircle className="w-3.5 h-3.5" /> Crear nueva entidad
-              </button>
-            </div>
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Empresa / Entidad</label>
+                <select
+                  value={entidadId}
+                  onChange={e => setEntidadId(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400"
+                >
+                  <option value="">Seleccionar entidad…</option>
+                  {entidades.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                </select>
+                <button
+                  onClick={() => setNuevaEntidad(true)}
+                  className="mt-2 flex items-center gap-1.5 text-xs text-red-600 hover:text-red-800 transition-colors"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" /> Crear nueva entidad
+                </button>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Descripción de la capacitación <span className="text-gray-400 font-normal">(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={descripcion}
+                  onChange={e => setDescripcion(e.target.value)}
+                  placeholder="Ej: Capacitación Primeros Auxilios — Mayo 2025"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">Ayuda a distinguir esta encuesta de otras de la misma empresa.</p>
+              </div>
+            </>
           ) : (
             <div className="border border-red-100 bg-red-50/50 rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
@@ -363,7 +384,7 @@ export default function EncuestasPage() {
 
           <div className="flex justify-end gap-2 pt-1">
             <button
-              onClick={() => { setCreando(false); setEntidadId(""); setNuevaEntidad(false); setNuevoNombre(""); }}
+              onClick={() => { setCreando(false); setEntidadId(""); setDescripcion(""); setNuevaEntidad(false); setNuevoNombre(""); }}
               className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Cancelar
