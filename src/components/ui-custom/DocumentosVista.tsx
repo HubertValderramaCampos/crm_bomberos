@@ -375,7 +375,7 @@ export function DocumentosVista({
   );
 
   const inst   = documentos.filter(d => d.tipo_documento === "oficio" && ["CGBVP", "MUNICIPALIDAD"].includes(d.subtipo_oficio ?? ""));
-  const varios = documentos.filter(d => d.tipo_documento === "oficio" && d.subtipo_oficio === "VARIOS");
+  const varios = documentos.filter(d => d.tipo_documento === "oficio" && (d.subtipo_oficio === "VARIOS" || d.subtipo_oficio === null));
   const otros  = documentos.filter(d => d.tipo_documento !== "oficio");
 
   // En vistas de oficio específicas no mostramos tabs, solo la tabla directa

@@ -18,7 +18,7 @@ export default async function OficiosVariosPage() {
     FROM solicitud_capacitacion s
     LEFT JOIN entidad e ON e.id = s.entidad_id
     WHERE s.tipo_documento = 'oficio'
-      AND s.subtipo_oficio = 'VARIOS'
+      AND (s.subtipo_oficio = 'VARIOS' OR s.subtipo_oficio IS NULL)
     ORDER BY s.creado_en DESC
   `);
 
