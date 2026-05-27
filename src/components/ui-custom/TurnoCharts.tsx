@@ -220,7 +220,11 @@ export function TurnoCharts({ anio, mes }: { anio: number; mes: number | null })
                   />
                   <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                     {porDia.map((d, i) => {
-                      const esFinDeSemana = d.dia === "Dom" || d.dia === "Sáb";
+                      // Sin semana: labels son "Dom","Lun"… — semana: labels son "lun, 27 abr."
+                      // DATE_TRUNC('week') en PG empieza lunes → i=5 sáb, i=6 dom
+                      const esFinDeSemana = semana
+                        ? i === 5 || i === 6
+                        : d.dia === "Dom" || d.dia === "Sáb";
                       return <Cell key={i} fill={esFinDeSemana ? "#dc2626" : "#16a34a"} />;
                     })}
                   </Bar>
