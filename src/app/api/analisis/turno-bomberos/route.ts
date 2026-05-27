@@ -45,32 +45,127 @@ export async function GET(req: Request) {
     whereDiaParams = [anio];
   }
 
+  // Construir WHERE para el rango completo (usado en joins de entrada/salida)
+  let rangoWhere: string;
+  let rangoParams: (string | number)[];
+  if (dia) {
+    rangoWhere = `$1::date AND ($1::date + INTERVAL '1 day')`;
+    rangoParams = [dia];
+  } else if (semana) {
+    rangoWhere = `$1::date AND ($1::date + INTERVAL '7 days')`;
+    rangoParams = [semana];
+  } else if (mes) {
+    rangoWhere = `DATE_TRUNC('month', MAKE_DATE($1::int, $2::int, 1)) AND DATE_TRUNC('month', MAKE_DATE($1::int, $2::int, 1)) + INTERVAL '1 month'`;
+    rangoParams = [anio, mes];
+  } else {
+    rangoWhere = `DATE_TRUNC('year', MAKE_DATE($1::int, 1, 1)) AND DATE_TRUNC('year', MAKE_DATE($1::int, 1, 1)) + INTERVAL '1 year'`;
+    rangoParams = [anio];
+  }
+
   const [horasRes, diasRes, semanasRes] = await Promise.all([
-    // Por hora: bomberos únicos
+    // Por hora: bomberos activos en esa franja (entrada <= franja < salida)
     pool.query<{ hora: number; total: number }>(`
-      SELECT EXTRACT(HOUR FROM cambiado_en)::int AS hora,
+      WITH entradas AS (
+        SELECT bombero_id, cambiado_en AS inicio
+        FROM bombero_historial_estado
+        WHERE estado_nuevo = 'en_turno'
+      ),
+      salidas AS (
+        SELECT bombero_id, cambiado_en AS fin
+        FROM bombero_historial_estado
+        WHERE estado_nuevo = 'franco'
+      ),
+      turnos AS (
+        SELECT e.bombero_id,
+               e.inicio,
+               MIN(s.fin) AS fin
+        FROM entradas e
+        JOIN salidas s ON s.bombero_id = e.bombero_id AND s.fin > e.inicio
+        GROUP BY e.bombero_id, e.inicio
+      ),
+      franjas AS (
+        SELECT generate_series(
+          DATE_TRUNC('hour', inicio),
+          fin - INTERVAL '1 second',
+          INTERVAL '1 hour'
+        ) AS franja, bombero_id
+        FROM turnos
+        WHERE inicio >= ${rangoWhere}
+      )
+      SELECT EXTRACT(HOUR FROM franja)::int AS hora,
              COUNT(DISTINCT bombero_id)::int AS total
-      FROM bombero_historial_estado
-      WHERE estado_nuevo = 'en_turno' AND ${whereHora}
+      FROM franjas
       GROUP BY hora ORDER BY hora
-    `, whereHoraParams),
+    `, rangoParams),
 
     // Por día: bomberos únicos (DOW si es mes/año, fecha real si es semana/día)
     semana || dia
       ? pool.query<{ fecha: string; total: number }>(`
-          SELECT cambiado_en::date AS fecha,
+          WITH entradas AS (
+            SELECT bombero_id, cambiado_en AS inicio
+            FROM bombero_historial_estado
+            WHERE estado_nuevo = 'en_turno'
+          ),
+          salidas AS (
+            SELECT bombero_id, cambiado_en AS fin
+            FROM bombero_historial_estado
+            WHERE estado_nuevo = 'franco'
+          ),
+          turnos AS (
+            SELECT e.bombero_id,
+                   e.inicio,
+                   MIN(s.fin) AS fin
+            FROM entradas e
+            JOIN salidas s ON s.bombero_id = e.bombero_id AND s.fin > e.inicio
+            GROUP BY e.bombero_id, e.inicio
+          ),
+          franjas AS (
+            SELECT generate_series(
+              DATE_TRUNC('day', inicio),
+              fin - INTERVAL '1 second',
+              INTERVAL '1 day'
+            )::date AS fecha, bombero_id
+            FROM turnos
+            WHERE inicio >= ${rangoWhere}
+          )
+          SELECT fecha,
                  COUNT(DISTINCT bombero_id)::int AS total
-          FROM bombero_historial_estado
-          WHERE estado_nuevo = 'en_turno' AND ${whereDia}
+          FROM franjas
           GROUP BY fecha ORDER BY fecha
-        `, whereDiaParams)
+        `, rangoParams)
       : pool.query<{ dow: number; total: number }>(`
-          SELECT EXTRACT(DOW FROM cambiado_en)::int AS dow,
+          WITH entradas AS (
+            SELECT bombero_id, cambiado_en AS inicio
+            FROM bombero_historial_estado
+            WHERE estado_nuevo = 'en_turno'
+          ),
+          salidas AS (
+            SELECT bombero_id, cambiado_en AS fin
+            FROM bombero_historial_estado
+            WHERE estado_nuevo = 'franco'
+          ),
+          turnos AS (
+            SELECT e.bombero_id,
+                   e.inicio,
+                   MIN(s.fin) AS fin
+            FROM entradas e
+            JOIN salidas s ON s.bombero_id = e.bombero_id AND s.fin > e.inicio
+            GROUP BY e.bombero_id, e.inicio
+          ),
+          franjas AS (
+            SELECT generate_series(
+              DATE_TRUNC('day', inicio),
+              fin - INTERVAL '1 second',
+              INTERVAL '1 day'
+            ) AS franja, bombero_id
+            FROM turnos
+            WHERE inicio >= ${rangoWhere}
+          )
+          SELECT EXTRACT(DOW FROM franja)::int AS dow,
                  COUNT(DISTINCT bombero_id)::int AS total
-          FROM bombero_historial_estado
-          WHERE estado_nuevo = 'en_turno' AND ${whereDia}
+          FROM franjas
           GROUP BY dow ORDER BY dow
-        `, whereDiaParams),
+        `, rangoParams),
 
     // Semanas disponibles (solo cuando hay mes seleccionado)
     mes
@@ -78,8 +173,8 @@ export async function GET(req: Request) {
           SELECT DISTINCT DATE_TRUNC('week', cambiado_en)::date AS semana_inicio
           FROM bombero_historial_estado
           WHERE estado_nuevo = 'en_turno'
-            AND EXTRACT(year FROM cambiado_en) = $1
-            AND EXTRACT(month FROM cambiado_en) = $2
+            AND cambiado_en >= DATE_TRUNC('month', MAKE_DATE($1::int, $2::int, 1))
+            AND cambiado_en <  DATE_TRUNC('month', MAKE_DATE($1::int, $2::int, 1)) + INTERVAL '1 month'
           ORDER BY semana_inicio
         `, [anio, mes])
       : Promise.resolve({ rows: [] as { semana_inicio: string }[] }),
