@@ -915,11 +915,12 @@ function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {
                   </div>
                   {formEdit.tipo_documento === "oficio" && (
                     <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Categoría</label>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Categoría *</label>
                       <select value={formEdit.subtipo_oficio} onChange={e => setFormEdit(f => ({ ...f, subtipo_oficio: e.target.value }))} className={inputCls}>
                         <option value="">— Seleccionar —</option>
-                        <option value="INSTITUCIONAL">Institucional</option>
-                        <option value="VARIOS">Varios</option>
+                        <option value="CGBVP">Oficios CGBVP</option>
+                        <option value="MUNICIPALIDAD">Municipalidad de Puente Piedra</option>
+                        <option value="VARIOS">Oficios Varios</option>
                       </select>
                     </div>
                   )}
@@ -931,14 +932,19 @@ function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {
                   </div>
                 </div>
 
-                {/* Entidad */}
+                {/* Entidad obligatoria */}
                 <div>
-                  <label className="text-xs font-semibold text-gray-600 mb-1 block">Entidad</label>
+                  <label className="text-xs font-semibold text-gray-600 mb-1 block">
+                    Entidad <span className="text-red-500">*</span>
+                  </label>
                   <SelectorEntidad
                     entidades={entidades} entidadSel={entidadSel}
                     onSelect={e => { setEntidadId(e.id); setEntidadSel(e); setFormEdit(f => ({ ...f, empresa: e.nombre })); }}
                     onClear={() => { setEntidadId(null); setEntidadSel(null); }}
                   />
+                  {!entidadId && (
+                    <p className="text-[10px] text-amber-600 mt-1">Selecciona una entidad registrada o créala antes de guardar.</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -946,10 +952,12 @@ function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {
                     <label className="text-xs font-semibold text-gray-600 mb-1 block">Asunto / Tema</label>
                     <input type="text" value={formEdit.tema} onChange={e => setFormEdit(f => ({ ...f, tema: e.target.value }))} className={inputCls} />
                   </div>
+                  {!entidadId && (
                   <div className="col-span-2">
-                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Empresa</label>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Empresa <span className="text-gray-400 font-normal">(si no está registrada arriba)</span></label>
                     <input type="text" value={formEdit.empresa} onChange={e => setFormEdit(f => ({ ...f, empresa: e.target.value }))} className={inputCls} />
                   </div>
+                  )}
                   <div>
                     <label className="text-xs font-semibold text-gray-600 mb-1 block">Fecha</label>
                     <input type="date" value={formEdit.fecha_solicitada} onChange={e => setFormEdit(f => ({ ...f, fecha_solicitada: e.target.value }))} className={inputCls} />
@@ -977,7 +985,7 @@ function PanelDocumentos({ onAgendar }: { onAgendar: (s: Documento) => void }) {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => setEdit(null)} className="flex-1 py-2 text-xs text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
-                  <button onClick={guardarEdicion} disabled={guardando}
+                  <button onClick={guardarEdicion} disabled={guardando || !entidadId}
                     className="flex-1 py-2 text-xs font-semibold text-white bg-red-700 hover:bg-red-800 rounded-lg disabled:opacity-50 flex items-center justify-center gap-1">
                     {guardando ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Guardar
                   </button>
