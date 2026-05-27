@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import {
   Search, ChevronLeft, ChevronRight, Clock, MapPin,
   Truck, Users, ChevronDown, ChevronUp, X, Filter,
-  ShieldCheck, Timer, CalendarDays,
+  ShieldCheck, Timer, CalendarDays, Navigation,
 } from "lucide-react";
 import type { Parte } from "@/app/operaciones/partes/page";
 
@@ -244,22 +244,48 @@ function ParteRow({ parte, esBombero }: { parte: Parte; esBombero: boolean }) {
                   <Truck className="w-3 h-3" />Unidades y Ubicación
                 </p>
                 <div className="space-y-2 text-xs">
-                  {(parte.distrito || parte.direccion) && (
-                    <div className="bg-white rounded-lg border border-gray-200 px-3 py-2">
-                      {parte.distrito && (
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Distrito</p>
-                      )}
-                      {parte.distrito && (
-                        <p className="font-semibold text-blue-700">{parte.distrito}</p>
-                      )}
-                      {parte.direccion && (
-                        <p className="text-gray-600 text-[11px] mt-0.5 flex items-start gap-1">
-                          <MapPin className="w-3 h-3 shrink-0 mt-0.5 text-gray-400" />
-                          {parte.direccion}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  {(parte.distrito || parte.direccion) && (() => {
+                    const query = [parte.direccion, parte.distrito, "Perú"].filter(Boolean).join(", ");
+                    const gmUrl   = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+                    const wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(query)}&navigate=yes`;
+                    return (
+                      <div className="bg-white rounded-lg border border-gray-200 px-3 py-2 space-y-2">
+                        {parte.distrito && (
+                          <>
+                            <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Distrito</p>
+                            <p className="font-semibold text-blue-700">{parte.distrito}</p>
+                          </>
+                        )}
+                        {parte.direccion && (
+                          <p className="text-gray-600 text-[11px] flex items-start gap-1">
+                            <MapPin className="w-3 h-3 shrink-0 mt-0.5 text-gray-400" />
+                            {parte.direccion}
+                          </p>
+                        )}
+                        {/* Botones de navegación */}
+                        <div className="flex gap-2 pt-1">
+                          <a
+                            href={gmUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                          >
+                            <Navigation className="w-3 h-3" />
+                            Google Maps
+                          </a>
+                          <a
+                            href={wazeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold bg-cyan-500 hover:bg-cyan-600 text-white transition-colors"
+                          >
+                            <Navigation className="w-3 h-3" />
+                            Waze
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {parte.vehiculos.length > 0 && (
                     <div className="bg-white rounded-lg border border-gray-200 px-3 py-2">
                       <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-1.5">Unidades despachadas</p>
