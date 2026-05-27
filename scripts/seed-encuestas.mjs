@@ -61,8 +61,8 @@ function normalizarEmpresa(nombre) {
   if (!nombre) return "Sin nombre";
   const n = nombre.trim();
 
-  // Variantes de IEI 585 Bella Aurora
-  if (/bella aurora/i.test(n) || /iei\s*(n[°o]?\s*)?585/i.test(n) || n === "IEI 585") {
+  // Variantes de IEI 585 Bella Aurora (incluyendo "I.E. I 585", "IEI 585", etc.)
+  if (/bella aurora/i.test(n) || /iei\s*(n[°o]?\s*)?585/i.test(n) || /i\.e\.?\s*i\.?\s*585/i.test(n) || n === "IEI 585" || n === "585 Bella Aurora") {
     return "IEI N° 585 Bella Aurora";
   }
   // Variantes de Bomberos Puente Piedra (propios)
