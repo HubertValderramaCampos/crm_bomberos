@@ -78,7 +78,9 @@ function ParteRow({ parte, esBombero }: { parte: Parte; esBombero: boolean }) {
           ? `https://www.google.com/maps?q=${coords.lat},${coords.lng}`
           : `https://waze.com/ul?ll=${coords.lat},${coords.lng}&navigate=yes`;
       } else {
-        const query = [parte.direccion, parte.distrito, "Perú"].filter(Boolean).join(", ");
+        // Limpiar coordenadas embebidas del texto de dirección antes de buscar
+        const dirLimpia = parte.direccion?.replace(/\(-?\d+\.\d+,\s*-?\d+\.\d+\)/g, "").replace(/\s+/g, " ").trim();
+        const query = [dirLimpia, parte.distrito, "Perú"].filter(Boolean).join(", ");
         url = destino === "gmaps"
           ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
           : `https://waze.com/ul?q=${encodeURIComponent(query)}&navigate=yes`;
