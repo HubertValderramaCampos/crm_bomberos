@@ -85,6 +85,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const [misPermisos, setMisPermisos] = useState<string[] | null>(null);
   const [rachaAcceso, setRachaAcceso] = useState<number | null>(null);
   const [rachaConfig, setRachaConfig] = useState<Record<string, number> | null>(null);
+  const [rachaListo,  setRachaListo]  = useState(false);
 
   const usaPermisosIndividuales = ROLES_CON_PERMISOS.includes(rol);
 
@@ -93,13 +94,15 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
 
     // Para bomberos: racha mínima desde BD (con fallback al rachaMin hardcodeado)
     if (rol === "BOMBERO") {
-      if (rachaAcceso === null || rachaConfig === null) return false; // aún cargando
+      if (!rachaListo) return false; // aún cargando
+      const racha  = rachaAcceso ?? 0;
+      const config = rachaConfig ?? {};
       const seccion = item.seccion;
-      const minReq = seccion && rachaConfig[seccion] !== undefined
-        ? rachaConfig[seccion]
+      const minReq = (seccion !== undefined && config[seccion] !== undefined)
+        ? config[seccion]
         : (item.rachaMin ?? 0);
-      if (minReq === -1) return false; // bloqueado explícitamente
-      return rachaAcceso >= minReq;
+      if (minReq === -1) return false; // bloqueado explícitamente (Nunca)
+      return racha >= minReq;
     }
 
     // Cuentas de área usan permisos individuales
@@ -144,7 +147,13 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
 
   // Cargar racha y config de acceso para bomberos
   useEffect(() => {
-    if (rol !== "BOMBERO") { setRachaAcceso(0); setRachaConfig({}); return; }
+    if (!rol) return; // sesión aún cargando, esperar
+    if (rol !== "BOMBERO") {
+      setRachaAcceso(0);
+      setRachaConfig({});
+      setRachaListo(true);
+      return;
+    }
     Promise.all([
       fetch("/api/usuarios/racha-acceso").then(r => r.json()),
       fetch("/api/bombero-acceso-racha").then(r => r.json()),
@@ -155,7 +164,12 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
         for (const row of config) map[row.seccion] = row.racha_min;
       }
       setRachaConfig(map);
-    }).catch(() => { setRachaAcceso(0); setRachaConfig({}); });
+      setRachaListo(true);
+    }).catch(() => {
+      setRachaAcceso(0);
+      setRachaConfig({});
+      setRachaListo(true);
+    });
   }, [rol]);
 
   useEffect(() => {
