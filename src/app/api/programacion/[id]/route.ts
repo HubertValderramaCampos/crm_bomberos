@@ -58,6 +58,39 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       `UPDATE solicitud_capacitacion SET estado = 'FINALIZADO' WHERE actividad_id = $1`,
       [id]
     );
+
+    // Generar 3 encuestas automáticas si la actividad tiene entidad vinculada
+    const actRow = await pool.query<{
+      entidad_id: number | null; descripcion: string | null; entidad_nombre: string | null;
+    }>(`
+      SELECT a.entidad_id, a.descripcion, e.nombre AS entidad_nombre
+      FROM programacion_actividad a
+      LEFT JOIN entidad e ON e.id = a.entidad_id
+      WHERE a.id = $1
+    `, [id]);
+
+    const act = actRow.rows[0];
+    if (act?.entidad_id) {
+      const slug = act.entidad_nombre!
+        .toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 20);
+
+      const tokens: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        const suffix = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+        const token = `${slug}-${suffix}`;
+        await pool.query(
+          `INSERT INTO encuesta_token (entidad_id, token, descripcion) VALUES ($1, $2, $3)`,
+          [act.entidad_id, token, act.descripcion ?? null]
+        );
+        tokens.push(token);
+      }
+      return NextResponse.json({ ok: true, encuestas_generadas: tokens });
+    }
+
     return NextResponse.json({ ok: true });
   }
 

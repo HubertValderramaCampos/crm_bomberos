@@ -4,9 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import {
   ClipboardList, Plus, Copy, Check, Trash2, Loader2,
   ChevronDown, ChevronUp, Building2, ExternalLink,
-  ThumbsUp, ThumbsDown, Star, PlusCircle,
+  ThumbsUp, ThumbsDown, Star, PlusCircle, Search, X,
+  BarChart2, Link2,
 } from "lucide-react";
 import { ModalEntidad } from "@/components/ui-custom/EntidadesDirectorio";
+import { EncuestasDashboard } from "@/components/ui-custom/EncuestasDashboard";
 
 interface Entidad { id: number; nombre: string; tipo: string; }
 interface TokenRow {
@@ -205,11 +207,15 @@ function TokenCard({ tk, baseUrl, onDesactivar, onEliminar }: {
 }
 
 export default function EncuestasPage() {
+  const [tab,       setTab]       = useState<"dashboard" | "enlaces">("dashboard");
   const [tokens,    setTokens]    = useState<TokenRow[]>([]);
   const [entidades, setEntidades] = useState<Entidad[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [creando,       setCreando]       = useState(false);
   const [entidadId,     setEntidadId]     = useState<string>("");
+  const [entidadNombre, setEntidadNombre] = useState<string>("");
+  const [busqEnt,       setBusqEnt]       = useState("");
+  const [showDrop,      setShowDrop]      = useState(false);
   const [descripcion,   setDescripcion]   = useState("");
   const [generando,     setGenerando]     = useState(false);
   const [baseUrl,       setBaseUrl]       = useState("");
@@ -262,6 +268,8 @@ export default function EncuestasPage() {
     const entRes = await fetch("/api/entidades").then(r => r.json());
     setEntidades(Array.isArray(entRes) ? entRes : []);
     setEntidadId(String(nueva.id));
+    setEntidadNombre(nueva.nombre);
+    setBusqEnt(nueva.nombre);
     setModalEntidad(false);
   }
 
@@ -291,7 +299,7 @@ export default function EncuestasPage() {
           </h1>
           <p className="text-sm text-gray-400 mt-0.5">Genera un enlace por empresa y monitorea sus respuestas</p>
         </div>
-        {!creando && (
+        {tab === "enlaces" && !creando && (
           <button
             onClick={() => setCreando(true)}
             className="flex items-center gap-2 px-4 py-2 bg-red-700 text-white text-sm rounded-lg hover:bg-red-800 transition-colors"
@@ -301,21 +309,36 @@ export default function EncuestasPage() {
         )}
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white rounded-xl border border-gray-200 px-4 py-3">
-          <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-1">Empresas</p>
-          <p className="text-2xl font-bold text-gray-800">{Object.keys(porEntidad).length}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 px-4 py-3">
-          <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-1">Links activos</p>
-          <p className="text-2xl font-bold text-green-600">{tokens.filter(t => t.activo).length}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 px-4 py-3">
-          <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-1">Respuestas</p>
-          <p className="text-2xl font-bold text-blue-600">{tokens.reduce((s, t) => s + t.total_respuestas, 0)}</p>
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+        <button
+          onClick={() => setTab("dashboard")}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            tab === "dashboard" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          <BarChart2 className="w-3.5 h-3.5" /> Dashboard
+        </button>
+        <button
+          onClick={() => setTab("enlaces")}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            tab === "enlaces" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          <Link2 className="w-3.5 h-3.5" /> Gestión de enlaces
+          {tokens.filter(t => t.activo).length > 0 && (
+            <span className="ml-1 text-[10px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
+              {tokens.filter(t => t.activo).length}
+            </span>
+          )}
+        </button>
       </div>
+
+      {/* Dashboard */}
+      {tab === "dashboard" && <EncuestasDashboard entidades={entidades} />}
+
+      {/* Tab: Gestión de enlaces */}
+      {tab === "enlaces" && <>
 
       {/* Formulario generar */}
       {creando && (
@@ -323,17 +346,62 @@ export default function EncuestasPage() {
           <h3 className="font-semibold text-gray-900 text-sm">Generar enlace de encuesta</h3>
           {errorGen && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{errorGen}</p>}
 
-          <div>
+          <div className="relative">
             <label className="block text-xs font-medium text-gray-500 mb-1">Empresa / Entidad</label>
-            <select
-              value={entidadId}
-              onChange={e => setEntidadId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400"
-            >
-              <option value="">Seleccionar entidad…</option>
-              {entidades.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
-            </select>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                value={busqEnt}
+                onChange={e => {
+                  setBusqEnt(e.target.value);
+                  setEntidadId("");
+                  setEntidadNombre("");
+                  setShowDrop(true);
+                }}
+                onFocus={() => setShowDrop(true)}
+                onBlur={() => setTimeout(() => setShowDrop(false), 150)}
+                placeholder="Buscar entidad…"
+                className="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400"
+              />
+              {busqEnt && (
+                <button
+                  type="button"
+                  onClick={() => { setBusqEnt(""); setEntidadId(""); setEntidadNombre(""); setShowDrop(false); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            {showDrop && (() => {
+              const q = busqEnt.toLowerCase();
+              const filtradas = entidades.filter(e => e.nombre.toLowerCase().includes(q));
+              if (!filtradas.length) return null;
+              return (
+                <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {filtradas.map(e => (
+                    <li key={e.id}>
+                      <button
+                        type="button"
+                        onMouseDown={() => {
+                          setEntidadId(String(e.id));
+                          setEntidadNombre(e.nombre);
+                          setBusqEnt(e.nombre);
+                          setShowDrop(false);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 hover:text-red-700 transition-colors"
+                      >
+                        {e.nombre}
+                        <span className="ml-2 text-[10px] text-gray-400">{e.tipo}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
             <button
+              type="button"
               onClick={() => setModalEntidad(true)}
               className="mt-2 flex items-center gap-1.5 text-xs text-red-600 hover:text-red-800 transition-colors"
             >
@@ -357,7 +425,7 @@ export default function EncuestasPage() {
 
           <div className="flex justify-end gap-2 pt-1">
             <button
-              onClick={() => { setCreando(false); setEntidadId(""); setDescripcion(""); }}
+              onClick={() => { setCreando(false); setEntidadId(""); setEntidadNombre(""); setBusqEnt(""); setDescripcion(""); }}
               className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Cancelar
@@ -402,6 +470,8 @@ export default function EncuestasPage() {
           ))}
         </div>
       )}
+
+      </> /* fin tab enlaces */}
 
       {/* Modal crear entidad — igual al de /administracion/entidades */}
       {modalEntidad && (

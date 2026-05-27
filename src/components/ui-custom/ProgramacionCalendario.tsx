@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   ChevronLeft, ChevronRight, Plus, X, Clock, MapPin,
   Users, BookOpen, Calendar, Check, Loader2, Building2, Search,
-  CheckCircle2, AlertCircle, CalendarClock, RotateCcw,
+  CheckCircle2, AlertCircle, CalendarClock, RotateCcw, Copy, ClipboardList,
 } from "lucide-react";
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -144,10 +144,12 @@ function ModalReprogramar({ actividad, onClose, onReprogramado }: {
 function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
   id: number; puedeCrear: boolean; onClose: () => void; onActualizado: () => void;
 }) {
-  const [data, setData]             = useState<Detalle | null>(null);
-  const [finalizando, setFin]       = useState(false);
-  const [confirmFin, setConfirmFin] = useState(false);
-  const [reprogramar, setReprogram] = useState(false);
+  const [data, setData]                     = useState<Detalle | null>(null);
+  const [finalizando, setFin]               = useState(false);
+  const [confirmFin, setConfirmFin]         = useState(false);
+  const [reprogramar, setReprogram]         = useState(false);
+  const [encuestasGen, setEncuestasGen]     = useState<string[] | null>(null);
+  const [copiadoIdx, setCopiadoIdx]         = useState<number | null>(null);
 
   function cargar() {
     fetch(`/api/programacion/${id}`).then(r => r.json()).then(setData);
@@ -167,15 +169,30 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
 
   async function finalizar() {
     setFin(true);
-    await fetch(`/api/programacion/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accion: "finalizar" }),
+    try {
+      const res = await fetch(`/api/programacion/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "finalizar" }),
+      });
+      const result = await res.json();
+      if (result.encuestas_generadas?.length) {
+        setEncuestasGen(result.encuestas_generadas);
+      }
+    } finally {
+      setFin(false);
+      setConfirmFin(false);
+      onActualizado();
+      cargar();
+    }
+  }
+
+  function copiarUrl(token: string, idx: number) {
+    const url = `${window.location.origin}/encuesta/${token}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiadoIdx(idx);
+      setTimeout(() => setCopiadoIdx(null), 2000);
     });
-    setFin(false);
-    setConfirmFin(false);
-    onActualizado();
-    cargar();
   }
 
   return (
@@ -289,6 +306,12 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
                   <p className="text-xs font-semibold text-green-800">¿Confirmar que la actividad se realizó?</p>
                 </div>
                 <p className="text-xs text-green-700">Se marcará como finalizada y la solicitud vinculada pasará a estado <strong>Finalizado</strong>.</p>
+                {data.entidad_nombre && (
+                  <p className="text-xs text-green-700 flex items-center gap-1.5">
+                    <ClipboardList className="w-3.5 h-3.5 shrink-0" />
+                    Se generarán <strong>3 encuestas de satisfacción</strong> automáticamente para <strong>{data.entidad_nombre}</strong>.
+                  </p>
+                )}
                 <div className="flex gap-2">
                   <button onClick={() => setConfirmFin(false)}
                     className="flex-1 py-2 text-xs text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
@@ -300,6 +323,46 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
                     {finalizando ? "Finalizando..." : "Sí, finalizar"}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Notificación de encuestas generadas automáticamente */}
+            {encuestasGen && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-3">
+                <div className="flex items-start gap-2">
+                  <ClipboardList className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-blue-800">3 encuestas generadas automáticamente</p>
+                    <p className="text-xs text-blue-600 mt-0.5">Comparte estos enlaces con los participantes de la capacitación.</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {encuestasGen.map((token, i) => {
+                    const url = typeof window !== "undefined" ? `${window.location.origin}/encuesta/${token}` : `/encuesta/${token}`;
+                    return (
+                      <div key={token} className="flex items-center gap-2 bg-white border border-blue-100 rounded-lg px-3 py-2">
+                        <span className="text-[10px] font-bold text-blue-500 shrink-0 w-4">#{i + 1}</span>
+                        <code className="flex-1 text-[11px] text-gray-600 truncate">{url}</code>
+                        <button
+                          onClick={() => copiarUrl(token, i)}
+                          className="shrink-0 p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                          title="Copiar enlace"
+                        >
+                          {copiadoIdx === i
+                            ? <Check className="w-3.5 h-3.5 text-green-500" />
+                            : <Copy className="w-3.5 h-3.5" />
+                          }
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setEncuestasGen(null)}
+                  className="w-full py-1.5 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  Cerrar notificación
+                </button>
               </div>
             )}
           </div>
