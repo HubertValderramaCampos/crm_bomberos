@@ -81,9 +81,9 @@ export default function EncuestaPublicaPage({ params }: { params: Promise<{ toke
   const [enviando,       setEnviando]       = useState(false);
 
   // Sección 1
-  const [empresaNombre,  setEmpresaNombre]  = useState("");
-  const [horario,        setHorario]        = useState("");
-  const [fechaCap,       setFechaCap]       = useState("");
+  const [horaIni,  setHoraIni]  = useState("");
+  const [horaFin,  setHoraFin]  = useState("");
+  const [fechaCap, setFechaCap] = useState("");
 
   // Sección 2
   const [objetivos,      setObjetivos]      = useState("");
@@ -108,7 +108,7 @@ export default function EncuestaPublicaPage({ params }: { params: Promise<{ toke
       .catch(() => setEstado("error"));
   }, [token]);
 
-  function sec1Valida() { return empresaNombre.trim() !== "" && horario.trim() !== "" && fechaCap !== ""; }
+  function sec1Valida() { return horaIni !== "" && fechaCap !== ""; }
   function sec2Valida() {
     return objetivos && duracion && dinamicas && aspectos.length > 0 &&
            contenido && materiales && dinamicaExp && conocimiento && recomienda;
@@ -122,8 +122,8 @@ export default function EncuestaPublicaPage({ params }: { params: Promise<{ toke
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          empresa_nombre: empresaNombre,
-          horario,
+          empresa_nombre: entidadNombre,
+          horario: horaFin ? `${horaIni} – ${horaFin}` : horaIni,
           fecha_capacitacion: fechaCap,
           objetivos_alcanzados: objetivos === "Sí",
           duracion_adecuada:    duracion  === "Sí",
@@ -210,15 +210,32 @@ export default function EncuestaPublicaPage({ params }: { params: Promise<{ toke
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+              {/* Empresa — solo informativo, viene del token */}
               <div>
-                <label className={labelCls}>Nombre de la empresa <span className="text-red-600">*</span></label>
-                <input type="text" value={empresaNombre} onChange={e => setEmpresaNombre(e.target.value)}
-                  placeholder="Nombre de la empresa" className={inputCls} />
+                <label className={labelCls}>Empresa</label>
+                <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700 font-medium">
+                  {entidadNombre}
+                </div>
               </div>
+              {/* Horario con relojes */}
               <div>
                 <label className={labelCls}>Horario en el que se realizó la capacitación <span className="text-red-600">*</span></label>
-                <input type="text" value={horario} onChange={e => setHorario(e.target.value)}
-                  placeholder="Ej: 09:00 – 12:00" className={inputCls} />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    value={horaIni}
+                    onChange={e => setHoraIni(e.target.value)}
+                    className={inputCls}
+                  />
+                  <span className="text-gray-400 text-sm shrink-0">–</span>
+                  <input
+                    type="time"
+                    value={horaFin}
+                    onChange={e => setHoraFin(e.target.value)}
+                    className={inputCls}
+                  />
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">Hora inicio — Hora fin (opcional)</p>
               </div>
               <div>
                 <label className={labelCls}>Fecha en la que se realizó la capacitación <span className="text-red-600">*</span></label>
