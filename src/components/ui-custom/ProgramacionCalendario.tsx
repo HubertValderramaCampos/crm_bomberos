@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   ChevronLeft, ChevronRight, Plus, X, Clock, MapPin,
   Users, BookOpen, Calendar, Check, Loader2, Building2, Search,
-  CheckCircle2, AlertCircle, CalendarClock, RotateCcw, Copy, ClipboardList,
+  CheckCircle2, AlertCircle, CalendarClock, RotateCcw, Copy, ClipboardList, Pencil,
 } from "lucide-react";
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -25,6 +25,19 @@ const COLOR: Record<string, string> = {
   "Mantenimiento":         "bg-orange-100 text-orange-700 border-orange-200",
   "Proyección social":     "bg-rose-100 text-rose-700 border-rose-200",
   "Otro":                  "bg-gray-100 text-gray-500 border-gray-200",
+};
+
+// Color de fondo completo para celdas del calendario
+const COLOR_DIA: Record<string, string> = {
+  "Capacitación interna":  "bg-blue-500",
+  "Capacitación externa":  "bg-indigo-500",
+  "Simulacro":             "bg-amber-500",
+  "Campaña preventiva":    "bg-green-500",
+  "Desfile / Acto cívico": "bg-purple-500",
+  "Reunión de compañía":   "bg-gray-500",
+  "Mantenimiento":         "bg-orange-500",
+  "Proyección social":     "bg-rose-500",
+  "Otro":                  "bg-gray-400",
 };
 
 interface Actividad {
@@ -140,6 +153,120 @@ function ModalReprogramar({ actividad, onClose, onReprogramado }: {
   );
 }
 
+/* ── Modal Editar Actividad ── */
+function ModalEditar({ actividad, onClose, onEditado }: {
+  actividad: Detalle; onClose: () => void; onEditado: () => void;
+}) {
+  const [form, setForm] = useState({
+    tipo:        actividad.tipo,
+    descripcion: actividad.descripcion ?? "",
+    fecha:       actividad.fecha,
+    lugar:       actividad.lugar ?? "",
+    hora_inicio: hhmm(actividad.hora_inicio),
+    hora_fin:    hhmm(actividad.hora_fin),
+    efectivos_asistentes: String(actividad.efectivos_asistentes ?? 0),
+  });
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(""); setLoading(true);
+    try {
+      const res = await fetch(`/api/programacion/${actividad.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accion: "editar",
+          tipo:        form.tipo,
+          descripcion: form.descripcion || null,
+          fecha:       form.fecha,
+          lugar:       form.lugar || null,
+          hora_inicio: form.hora_inicio || null,
+          hora_fin:    form.hora_fin || null,
+          efectivos_asistentes: Number(form.efectivos_asistentes) || 0,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Error al guardar."); return; }
+      onEditado();
+      onClose();
+    } catch { setError("Error de conexión."); }
+    finally { setLoading(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="bg-gradient-to-br from-red-700 to-red-800 px-5 py-4 text-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Pencil className="w-5 h-5" />
+            <h2 className="text-base font-bold">Editar actividad</h2>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{error}</div>}
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Tipo de actividad</label>
+            <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))} className={inputCls}>
+              {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Descripción / Tema</label>
+            <input type="text" value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
+              placeholder="Ej: Primeros auxilios básicos" className={inputCls} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Fecha</label>
+              <input type="date" required value={form.fecha} onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Lugar</label>
+              <input type="text" value={form.lugar} onChange={e => setForm(f => ({ ...f, lugar: e.target.value }))} placeholder="Cuartel B-150" className={inputCls} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Hora inicio</label>
+              <input type="time" value={form.hora_inicio} onChange={e => setForm(f => ({ ...f, hora_inicio: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Hora fin</label>
+              <input type="time" value={form.hora_fin} onChange={e => setForm(f => ({ ...f, hora_fin: e.target.value }))} className={inputCls} />
+            </div>
+          </div>
+
+          {!actividad.es_capacitacion && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Efectivos asistentes</label>
+              <input type="number" min="0" value={form.efectivos_asistentes}
+                onChange={e => setForm(f => ({ ...f, efectivos_asistentes: e.target.value }))} className={inputCls} />
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2.5 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button type="submit" disabled={loading}
+              className="flex-1 py-2.5 text-sm font-semibold text-white bg-red-700 hover:bg-red-800 disabled:opacity-50 rounded-lg flex items-center justify-center gap-2">
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Guardando...</> : <><Pencil className="w-4 h-4" />Guardar cambios</>}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /* ── Modal Ver Actividad ── */
 function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
   id: number; puedeCrear: boolean; onClose: () => void; onActualizado: () => void;
@@ -148,6 +275,7 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
   const [finalizando, setFin]               = useState(false);
   const [confirmFin, setConfirmFin]         = useState(false);
   const [reprogramar, setReprogram]         = useState(false);
+  const [editando,    setEditando]          = useState(false);
   const [encuestasGen, setEncuestasGen]     = useState<string[] | null>(null);
   const [copiadoIdx, setCopiadoIdx]         = useState<number | null>(null);
 
@@ -369,6 +497,12 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
 
           {/* Footer con acciones */}
           <div className="px-5 py-3 border-t border-gray-100 flex gap-2 flex-wrap">
+            {puedeCrear && !data.finalizado && !confirmFin && (
+              <button onClick={() => setEditando(true)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium text-gray-700 border border-gray-200 bg-white hover:bg-gray-50 rounded-lg transition-colors">
+                <Pencil className="w-4 h-4" /> Editar
+              </button>
+            )}
             {puedeCrear && pasada && !data.finalizado && !confirmFin && (
               <>
                 <button onClick={() => setReprogram(true)}
@@ -381,7 +515,7 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
                 </button>
               </>
             )}
-            {(!pasada || data.finalizado || confirmFin) && (
+            {(!puedeCrear || data.finalizado || confirmFin) && (
               <button onClick={onClose}
                 className="flex-1 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
                 Cerrar
@@ -399,12 +533,15 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
             setReprogram(false);
             onActualizado();
             onClose();
-            // Navegar al modal de la nueva actividad
-            setTimeout(() => {
-              // El calendario se recarga; el usuario puede hacer clic en la nueva fecha
-            }, 200);
-            void nuevaId;
+            setTimeout(() => { void nuevaId; }, 200);
           }}
+        />
+      )}
+      {editando && (
+        <ModalEditar
+          actividad={data}
+          onClose={() => setEditando(false)}
+          onEditado={() => { onActualizado(); cargar(); }}
         />
       )}
     </>
@@ -784,41 +921,60 @@ export function ProgramacionCalendario({ puedeCrear }: { puedeCrear: boolean }) 
             const acts = actPorDia(dia);
             const hoyFlag = esHoy(dia);
             const tieneVencidas = acts.some(a => fechaHaPasado(a.fecha) && !a.finalizado);
+            const tieneActs = acts.length > 0;
+            // Color de fondo dominante: primer evento del día
+            const colorFondo = tieneActs
+              ? acts[0].finalizado
+                ? "bg-green-500"
+                : fechaHaPasado(acts[0].fecha) && !acts[0].finalizado
+                  ? "bg-red-500"
+                  : (COLOR_DIA[acts[0].tipo] ?? "bg-gray-400")
+              : "";
+
             return (
               <div key={dia}
-                className={`min-h-[90px] p-1.5 flex flex-col gap-1 ${hoyFlag ? "bg-red-50" : tieneVencidas ? "bg-orange-50/40" : "hover:bg-gray-50/60"} transition-colors`}>
-                <div className="flex items-center justify-between">
+                className={`min-h-[90px] flex flex-col transition-colors ${
+                  tieneActs
+                    ? `${colorFondo} text-white`
+                    : hoyFlag
+                      ? "bg-red-50"
+                      : "hover:bg-gray-50/60"
+                }`}>
+
+                {/* Número del día */}
+                <div className="flex items-center justify-between px-1.5 pt-1.5 pb-1">
                   <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${
-                    hoyFlag ? "bg-red-600 text-white" : tieneVencidas ? "text-orange-600" : "text-gray-700"
+                    hoyFlag && !tieneActs ? "bg-red-600 text-white"
+                    : tieneActs ? "bg-white/20 text-white"
+                    : tieneVencidas ? "text-orange-600"
+                    : "text-gray-700"
                   }`}>{dia}</span>
                   {puedeCrear && (
                     <button onClick={() => setCrearDia(`${anio}-${String(mes).padStart(2,"0")}-${String(dia).padStart(2,"0")}`)}
-                      className="opacity-0 group-hover:opacity-100 hover:!opacity-100 p-0.5 rounded hover:bg-gray-200 transition-all">
-                      <Plus className="w-3 h-3 text-gray-400" />
+                      className="opacity-0 hover:!opacity-100 p-0.5 rounded hover:bg-white/20 transition-all">
+                      <Plus className={`w-3 h-3 ${tieneActs ? "text-white" : "text-gray-400"}`} />
                     </button>
                   )}
                 </div>
 
-                {acts.slice(0, 3).map(a => {
-                  const esVencida = fechaHaPasado(a.fecha) && !a.finalizado;
-                  const esFinalizada = a.finalizado;
-                  const clsBase = esFinalizada
-                    ? "bg-green-100 text-green-700 border-green-200"
-                    : esVencida
-                    ? "bg-red-100 text-red-700 border-red-200"
-                    : (COLOR[a.tipo] ?? COLOR["Otro"]);
-                  return (
-                    <button key={a.id} onClick={() => setVerId(a.id)}
-                      className={`w-full text-left text-[10px] font-medium px-1.5 py-0.5 rounded border truncate hover:opacity-80 transition-opacity flex items-center gap-1 ${clsBase}`}>
-                      {esFinalizada && <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />}
-                      {esVencida    && <AlertCircle  className="w-2.5 h-2.5 shrink-0" />}
-                      <span className="truncate">{a.hora_inicio ? `${hhmm(a.hora_inicio)} ` : ""}{a.descripcion ?? a.tipo}</span>
-                    </button>
-                  );
-                })}
-                {acts.length > 3 && (
-                  <span className="text-[10px] text-gray-400 pl-1">+{acts.length - 3} más</span>
-                )}
+                {/* Eventos */}
+                <div className="flex-1 px-1.5 pb-1.5 space-y-0.5">
+                  {acts.slice(0, 3).map(a => {
+                    const esVencida = fechaHaPasado(a.fecha) && !a.finalizado;
+                    const esFinalizada = a.finalizado;
+                    return (
+                      <button key={a.id} onClick={() => setVerId(a.id)}
+                        className="w-full text-left text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white/20 hover:bg-white/30 truncate transition-colors flex items-center gap-1 text-white">
+                        {esFinalizada && <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />}
+                        {esVencida    && <AlertCircle  className="w-2.5 h-2.5 shrink-0" />}
+                        <span className="truncate">{a.hora_inicio ? `${hhmm(a.hora_inicio)} ` : ""}{a.descripcion ?? a.tipo}</span>
+                      </button>
+                    );
+                  })}
+                  {acts.length > 3 && (
+                    <span className="text-[10px] text-white/80 pl-1">+{acts.length - 3} más</span>
+                  )}
+                </div>
               </div>
             );
           })}

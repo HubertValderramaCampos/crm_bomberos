@@ -94,6 +94,26 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: true });
   }
 
+  // Acción: editar — modifica campos básicos de la actividad
+  if (body.accion === "editar") {
+    const { tipo, descripcion, fecha, lugar, hora_inicio, hora_fin, efectivos_asistentes, entidad_id } = body;
+    await pool.query(
+      `UPDATE programacion_actividad
+       SET tipo = COALESCE($1, tipo),
+           descripcion = $2,
+           fecha = COALESCE($3, fecha),
+           lugar = $4,
+           hora_inicio = $5,
+           hora_fin = $6,
+           efectivos_asistentes = COALESCE($7, efectivos_asistentes),
+           entidad_id = $8
+       WHERE id = $9`,
+      [tipo, descripcion ?? null, fecha, lugar ?? null, hora_inicio ?? null, hora_fin ?? null,
+       efectivos_asistentes ?? null, entidad_id ?? null, id]
+    );
+    return NextResponse.json({ ok: true });
+  }
+
   // Acción: reprogramar — crea nueva actividad copiando la original con nueva fecha
   if (body.accion === "reprogramar") {
     const { nueva_fecha, hora_inicio, hora_fin, lugar } = body;
