@@ -113,6 +113,24 @@ export default function AsistenciaPage() {
     streamRef.current?.getTracks().forEach(t => t.stop());
   }
 
+  // Reanudar cámara si la página vuelve al primer plano mientras está activa
+  useEffect(() => {
+    async function onVisibilityChange() {
+      if (document.visibilityState !== "visible") return;
+      if (!videoRef.current || !streamRef.current) return;
+      try {
+        if (streamRef.current.getTracks().every(t => t.readyState === "ended")) {
+          await iniciarCamara();
+        } else if (videoRef.current.paused) {
+          await videoRef.current.play();
+        }
+      } catch { /* ignorar */ }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const verificarRostro = useCallback(async () => {
     const faceapi = faceApiRef.current;
     if (!faceapi || !videoRef.current || !descriptorRef.current || !posicion || !tipo) return;

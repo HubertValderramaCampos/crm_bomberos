@@ -153,7 +153,33 @@ export default function EntrenarPage() {
       }
     })();
 
+    // Reanudar cámara y loop cuando la página vuelve al primer plano
+    async function onVisibilityChange() {
+      if (document.visibilityState !== "visible") return;
+      if (!faceApiRef.current) return;
+      // Reiniciar stream si la cámara fue pausada
+      try {
+        if (!streamRef.current || streamRef.current.getTracks().every(t => t.readyState === "ended")) {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+          });
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            await videoRef.current.play();
+          }
+        } else if (videoRef.current?.paused) {
+          await videoRef.current.play();
+        }
+        if (loopRef.current) clearTimeout(loopRef.current);
+        iniciarLoop(faceApiRef.current);
+      } catch { /* ignorar */ }
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       if (loopRef.current) clearTimeout(loopRef.current);
       streamRef.current?.getTracks().forEach(t => t.stop());
     };
