@@ -70,8 +70,10 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: "Gestión Formativa",
+    roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"],
     items: [
-      { label: "Próximamente", href: "#", icon: GraduationCap, roles: TODOS },
+      { label: "Registrar rostro",  href: "/formativa/entrenar",   icon: GraduationCap, roles: ["BOMBERO"] },
+      { label: "Marcar asistencia", href: "/formativa/asistencia",  icon: CalendarCheck, roles: ["BOMBERO"] },
     ],
   },
 ];
