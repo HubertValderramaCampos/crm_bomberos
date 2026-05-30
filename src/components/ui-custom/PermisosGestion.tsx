@@ -104,7 +104,11 @@ function TarjetaCuenta({ cuenta, esSelf }: { cuenta: CuentaArea; esSelf: boolean
             {ROL_LABELS[cuenta.rol] ?? cuenta.rol}
           </span>
         </div>
-        {permisos !== null && <span className="text-xs text-gray-400 shrink-0">{permisos.length} secciones</span>}
+        {permisos !== null && (
+          permisos.length === 0
+            ? <span className="text-xs text-green-600 font-medium shrink-0">Acceso completo</span>
+            : <span className="text-xs text-amber-600 font-medium shrink-0">{permisos.length} secciones restringidas</span>
+        )}
         <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200 ${expandido ? "rotate-180" : ""}`} />
       </button>
 
@@ -114,6 +118,13 @@ function TarjetaCuenta({ cuenta, esSelf }: { cuenta: CuentaArea; esSelf: boolean
             <p className="text-sm text-gray-400 text-center py-4">Cargando...</p>
           ) : (
             <>
+              {/* Aviso modelo restrictivo */}
+              <div className={`text-xs px-3 py-2 rounded-lg border ${permisos.length === 0 ? "bg-green-50 border-green-200 text-green-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
+                {permisos.length === 0
+                  ? "✓ Sin restricciones — acceso completo al rol. Marca secciones para limitar el acceso."
+                  : `Solo puede ver las ${permisos.length} secciones marcadas. Desmarca todas para restaurar acceso completo.`}
+              </div>
+
               {GRUPOS_AREA.map(grupo => {
                 const seccionesGrupo = SECCIONES.filter(s => s.grupo === grupo);
                 const todasActivas   = seccionesGrupo.every(s => permisos.includes(s.id));
@@ -147,14 +158,24 @@ function TarjetaCuenta({ cuenta, esSelf }: { cuenta: CuentaArea; esSelf: boolean
                 );
               })}
               <div className="flex items-center justify-between pt-2 border-t border-gray-200">
-                <span className="text-xs text-gray-400">{permisos.length} de {SECCIONES.filter(s => GRUPOS_AREA.includes(s.grupo)).length} secciones</span>
-                <button
-                  onClick={guardar}
-                  disabled={guardando}
-                  className="flex items-center gap-1.5 bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-red-800 disabled:opacity-50 transition-colors"
-                >
-                  {guardando ? <><Loader2 className="w-3 h-3 animate-spin" /> Guardando...</> : guardado ? "✓ Guardado" : <><Save className="w-3 h-3" /> Guardar cambios</>}
-                </button>
+                <span className="text-xs text-gray-400">
+                  {permisos.length === 0 ? "Acceso completo" : `${permisos.length} de ${SECCIONES.filter(s => GRUPOS_AREA.includes(s.grupo)).length} secciones`}
+                </span>
+                <div className="flex items-center gap-2">
+                  {permisos.length > 0 && (
+                    <button onClick={() => { setPermisos([]); setGuardado(false); }}
+                      className="text-xs text-gray-400 hover:text-gray-600 underline">
+                      Quitar restricciones
+                    </button>
+                  )}
+                  <button
+                    onClick={guardar}
+                    disabled={guardando}
+                    className="flex items-center gap-1.5 bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-red-800 disabled:opacity-50 transition-colors"
+                  >
+                    {guardando ? <><Loader2 className="w-3 h-3 animate-spin" /> Guardando...</> : guardado ? "✓ Guardado" : <><Save className="w-3 h-3" /> Guardar</>}
+                  </button>
+                </div>
               </div>
             </>
           )}

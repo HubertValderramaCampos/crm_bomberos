@@ -105,9 +105,10 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       return racha >= minReq;
     }
 
-    // Cuentas de área usan permisos individuales
+    // Cuentas de área usan permisos individuales (solo restringen, no habilitan)
     if (usaPermisosIndividuales) {
-      if (misPermisos === null) return false;
+      if (misPermisos === null) return false; // aún cargando
+      if (misPermisos.length === 0) return true; // sin restricciones → acceso completo del rol
       if (!item.seccion) return true;
       if (item.href === "/inicio") return true;
       return misPermisos.includes(item.seccion);
