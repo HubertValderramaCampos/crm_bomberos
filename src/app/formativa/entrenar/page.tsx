@@ -189,20 +189,18 @@ export default function EntrenarPage() {
       {/* Cámara con guías */}
       <div className="relative bg-black rounded-2xl overflow-hidden" style={{ aspectRatio: "3/4" }}>
 
-        {/* Video — espejado para que sea natural */}
+        {/* Video — sin espejo */}
         <video
           ref={videoRef}
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ transform: "scaleX(-1)" }}
           muted
           playsInline
         />
 
-        {/* Canvas landmarks — también espejado */}
+        {/* Canvas landmarks */}
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full"
-          style={{ transform: "scaleX(-1)" }}
         />
 
         {/* Óvalo guía de rostro */}

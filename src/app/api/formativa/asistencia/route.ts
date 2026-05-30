@@ -3,9 +3,9 @@ import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 
-const CUARTEL_LAT = -12.161917;
-const CUARTEL_LNG = -77.102278;
-const RADIO_METROS = 10;
+const CUARTEL_LAT = -11.828583;  // 11°49'42.9"S = -(11 + 49/60 + 42.9/3600)
+const CUARTEL_LNG = -77.102278;  // 77°06'08.2"W = -(77 + 6/60 + 8.2/3600)
+const RADIO_METROS = 50;         // margen ampliado para imprecisión de GPS en iPhone
 
 function distanciaMetros(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;

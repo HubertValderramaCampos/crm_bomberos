@@ -58,8 +58,7 @@ export default function AsistenciaPage() {
 
         await cargarHistorial();
         setFase("ubicacion");
-        setMsg("Verificando tu ubicación...");
-        verificarUbicacion();
+        setMsg("Toca el botón para verificar tu ubicación.");
       } catch {
         setFase("error");
         setMsg("Error al cargar. Verifica tu conexión.");
@@ -81,11 +80,17 @@ export default function AsistenciaPage() {
         setMsg("Ubicación verificada. Prepara tu rostro frente a la cámara.");
         iniciarCamara();
       },
-      () => {
+      (err) => {
         setFase("error");
-        setMsg("No se pudo obtener tu ubicación. Activa el GPS y recarga.");
+        if (err.code === 1) {
+          setMsg("Permiso de ubicación denegado. Ve a Ajustes del navegador y permite el acceso a la ubicación para este sitio.");
+        } else if (err.code === 2) {
+          setMsg("No se pudo obtener la ubicación. Asegúrate de tener GPS activo y señal.");
+        } else {
+          setMsg("Tiempo de espera agotado. Verifica que el GPS esté activo e intenta de nuevo.");
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   }
 
@@ -164,8 +169,7 @@ export default function AsistenciaPage() {
 
   function reintentar() {
     setFase("ubicacion");
-    setMsg("Verificando ubicación...");
-    verificarUbicacion();
+    setMsg("Toca el botón para verificar tu ubicación.");
   }
 
   function formatFecha(iso: string) {
@@ -201,6 +205,17 @@ export default function AsistenciaPage() {
         <span>{msg}</span>
       </div>
 
+      {/* Botón para solicitar ubicación — necesario en Safari iOS */}
+      {fase === "ubicacion" && (
+        <button
+          onClick={verificarUbicacion}
+          className="w-full flex items-center justify-center gap-2 py-4 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 active:scale-95 transition-all text-base"
+        >
+          <MapPin className="w-5 h-5" />
+          Verificar mi ubicación
+        </button>
+      )}
+
       {/* Cámara */}
       {(fase === "camara" || fase === "verificando") && (
         <div className="space-y-3">
@@ -223,13 +238,13 @@ export default function AsistenciaPage() {
         </div>
       )}
 
-      {/* Error con botón reintentar */}
-      {fase === "error" && msg.includes("GPS") || fase === "error" && msg.includes("ubicación") ? (
+      {/* Botón reintentar en error */}
+      {fase === "error" && (
         <button onClick={reintentar}
-          className="w-full py-2.5 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors">
+          className="w-full py-3 bg-red-700 text-white text-sm font-semibold rounded-xl hover:bg-red-800 transition-colors">
           Reintentar
         </button>
-      ) : null}
+      )}
 
       {/* Historial */}
       {historial.length > 0 && (
