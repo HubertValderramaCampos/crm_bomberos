@@ -189,15 +189,16 @@ export default function EntrenarPage() {
       {/* Cámara con guías */}
       <div className="relative bg-black rounded-2xl overflow-hidden" style={{ aspectRatio: "3/4" }}>
 
-        {/* Video — sin espejo */}
+        {/* Video — espejado para selfie natural */}
         <video
           ref={videoRef}
           className="absolute inset-0 w-full h-full object-cover"
+          style={{ transform: "scaleX(-1)" }}
           muted
           playsInline
         />
 
-        {/* Canvas landmarks */}
+        {/* Canvas landmarks — sin espejo (procesamiento real) */}
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full"
