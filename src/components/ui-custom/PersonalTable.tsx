@@ -151,7 +151,9 @@ function ModalNuevoBombero({ onClose, onCreado }: { onClose: () => void; onCread
               </div>
               {!esBombero && (
                 <p className="text-[11px] text-gray-400 mt-1">
-                  Código de login: se usará el DNI (o apellido+id si no hay DNI).
+                  {form.categoria === "ASPIRANTE"
+                    ? `Código de acceso: a${form.dni || "DNI"}`
+                    : `Código de acceso: p${form.dni || "DNI"}`}
                 </p>
               )}
             </div>

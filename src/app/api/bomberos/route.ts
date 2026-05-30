@@ -54,10 +54,16 @@ export async function POST(req: Request) {
     );
     const bomberoId = bRows[0].id;
 
-    // Generar código de login: para bomberos usar código, para otros usar dni o apellido+id
+    // Generar código de login:
+    // BOMBERO   → su código CBP (ej: b150-031)
+    // ASPIRANTE → "a" + DNI (ej: a76832463)
+    // POSTULANTE → "p" + DNI (ej: p76832463)
+    const dniLimpio = dni?.trim() || String(bomberoId);
     const loginCodigo = categoria === "BOMBERO"
       ? codigo!.trim().toLowerCase()
-      : (dni?.trim() || `${apellidos.split(" ")[0].toLowerCase()}${bomberoId}`).toLowerCase();
+      : categoria === "ASPIRANTE"
+        ? `a${dniLimpio}`
+        : `p${dniLimpio}`;
 
     // Verificar que no exista ya ese código de login
     const existe = await client.query(
