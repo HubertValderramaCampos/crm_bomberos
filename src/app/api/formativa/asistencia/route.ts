@@ -3,9 +3,9 @@ import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 
-const CUARTEL_LAT = -11.828583;  // 11°49'42.9"S = -(11 + 49/60 + 42.9/3600)
-const CUARTEL_LNG = -77.102278;  // 77°06'08.2"W = -(77 + 6/60 + 8.2/3600)
-const RADIO_METROS = 50;         // margen ampliado para imprecisión de GPS en iPhone
+const CUARTEL_LAT = -11.828583;
+const CUARTEL_LNG = -77.102278;
+const RADIO_METROS = 50;
 
 function distanciaMetros(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;
@@ -17,13 +17,12 @@ function distanciaMetros(lat1: number, lng1: number, lat2: number, lng2: number)
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// GET: historial de asistencia del bombero actual
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.bomberoId) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { rows } = await pool.query(
-    `SELECT id, fecha::text, hora_entrada::text, lat, lng
+    `SELECT id, fecha::text, hora_entrada::text, hora_salida::text, lat, lng
      FROM asistencia_formativa
      WHERE bombero_id = $1
      ORDER BY fecha DESC, hora_entrada DESC
@@ -33,7 +32,6 @@ export async function GET() {
   return NextResponse.json(rows);
 }
 
-// POST: marcar asistencia
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.bomberoId) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -42,31 +40,56 @@ export async function POST(req: Request) {
   if (!["ASPIRANTE", "POSTULANTE"].includes(categoria))
     return NextResponse.json({ error: "Solo aspirantes y postulantes" }, { status: 403 });
 
-  const { lat, lng } = await req.json() as { lat: number; lng: number };
+  const { lat, lng, tipo } = await req.json() as { lat: number; lng: number; tipo: "entrada" | "salida" };
 
-  // Verificar ubicación
   const dist = distanciaMetros(lat, lng, CUARTEL_LAT, CUARTEL_LNG);
   if (dist > RADIO_METROS)
-    return NextResponse.json({ error: `Estás a ${Math.round(dist)}m del cuartel. Debes estar a menos de ${RADIO_METROS}m.`, dist: Math.round(dist) }, { status: 400 });
+    return NextResponse.json({
+      error: `Estás a ${Math.round(dist)}m del cuartel. Debes estar a menos de ${RADIO_METROS}m.`,
+      dist: Math.round(dist),
+    }, { status: 400 });
 
-  // Verificar que tenga rostro registrado
-  const { rows } = await pool.query(
+  const { rows: bRows } = await pool.query(
     `SELECT face_descriptor FROM bombero WHERE id = $1`,
     [session.user.bomberoId]
   );
-  if (!rows[0]?.face_descriptor)
-    return NextResponse.json({ error: "Primero debes registrar tu rostro en Entrenamiento." }, { status: 400 });
+  if (!bRows[0]?.face_descriptor)
+    return NextResponse.json({ error: "Primero registra tu rostro en Entrenamiento." }, { status: 400 });
 
-  // Insertar asistencia (UNIQUE por bombero+fecha evita duplicados)
-  try {
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (tipo === "entrada") {
+    // Insertar entrada — si ya existe actualiza nada (solo la primera entrada del día)
+    const { rows: exists } = await pool.query(
+      `SELECT id FROM asistencia_formativa WHERE bombero_id = $1 AND fecha = $2`,
+      [session.user.bomberoId, today]
+    );
+    if (exists.length > 0)
+      return NextResponse.json({ error: "Ya registraste tu entrada hoy." }, { status: 409 });
+
     await pool.query(
       `INSERT INTO asistencia_formativa (bombero_id, lat, lng) VALUES ($1, $2, $3)`,
       [session.user.bomberoId, lat, lng]
     );
-    return NextResponse.json({ ok: true });
-  } catch (err: unknown) {
-    if (typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "23505")
-      return NextResponse.json({ error: "Ya registraste tu asistencia hoy." }, { status: 409 });
-    throw err;
+    return NextResponse.json({ ok: true, tipo: "entrada" });
   }
+
+  if (tipo === "salida") {
+    const { rows: reg } = await pool.query(
+      `SELECT id, hora_salida FROM asistencia_formativa WHERE bombero_id = $1 AND fecha = $2`,
+      [session.user.bomberoId, today]
+    );
+    if (reg.length === 0)
+      return NextResponse.json({ error: "Primero debes registrar tu entrada." }, { status: 400 });
+    if (reg[0].hora_salida)
+      return NextResponse.json({ error: "Ya registraste tu salida hoy." }, { status: 409 });
+
+    await pool.query(
+      `UPDATE asistencia_formativa SET hora_salida = NOW() WHERE id = $1`,
+      [reg[0].id]
+    );
+    return NextResponse.json({ ok: true, tipo: "salida" });
+  }
+
+  return NextResponse.json({ error: "tipo inválido" }, { status: 400 });
 }
