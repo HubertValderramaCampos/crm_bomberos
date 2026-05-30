@@ -29,14 +29,14 @@ export const authOptions: NextAuthOptions = {
         }>(`
           SELECT u.id, u.password_hash, u.rol, u.activo,
                  u.bombero_id,
-                 b.nombres, b.apellidos, b.codigo, b.grado
+                 b.nombres, b.apellidos, b.codigo, b.grado, b.categoria
           FROM usuario u
           LEFT JOIN bombero b ON b.id = u.bombero_id
           WHERE u.codigo = $1
           LIMIT 1
         `, [codigo]);
 
-        const user = rows[0];
+        const user = rows[0] as typeof rows[0] & { categoria?: string | null };
         if (!user || !user.activo) return null;
 
         const valid = await bcrypt.compare(credentials.password, user.password_hash);
@@ -54,6 +54,7 @@ export const authOptions: NextAuthOptions = {
           cip:       user.codigo ?? null,
           grado:     user.grado ?? null,
           bomberoId: user.bombero_id ?? null,
+          categoria: user.categoria ?? "BOMBERO",
         };
       },
     }),
@@ -69,6 +70,7 @@ export const authOptions: NextAuthOptions = {
         token.cip       = u.cip;
         token.grado     = u.grado;
         token.bomberoId = u.bomberoId;
+        token.categoria = u.categoria;
       }
       return token;
     },
@@ -80,6 +82,7 @@ export const authOptions: NextAuthOptions = {
         session.user.cip       = token.cip as string | null;
         session.user.grado     = token.grado as string | null;
         session.user.bomberoId = token.bomberoId as number | null;
+        session.user.categoria = token.categoria as string | null;
       }
       return session;
     },

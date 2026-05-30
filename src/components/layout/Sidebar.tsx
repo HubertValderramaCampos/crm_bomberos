@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import {
   Home, UserCircle, Radio, BarChart3, FileText, Users,
-  ShoppingBag, GraduationCap, CalendarCheck,
+  GraduationCap, CalendarCheck,
   LogOut, ChevronRight, ShieldCheck, TrendingUp,
   Scroll, Gift, CalendarDays, Building2, ScanLine, ChevronDown, Lock,
   Briefcase, Tag, Heart, ClipboardList,
@@ -79,7 +79,9 @@ const NAV_SECTIONS: NavSection[] = [
 export function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const rol = session?.user?.rol ?? "";
+  const rol       = session?.user?.rol ?? "";
+  const categoria = session?.user?.categoria ?? "BOMBERO";
+  const esFormativo = rol === "BOMBERO" && (categoria === "ASPIRANTE" || categoria === "POSTULANTE");
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0);
   // null = aún cargando, string[] = permisos cargados (vacío = sin permisos individuales asignados)
   const [misPermisos, setMisPermisos] = useState<string[] | null>(null);
@@ -91,6 +93,11 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
 
   function canSeeItem(item: NavItem): boolean {
     if (!item.roles.includes(rol)) return false;
+
+    // Aspirantes y postulantes solo ven Gestión Formativa e Inicio
+    if (esFormativo) {
+      return !item.seccion || item.href === "/inicio";
+    }
 
     // Para bomberos: racha mínima desde BD (con fallback al rachaMin hardcodeado)
     if (rol === "BOMBERO") {
@@ -149,7 +156,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   // Cargar racha y config de acceso para bomberos
   useEffect(() => {
     if (!rol) return; // sesión aún cargando, esperar
-    if (rol !== "BOMBERO") {
+    if (rol !== "BOMBERO" || esFormativo) {
       setRachaAcceso(0);
       setRachaConfig({});
       setRachaListo(true);

@@ -185,6 +185,7 @@ export default async function PersonalPage({
         bomberos={bomberos}
         filtros={filtros}
         meses={meses}
+        puedeCrear={session.user.rol === "JEFE_COMPANIA"}
       />
     </div>
   );

@@ -10,6 +10,7 @@ declare module "next-auth" {
       cip:       string | null;
       grado:     string | null;
       bomberoId: number | null;
+      categoria: string | null;
     };
   }
 }

@@ -1,11 +1,177 @@
 "use client";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Search, X, ChevronUp, ChevronDown } from "lucide-react";
+import { Search, X, ChevronUp, ChevronDown, UserPlus, Loader2, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import type { BomberoRow } from "@/app/operaciones/personal/page";
 
 const MESES_ES = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+const GRADOS = ["Capitán CBP","Tnte Brigadier","Teniente CBP","SubTeniente CBP","Brigadier","Seccionario"];
+const inputCls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400";
+
+function ModalNuevoBombero({ onClose, onCreado }: { onClose: () => void; onCreado: () => void }) {
+  const [form, setForm] = useState({
+    categoria: "BOMBERO",
+    apellidos: "", nombres: "", grado: "Seccionario",
+    codigo: "", dni: "", telefono: "", password: "",
+  });
+  const [showPass, setShowPass] = useState(false);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState("");
+  const [exito,    setExito]    = useState<{ login_codigo: string } | null>(null);
+
+  const esBombero = form.categoria === "BOMBERO";
+
+  async function handleSubmit(e: React.SyntheticEvent) {
+    e.preventDefault();
+    setError(""); setLoading(true);
+    try {
+      const res = await fetch("/api/bomberos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Error al crear"); return; }
+      setExito({ login_codigo: data.login_codigo });
+      onCreado();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[95vh] flex flex-col">
+        <div className="bg-gradient-to-br from-red-700 to-red-800 px-5 py-4 text-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <UserPlus className="w-5 h-5" />
+            <h2 className="text-base font-bold">Nuevo efectivo</h2>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {exito ? (
+          <div className="px-5 py-6 space-y-4">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-center space-y-2">
+              <p className="text-sm font-semibold text-green-800">✓ Efectivo creado exitosamente</p>
+              <p className="text-xs text-green-700">Código de acceso al sistema:</p>
+              <code className="block text-lg font-bold text-green-900 bg-green-100 rounded-lg px-4 py-2">{exito.login_codigo}</code>
+              <p className="text-xs text-green-600">Comparte este código junto con la contraseña asignada.</p>
+            </div>
+            <button onClick={onClose}
+              className="w-full py-2.5 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+              Cerrar
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{error}</div>}
+
+            {/* Categoría */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Categoría</label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["BOMBERO","ASPIRANTE","POSTULANTE"] as const).map(cat => (
+                  <button key={cat} type="button"
+                    onClick={() => setForm(f => ({ ...f, categoria: cat, grado: cat === "BOMBERO" ? f.grado : "" }))}
+                    className={`py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                      form.categoria === cat
+                        ? "bg-red-700 text-white border-red-700"
+                        : "text-gray-600 border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    {cat === "BOMBERO" ? "Bombero" : cat === "ASPIRANTE" ? "Aspirante" : "Postulante"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Apellidos *</label>
+                <input required type="text" value={form.apellidos}
+                  onChange={e => setForm(f => ({ ...f, apellidos: e.target.value }))}
+                  placeholder="GARCIA LOPEZ" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Nombres *</label>
+                <input required type="text" value={form.nombres}
+                  onChange={e => setForm(f => ({ ...f, nombres: e.target.value }))}
+                  placeholder="JUAN CARLOS" className={inputCls} />
+              </div>
+            </div>
+
+            {esBombero && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Código *</label>
+                  <input required type="text" value={form.codigo}
+                    onChange={e => setForm(f => ({ ...f, codigo: e.target.value }))}
+                    placeholder="B150-XXX" className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">Grado *</label>
+                  <select required value={form.grado}
+                    onChange={e => setForm(f => ({ ...f, grado: e.target.value }))} className={inputCls}>
+                    {GRADOS.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">DNI</label>
+                <input type="text" value={form.dni}
+                  onChange={e => setForm(f => ({ ...f, dni: e.target.value }))}
+                  placeholder="12345678" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Teléfono</label>
+                <input type="text" value={form.telefono}
+                  onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))}
+                  placeholder="999888777" className={inputCls} />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Contraseña inicial *</label>
+              <div className="relative">
+                <input required type={showPass ? "text" : "password"} value={form.password}
+                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                  placeholder="Contraseña de acceso" className={inputCls + " pr-10"} />
+                <button type="button" onClick={() => setShowPass(p => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {!esBombero && (
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Código de login: se usará el DNI (o apellido+id si no hay DNI).
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={onClose}
+                className="flex-1 py-2.5 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                Cancelar
+              </button>
+              <button type="submit" disabled={loading}
+                className="flex-1 py-2.5 text-sm font-semibold text-white bg-red-700 hover:bg-red-800 disabled:opacity-50 rounded-lg flex items-center justify-center gap-2">
+                {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Creando...</> : <><UserPlus className="w-4 h-4" />Crear efectivo</>}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const ESTADO_BADGE: Record<string, string> = {
   en_turno: "bg-green-100 text-green-800 border-green-200",
@@ -13,20 +179,22 @@ const ESTADO_BADGE: Record<string, string> = {
 
 type SortKey = "horas_acumuladas" | "dias_asistidos" | "dias_guardia" | "num_emergencias" | "veces_al_mando";
 
-export function PersonalTable({ bomberos, filtros, meses }: {
+export function PersonalTable({ bomberos, filtros, meses, puedeCrear = false }: {
   bomberos: BomberoRow[];
   filtros: { grado: string; estado: string; busqueda: string; mes: number; anio: number };
   meses: { mes: number; anio: number }[];
+  puedeCrear?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const [, startTransition] = useTransition();
 
-  const [busqueda, setBusqueda] = useState(filtros.busqueda);
-  const [grado, setGrado]     = useState(filtros.grado);
-  const [estado, setEstado]   = useState(filtros.estado);
-  const [sort, setSort]       = useState<SortKey>("horas_acumuladas");
-  const [asc, setAsc]         = useState(false);
+  const [busqueda,    setBusqueda]    = useState(filtros.busqueda);
+  const [grado,       setGrado]       = useState(filtros.grado);
+  const [estado,      setEstado]      = useState(filtros.estado);
+  const [sort,        setSort]        = useState<SortKey>("horas_acumuladas");
+  const [asc,         setAsc]         = useState(false);
+  const [modalNuevo,  setModalNuevo]  = useState(false);
 
   function aplicar(override?: Partial<typeof filtros>) {
     const f = { ...filtros, busqueda, grado, estado, ...override };
@@ -136,6 +304,15 @@ export function PersonalTable({ bomberos, filtros, meses }: {
               className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <X className="w-3.5 h-3.5" /> Limpiar
+            </button>
+          )}
+
+          {puedeCrear && (
+            <button
+              onClick={() => setModalNuevo(true)}
+              className="ml-auto flex items-center gap-1.5 px-3 py-2 bg-red-700 text-white text-sm font-semibold rounded-lg hover:bg-red-800 transition-colors"
+            >
+              <UserPlus className="w-4 h-4" /> Nuevo efectivo
             </button>
           )}
         </div>
@@ -262,6 +439,13 @@ export function PersonalTable({ bomberos, filtros, meses }: {
           <p className="text-xs text-gray-400">{sorted.length} efectivos · ordenar por columna haciendo clic</p>
         </div>
       </div>
+
+      {modalNuevo && (
+        <ModalNuevoBombero
+          onClose={() => setModalNuevo(false)}
+          onCreado={() => router.refresh()}
+        />
+      )}
     </div>
   );
 }
