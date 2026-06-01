@@ -147,7 +147,13 @@ export default async function InicioPage() {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
-  const { bomberoId, nombres, rol, grado } = session.user;
+  const { bomberoId, nombres, rol, grado, categoria } = session.user;
+
+  // Aspirantes y postulantes tienen su propio inicio
+  if (rol === "BOMBERO" && ["ASPIRANTE", "POSTULANTE"].includes(categoria ?? "")) {
+    redirect("/formativa/inicio");
+  }
+
   const esBombero  = rol === "BOMBERO";
   const esOperativo = rol === "JEFE_COMPANIA" || rol === "OPERACIONES";
 

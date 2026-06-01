@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import {
   Home, UserCircle, Radio, BarChart3, FileText, Users,
-  GraduationCap, CalendarCheck,
+  GraduationCap, CalendarCheck, BookOpen,
   LogOut, ChevronRight, ShieldCheck, TrendingUp,
   Scroll, Gift, CalendarDays, Building2, ScanLine, ChevronDown, Lock,
   Briefcase, Tag, Heart, ClipboardList,
@@ -28,8 +28,8 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "__root__",
     items: [
-      { label: "Inicio",    href: "/inicio", icon: Home,       roles: TODOS },
-      { label: "Mi Perfil", href: "/perfil", icon: UserCircle, roles: ["BOMBERO"] },
+      { label: "Inicio",    href: "/inicio",           icon: Home,       roles: TODOS },
+      { label: "Mi Perfil", href: "/perfil",           icon: UserCircle, roles: ["BOMBERO"] },
     ],
   },
   {
@@ -72,8 +72,10 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Gestión Formativa",
     roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"],
     items: [
+      { label: "Mi progreso",       href: "/formativa/inicio",     icon: Home,          roles: ["BOMBERO"] },
       { label: "Registrar rostro",  href: "/formativa/entrenar",   icon: GraduationCap, roles: ["BOMBERO"] },
-      { label: "Marcar asistencia", href: "/formativa/asistencia",  icon: CalendarCheck, roles: ["BOMBERO"] },
+      { label: "Marcar asistencia", href: "/formativa/asistencia", icon: CalendarCheck, roles: ["BOMBERO"] },
+      { label: "Notas de lecciones",href: "/formativa/notas",      icon: BookOpen,      roles: ["JEFE_COMPANIA", "ADMINISTRACION"] },
     ],
   },
 ];
@@ -96,9 +98,10 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   function canSeeItem(item: NavItem): boolean {
     if (!item.roles.includes(rol)) return false;
 
-    // Aspirantes y postulantes solo ven Gestión Formativa e Inicio
+    // Aspirantes y postulantes solo ven Gestión Formativa (no las demás secciones)
     if (esFormativo) {
-      return !item.seccion || item.href === "/inicio";
+      const rutasFormativas = ["/formativa/inicio", "/formativa/entrenar", "/formativa/asistencia"];
+      return rutasFormativas.includes(item.href);
     }
 
     // Para bomberos: racha mínima desde BD (con fallback al rachaMin hardcodeado)
