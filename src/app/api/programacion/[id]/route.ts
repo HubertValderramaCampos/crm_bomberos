@@ -71,6 +71,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const act = actRow.rows[0];
     if (act?.entidad_id) {
+      // No generar si ya existen encuestas para esta actividad
+      const yaExisten = await pool.query(
+        `SELECT id FROM encuesta_token WHERE actividad_id = $1 LIMIT 1`,
+        [id]
+      );
+      if (yaExisten.rows.length > 0)
+        return NextResponse.json({ ok: true });
+
       const slug = act.entidad_nombre!
         .toLowerCase()
         .normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -83,8 +91,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const suffix = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
         const token = `${slug}-${suffix}`;
         await pool.query(
-          `INSERT INTO encuesta_token (entidad_id, token, descripcion) VALUES ($1, $2, $3)`,
-          [act.entidad_id, token, act.descripcion ?? null]
+          `INSERT INTO encuesta_token (entidad_id, token, descripcion, actividad_id) VALUES ($1, $2, $3, $4)`,
+          [act.entidad_id, token, act.descripcion ?? null, Number(id)]
         );
         tokens.push(token);
       }
