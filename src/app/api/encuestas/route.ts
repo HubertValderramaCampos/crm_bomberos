@@ -13,19 +13,23 @@ export async function GET() {
   const { rows } = await pool.query<{
     id: number; token: string; activo: boolean; created_at: string;
     entidad_id: number; entidad_nombre: string;
-    descripcion: string | null;
+    descripcion: string | null; actividad_id: number | null;
+    actividad_fecha: string | null; actividad_desc: string | null;
     total_respuestas: number; ultima_respuesta: string | null;
   }>(`
     SELECT t.id, t.token, t.activo, t.created_at::text,
-           t.descripcion,
+           t.descripcion, t.actividad_id,
+           a.fecha::text AS actividad_fecha,
+           a.descripcion AS actividad_desc,
            e.id AS entidad_id, e.nombre AS entidad_nombre,
            COUNT(r.id)::int AS total_respuestas,
            MAX(r.created_at)::text AS ultima_respuesta
     FROM encuesta_token t
     JOIN entidad e ON e.id = t.entidad_id
+    LEFT JOIN programacion_actividad a ON a.id = t.actividad_id
     LEFT JOIN encuesta_respuesta r ON r.token_id = t.id
-    GROUP BY t.id, e.id, e.nombre
-    ORDER BY e.nombre, t.created_at DESC
+    GROUP BY t.id, e.id, e.nombre, a.fecha, a.descripcion
+    ORDER BY a.fecha DESC NULLS LAST, e.nombre, t.created_at DESC
   `);
 
   return NextResponse.json(rows);
@@ -47,10 +51,10 @@ export async function POST(req: Request) {
   if (!["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol))
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
 
-  const { entidad_id, descripcion } = await req.json();
+  const { entidad_id, actividad_id, descripcion } = await req.json();
   if (!entidad_id) return NextResponse.json({ error: "entidad_id requerido" }, { status: 400 });
+  if (!actividad_id) return NextResponse.json({ error: "actividad_id requerido" }, { status: 400 });
 
-  // Obtener nombre de la entidad para el slug
   const entRes = await pool.query<{ nombre: string }>(`SELECT nombre FROM entidad WHERE id = $1`, [entidad_id]);
   if (!entRes.rows.length) return NextResponse.json({ error: "Entidad no encontrada" }, { status: 404 });
 
@@ -59,9 +63,10 @@ export async function POST(req: Request) {
   const token = `${slug}-${suffix}`;
 
   const { rows } = await pool.query<{ id: number }>(`
-    INSERT INTO encuesta_token (entidad_id, token, descripcion) VALUES ($1, $2, $3)
+    INSERT INTO encuesta_token (entidad_id, token, descripcion, actividad_id)
+    VALUES ($1, $2, $3, $4)
     RETURNING id
-  `, [entidad_id, token, descripcion ?? null]);
+  `, [entidad_id, token, descripcion ?? null, actividad_id]);
 
   return NextResponse.json({ id: rows[0].id, token }, { status: 201 });
 }

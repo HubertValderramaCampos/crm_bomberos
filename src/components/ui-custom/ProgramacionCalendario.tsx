@@ -276,8 +276,6 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
   const [confirmFin, setConfirmFin]         = useState(false);
   const [reprogramar, setReprogram]         = useState(false);
   const [editando,    setEditando]          = useState(false);
-  const [encuestasGen, setEncuestasGen]     = useState<string[] | null>(null);
-  const [copiadoIdx, setCopiadoIdx]         = useState<number | null>(null);
 
   function cargar() {
     fetch(`/api/programacion/${id}`).then(r => r.json()).then(setData);
@@ -303,24 +301,13 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accion: "finalizar" }),
       });
-      const result = await res.json();
-      if (result.encuestas_generadas?.length) {
-        setEncuestasGen(result.encuestas_generadas);
-      }
+      await res.json();
     } finally {
       setFin(false);
       setConfirmFin(false);
       onActualizado();
       cargar();
     }
-  }
-
-  function copiarUrl(token: string, idx: number) {
-    const url = `${window.location.origin}/encuesta/${token}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopiadoIdx(idx);
-      setTimeout(() => setCopiadoIdx(null), 2000);
-    });
   }
 
   return (
@@ -454,45 +441,6 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
               </div>
             )}
 
-            {/* Notificación de encuestas generadas automáticamente */}
-            {encuestasGen && (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-3">
-                <div className="flex items-start gap-2">
-                  <ClipboardList className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-semibold text-blue-800">3 encuestas generadas automáticamente</p>
-                    <p className="text-xs text-blue-600 mt-0.5">Comparte estos enlaces con los participantes de la capacitación.</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {encuestasGen.map((token, i) => {
-                    const url = typeof window !== "undefined" ? `${window.location.origin}/encuesta/${token}` : `/encuesta/${token}`;
-                    return (
-                      <div key={token} className="flex items-center gap-2 bg-white border border-blue-100 rounded-lg px-3 py-2">
-                        <span className="text-[10px] font-bold text-blue-500 shrink-0 w-4">#{i + 1}</span>
-                        <code className="flex-1 text-[11px] text-gray-600 truncate">{url}</code>
-                        <button
-                          onClick={() => copiarUrl(token, i)}
-                          className="shrink-0 p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                          title="Copiar enlace"
-                        >
-                          {copiadoIdx === i
-                            ? <Check className="w-3.5 h-3.5 text-green-500" />
-                            : <Copy className="w-3.5 h-3.5" />
-                          }
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                <button
-                  onClick={() => setEncuestasGen(null)}
-                  className="w-full py-1.5 text-xs text-blue-600 hover:text-blue-800 transition-colors"
-                >
-                  Cerrar notificación
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Footer con acciones */}
