@@ -6,13 +6,18 @@ type Entidad = { id: number; nombre: string; tipo: string };
 type Donacion = {
   id: number; fecha: string; tipo_donacion: string;
   entidad_id: number; entidad_nombre: string; entidad_tipo: string;
+  descripcion: string | null; cantidad: string | null;
+  unidad: string | null; observaciones: string | null;
 };
 type RankingItem = { entidad_nombre: string; entidad_id: number; total: number };
 
 const TIPOS = [
-  "Económica", "Material", "Equipamiento", "Alimentos", "Medicamentos",
-  "Herramientas", "Vestimenta", "Servicios", "Otro",
+  "Material", "Equipamiento", "Alimentos", "Medicamentos",
+  "Herramientas", "Vestimenta", "Servicios", "Combustible",
+  "Insumos de limpieza", "Papelería", "Tecnología", "Otro",
 ];
+
+const UNIDADES = ["unidad(es)", "kg", "litros", "cajas", "bolsas", "paquetes", "sets", "metros", "pares"];
 
 const TIPOS_ENTIDAD = [
   "INSTITUCIÓN PÚBLICA", "EMPRESA PRIVADA", "ONG", "CGBVP",
@@ -169,14 +174,20 @@ function FormDonacion({
   initial, entidades: entidadesIniciales, onSave, onCancel, loading,
 }: {
   initial?: Donacion; entidades: Entidad[];
-  onSave: (d: { fecha: string; tipo_donacion: string; entidad_id: number }) => void;
+  onSave: (d: { fecha: string; tipo_donacion: string; entidad_id: number; descripcion: string; cantidad: string; unidad: string; observaciones: string }) => void;
   onCancel: () => void; loading: boolean;
 }) {
-  const [fecha, setFecha] = useState(initial?.fecha?.slice(0, 10) ?? "");
-  const [tipo, setTipo] = useState(initial?.tipo_donacion ?? "");
-  const [entidadId, setEntidadId] = useState<number | null>(initial?.entidad_id ?? null);
-  const [entidades, setEntidades] = useState<Entidad[]>(entidadesIniciales);
+  const [fecha,        setFecha]        = useState(initial?.fecha?.slice(0, 10) ?? "");
+  const [tipo,         setTipo]         = useState(initial?.tipo_donacion ?? "");
+  const [entidadId,    setEntidadId]    = useState<number | null>(initial?.entidad_id ?? null);
+  const [descripcion,  setDescripcion]  = useState(initial?.descripcion ?? "");
+  const [cantidad,     setCantidad]     = useState(initial?.cantidad ?? "");
+  const [unidad,       setUnidad]       = useState(initial?.unidad ?? "");
+  const [observaciones,setObservaciones]= useState(initial?.observaciones ?? "");
+  const [entidades,    setEntidades]    = useState<Entidad[]>(entidadesIniciales);
   const [creandoEntidad, setCreandoEntidad] = useState(false);
+
+  const cls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500";
 
   function handleEntidadCreada(nueva: Entidad) {
     setEntidades(prev => [...prev, nueva].sort((a, b) => a.nombre.localeCompare(b.nombre)));
@@ -186,18 +197,19 @@ function FormDonacion({
 
   function handleSubmit(ev: React.FormEvent) {
     ev.preventDefault();
-    if (!fecha || !tipo || !entidadId) return;
-    onSave({ fecha, tipo_donacion: tipo, entidad_id: entidadId });
+    if (!fecha || !tipo || !entidadId || !descripcion.trim()) return;
+    onSave({ fecha, tipo_donacion: tipo, entidad_id: entidadId, descripcion, cantidad, unidad, observaciones });
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Fecha */}
       <div>
         <label className="block text-xs font-medium text-gray-700 mb-1">Fecha *</label>
-        <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} required
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+        <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} required className={cls} />
       </div>
 
+      {/* Entidad */}
       <div>
         <div className="flex items-center justify-between mb-1">
           <label className="text-xs font-medium text-gray-700">Entidad donante *</label>
@@ -208,27 +220,57 @@ function FormDonacion({
             </button>
           )}
         </div>
-        {creandoEntidad ? (
-          <FormNuevaEntidad onCreada={handleEntidadCreada} onCancel={() => setCreandoEntidad(false)} />
-        ) : (
-          <SelectorEntidad entidades={entidades} value={entidadId} onChange={setEntidadId} />
-        )}
+        {creandoEntidad
+          ? <FormNuevaEntidad onCreada={handleEntidadCreada} onCancel={() => setCreandoEntidad(false)} />
+          : <SelectorEntidad entidades={entidades} value={entidadId} onChange={setEntidadId} />}
         {!entidadId && !creandoEntidad && (
           <p className="text-xs text-amber-600 mt-1">Si la entidad no existe, créala con "Nueva entidad".</p>
         )}
       </div>
 
+      {/* Tipo */}
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Tipo de donación *</label>
-        <select value={tipo} onChange={e => setTipo(e.target.value)} required
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-          <option value="">Seleccionar tipo...</option>
+        <label className="block text-xs font-medium text-gray-700 mb-1">Categoría *</label>
+        <select value={tipo} onChange={e => setTipo(e.target.value)} required className={cls}>
+          <option value="">Seleccionar categoría...</option>
           {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
 
+      {/* Descripción */}
+      <div>
+        <label className="block text-xs font-medium text-gray-700 mb-1">Nombre / Descripción del bien o servicio *</label>
+        <input type="text" value={descripcion} onChange={e => setDescripcion(e.target.value)} required
+          placeholder="Ej: Extintores PQS 6kg, Camillas plegables, Servicio de impresión..."
+          className={cls} />
+      </div>
+
+      {/* Cantidad + Unidad */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Cantidad</label>
+          <input type="text" value={cantidad} onChange={e => setCantidad(e.target.value)}
+            placeholder="Ej: 10, 2.5, 1" className={cls} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Unidad</label>
+          <select value={unidad} onChange={e => setUnidad(e.target.value)} className={cls}>
+            <option value="">Seleccionar...</option>
+            {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Observaciones */}
+      <div>
+        <label className="block text-xs font-medium text-gray-700 mb-1">Observaciones</label>
+        <textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} rows={2}
+          placeholder="Estado del bien, condiciones especiales, etc."
+          className={cls + " resize-none"} />
+      </div>
+
       <div className="flex gap-2 pt-2">
-        <button type="submit" disabled={loading || !entidadId}
+        <button type="submit" disabled={loading || !entidadId || !descripcion.trim()}
           className="flex-1 bg-red-700 text-white rounded-lg py-2 text-sm font-medium hover:bg-red-800 disabled:opacity-50">
           {loading ? "Guardando..." : "Guardar"}
         </button>
@@ -311,7 +353,7 @@ export function DonacionesGestion({ esAdmin }: { esAdmin: boolean }) {
     d.tipo_donacion.toLowerCase().includes(busqueda.toLowerCase())
   );
 
-  async function guardar(data: { fecha: string; tipo_donacion: string; entidad_id: number }) {
+  async function guardar(data: { fecha: string; tipo_donacion: string; entidad_id: number; descripcion: string; cantidad: string; unidad: string; observaciones: string }) {
     setLoading(true);
     try {
       if (editando) {
@@ -389,7 +431,7 @@ export function DonacionesGestion({ esAdmin }: { esAdmin: boolean }) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    {["Fecha", "Entidad", "Tipo", ...(esAdmin ? [""] : [])].map(h => (
+                    {["Fecha", "Entidad", "Bien / Servicio", "Cant.", "Categoría", ...(esAdmin ? [""] : [])].map(h => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -398,9 +440,16 @@ export function DonacionesGestion({ esAdmin }: { esAdmin: boolean }) {
                   {filtradas.map(d => (
                     <tr key={d.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{fmt(d.fecha)}</td>
-                      <td className="px-4 py-3 max-w-[180px]">
+                      <td className="px-4 py-3 max-w-[160px]">
                         <p className="font-medium text-gray-900 truncate">{d.entidad_nombre}</p>
                         <p className="text-[10px] text-gray-400 mt-0.5">{d.entidad_tipo}</p>
+                      </td>
+                      <td className="px-4 py-3 max-w-[200px]">
+                        <p className="text-sm text-gray-900 truncate">{d.descripcion ?? <span className="text-gray-300">—</span>}</p>
+                        {d.observaciones && <p className="text-[10px] text-gray-400 truncate mt-0.5">{d.observaciones}</p>}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-700 whitespace-nowrap">
+                        {d.cantidad ? `${d.cantidad}${d.unidad ? ` ${d.unidad}` : ""}` : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-3 text-xs whitespace-nowrap">
                         <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">{d.tipo_donacion}</span>
