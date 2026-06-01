@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp, ExternalLink,
   ThumbsUp, ThumbsDown, Star, Search, X,
   BarChart2, Link2, Calendar, Building2, PlusCircle,
+  CheckCircle2, History,
 } from "lucide-react";
 import { EncuestasDashboard } from "@/components/ui-custom/EncuestasDashboard";
 
@@ -86,15 +87,17 @@ function RespuestaDetalle({ r }: { r: Respuesta }) {
   );
 }
 
-function TokenCard({ tk, baseUrl, puedeEditar, onDesactivar, onEliminar }: {
-  tk: TokenRow; baseUrl: string; puedeEditar: boolean;
+function TokenCard({ tk, baseUrl, puedeEditar, onDesactivar, onEliminar, modoHistorial = false }: {
+  tk: TokenRow; baseUrl: string; puedeEditar: boolean; modoHistorial?: boolean;
   onDesactivar: (id: number) => void; onEliminar: (id: number) => void;
 }) {
-  const [copiado,    setCopiado]    = useState(false);
-  const [abierto,    setAbierto]    = useState(false);
-  const [respuestas, setRespuestas] = useState<Respuesta[] | null>(null);
-  const [cargando,   setCargando]   = useState(false);
-  const [eliminando, setEliminando] = useState(false);
+  const [copiado,      setCopiado]      = useState(false);
+  const [abierto,      setAbierto]      = useState(false);
+  const [respuestas,   setRespuestas]   = useState<Respuesta[] | null>(null);
+  const [cargando,     setCargando]     = useState(false);
+  const [finalizando,  setFinalizando]  = useState(false);
+  const [eliminando,   setEliminando]   = useState(false);
+  const [confirmFin,   setConfirmFin]   = useState(false);
 
   const url = `${baseUrl}/encuesta/${tk.token}`;
 
@@ -111,11 +114,10 @@ function TokenCard({ tk, baseUrl, puedeEditar, onDesactivar, onEliminar }: {
     finally { setCargando(false); }
   }
 
-  async function desactivar() {
-    if (!confirm("¿Desactivar este enlace?")) return;
-    setEliminando(true);
+  async function finalizar() {
+    setFinalizando(true);
     try { await fetch(`/api/encuestas/${tk.id}`, { method: "DELETE" }); onDesactivar(tk.id); }
-    finally { setEliminando(false); }
+    finally { setFinalizando(false); setConfirmFin(false); }
   }
 
   async function eliminar() {
@@ -126,31 +128,42 @@ function TokenCard({ tk, baseUrl, puedeEditar, onDesactivar, onEliminar }: {
   }
 
   return (
-    <div className={`bg-white rounded-xl border p-4 space-y-3 ${tk.activo ? "border-gray-200" : "border-gray-100 opacity-60"}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tk.activo ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-              {tk.activo ? "ACTIVO" : "INACTIVO"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 mt-2">
-            <code className="text-[11px] text-gray-500 bg-gray-50 border border-gray-200 rounded px-2 py-1 truncate max-w-xs">{url}</code>
-            <button onClick={copiar} className="shrink-0 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
-              {copiado ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
-            </button>
-            <a href={url} target="_blank" rel="noopener noreferrer" className="shrink-0 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          </div>
-        </div>
-        {puedeEditar && (eliminando
-          ? <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400 shrink-0" />
-          : tk.activo
-            ? <button onClick={desactivar} className="shrink-0 p-1.5 text-gray-300 hover:text-amber-500 hover:bg-amber-50 rounded-md transition-colors" title="Desactivar"><Trash2 className="w-3.5 h-3.5" /></button>
-            : <button onClick={eliminar}   className="shrink-0 p-1.5 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"   title="Eliminar"><Trash2 className="w-3.5 h-3.5" /></button>
+    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+      {/* URL + acciones */}
+      <div className="flex items-center gap-2">
+        <code className="flex-1 text-[11px] text-gray-500 bg-gray-50 border border-gray-200 rounded px-2 py-1.5 truncate">{url}</code>
+        <button onClick={copiar} className="shrink-0 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors" title="Copiar enlace">
+          {copiado ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+        </button>
+        <a href={url} target="_blank" rel="noopener noreferrer" className="shrink-0 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors" title="Abrir encuesta">
+          <ExternalLink className="w-3.5 h-3.5" />
+        </a>
+        {puedeEditar && modoHistorial && !eliminando && (
+          <button onClick={eliminar} className="shrink-0 p-1.5 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Eliminar permanentemente">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         )}
       </div>
+
+      {/* Botón finalizar encuesta */}
+      {puedeEditar && !modoHistorial && (
+        confirmFin ? (
+          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <p className="text-xs text-amber-700 flex-1">¿Cerrar esta encuesta? Ya no recibirá respuestas.</p>
+            <button onClick={() => setConfirmFin(false)} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded">No</button>
+            <button onClick={finalizar} disabled={finalizando}
+              className="text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 px-3 py-1 rounded-lg flex items-center gap-1 disabled:opacity-50">
+              {finalizando ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+              Finalizar
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setConfirmFin(true)}
+            className="w-full flex items-center justify-center gap-1.5 py-2 border border-gray-200 text-xs font-medium text-gray-500 hover:text-amber-600 hover:border-amber-200 hover:bg-amber-50 rounded-lg transition-colors">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Finalizar encuesta
+          </button>
+        )
+      )}
 
       <button onClick={toggleRespuestas}
         className="w-full flex items-center justify-between text-xs text-gray-500 hover:text-gray-800 transition-colors border-t border-gray-100 pt-3">
@@ -432,6 +445,38 @@ function ModalNuevoEnlace({ entidades, onClose, onCreado }: {
   );
 }
 
+/* ── Grupo de encuestas por evento ─────────────────────────────── */
+function GrupoEncuesta({ grupo, baseUrl, puedeEditar, onDesactivar, onEliminar, modoHistorial }: {
+  grupo: { key: string; fecha: string | null; desc: string; entidad: string; tokens: TokenRow[] };
+  baseUrl: string; puedeEditar: boolean; modoHistorial: boolean;
+  onDesactivar: (id: number) => void; onEliminar: (id: number) => void;
+}) {
+  return (
+    <div>
+      <div className="flex items-start gap-3 mb-3 px-1">
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${modoHistorial ? "bg-gray-100" : "bg-red-50"}`}>
+          <Calendar className={`w-4 h-4 ${modoHistorial ? "text-gray-400" : "text-red-600"}`} />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-gray-900">{grupo.desc}</p>
+          {grupo.fecha && (
+            <p className="text-xs text-gray-400 mt-0.5">
+              {new Date(grupo.fecha + "T12:00:00").toLocaleDateString("es-PE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+            </p>
+          )}
+          <p className="text-xs text-gray-400">{grupo.entidad}</p>
+        </div>
+      </div>
+      <div className="space-y-2 pl-11">
+        {grupo.tokens.map(tk => (
+          <TokenCard key={tk.id} tk={tk} baseUrl={baseUrl} puedeEditar={puedeEditar}
+            onDesactivar={onDesactivar} onEliminar={onEliminar} modoHistorial={modoHistorial} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── Página principal ───────────────────────────────────────────── */
 export default function EncuestasPage() {
   const { data: session } = useSession();
@@ -458,21 +503,30 @@ export default function EncuestasPage() {
 
   useEffect(() => { setBaseUrl(window.location.origin); cargar(); }, [cargar]);
 
+  const [verHistorial, setVerHistorial] = useState(false);
+
   function desactivarLocal(id: number) { setTokens(prev => prev.map(t => t.id === id ? { ...t, activo: false } : t)); }
   function eliminarLocal(id: number)   { setTokens(prev => prev.filter(t => t.id !== id)); }
 
-  // Agrupar por actividad
-  const grupos = tokens.reduce<Record<string, { key: string; fecha: string | null; desc: string; tokens: TokenRow[] }>>((acc, tk) => {
-    const key = tk.actividad_id ? `act-${tk.actividad_id}` : `sin-${tk.entidad_id}-${tk.descripcion}`;
-    if (!acc[key]) acc[key] = {
-      key,
-      fecha: tk.actividad_fecha,
-      desc: tk.actividad_desc ?? tk.descripcion ?? "Sin descripción",
-      tokens: [],
-    };
-    acc[key].tokens.push(tk);
-    return acc;
-  }, {});
+  function agrupar(lista: TokenRow[]) {
+    return lista.reduce<Record<string, { key: string; fecha: string | null; desc: string; entidad: string; tokens: TokenRow[] }>>((acc, tk) => {
+      const key = tk.actividad_id ? `act-${tk.actividad_id}` : `sin-${tk.entidad_id}-${tk.descripcion}`;
+      if (!acc[key]) acc[key] = {
+        key,
+        fecha: tk.actividad_fecha,
+        desc: tk.actividad_desc ?? tk.descripcion ?? "Sin descripción",
+        entidad: tk.entidad_nombre,
+        tokens: [],
+      };
+      acc[key].tokens.push(tk);
+      return acc;
+    }, {});
+  }
+
+  const activos   = tokens.filter(t => t.activo);
+  const inactivos = tokens.filter(t => !t.activo);
+  const gruposActivos   = agrupar(activos);
+  const gruposInactivos = agrupar(inactivos);
 
   return (
     <div className="space-y-4 pb-6">
@@ -517,39 +571,44 @@ export default function EncuestasPage() {
       {tab === "enlaces" && (
         loading ? (
           <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
-        ) : Object.keys(grupos).length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 px-6 py-14 text-center">
-            <ClipboardList className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm text-gray-400">Aún no hay encuestas generadas.</p>
-            <p className="text-xs text-gray-400 mt-1">Genera un enlace vinculado a un evento de capacitación.</p>
-          </div>
         ) : (
           <div className="space-y-6">
-            {Object.values(grupos).map(grupo => (
-              <div key={grupo.key}>
-                {/* Cabecera del grupo (evento) */}
-                <div className="flex items-start gap-3 mb-3 px-1">
-                  <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center shrink-0 mt-0.5">
-                    <Calendar className="w-4 h-4 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">{grupo.desc}</p>
-                    {grupo.fecha && (
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {new Date(grupo.fecha + "T12:00:00").toLocaleDateString("es-PE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
-                      </p>
-                    )}
-                    <p className="text-xs text-gray-400">{grupo.tokens[0]?.entidad_nombre}</p>
-                  </div>
-                </div>
-                <div className="space-y-2 pl-11">
-                  {grupo.tokens.map(tk => (
-                    <TokenCard key={tk.id} tk={tk} baseUrl={baseUrl} puedeEditar={puedeEditar}
-                      onDesactivar={desactivarLocal} onEliminar={eliminarLocal} />
-                  ))}
-                </div>
+
+            {/* Encuestas activas */}
+            {activos.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 px-6 py-14 text-center">
+                <ClipboardList className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">No hay encuestas activas.</p>
+                <p className="text-xs text-gray-400 mt-1">Genera un enlace vinculado a un evento de capacitación.</p>
               </div>
-            ))}
+            ) : (
+              <div className="space-y-6">
+                {Object.values(gruposActivos).map(grupo => (
+                  <GrupoEncuesta key={grupo.key} grupo={grupo} baseUrl={baseUrl} puedeEditar={puedeEditar}
+                    onDesactivar={desactivarLocal} onEliminar={eliminarLocal} modoHistorial={false} />
+                ))}
+              </div>
+            )}
+
+            {/* Historial */}
+            {inactivos.length > 0 && (
+              <div>
+                <button onClick={() => setVerHistorial(v => !v)}
+                  className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors">
+                  <History className="w-4 h-4" />
+                  Historial ({inactivos.length} finalizadas)
+                  {verHistorial ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+                {verHistorial && (
+                  <div className="mt-4 space-y-6 opacity-75">
+                    {Object.values(gruposInactivos).map(grupo => (
+                      <GrupoEncuesta key={grupo.key} grupo={grupo} baseUrl={baseUrl} puedeEditar={puedeEditar}
+                        onDesactivar={desactivarLocal} onEliminar={eliminarLocal} modoHistorial={true} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )
       )}
