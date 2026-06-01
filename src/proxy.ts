@@ -14,9 +14,11 @@ function hasSessionCookie(req: NextRequest): boolean {
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Siempre permitir: API auth y assets de Next.js
+  // Siempre permitir: API auth, assets de Next.js y encuestas públicas
   if (
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/encuesta-publica") ||
+    pathname.startsWith("/encuesta") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {
