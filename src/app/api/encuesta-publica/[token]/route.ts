@@ -5,17 +5,30 @@ import pool from "@/lib/db";
 export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
 
-  const { rows } = await pool.query<{ id: number; entidad_nombre: string; activo: boolean }>(`
-    SELECT t.id, e.nombre AS entidad_nombre, t.activo
+  const { rows } = await pool.query<{
+    id: number; entidad_nombre: string; activo: boolean;
+    actividad_fecha: string | null; actividad_hora_inicio: string | null;
+    actividad_hora_fin: string | null;
+  }>(`
+    SELECT t.id, e.nombre AS entidad_nombre, t.activo,
+           a.fecha::text          AS actividad_fecha,
+           a.hora_inicio::text    AS actividad_hora_inicio,
+           a.hora_fin::text       AS actividad_hora_fin
     FROM encuesta_token t
     JOIN entidad e ON e.id = t.entidad_id
+    LEFT JOIN programacion_actividad a ON a.id = t.actividad_id
     WHERE t.token::text = $1
   `, [token]);
 
   if (!rows.length) return NextResponse.json({ error: "Enlace inválido" }, { status: 404 });
   if (!rows[0].activo) return NextResponse.json({ error: "Este enlace ya no está activo" }, { status: 410 });
 
-  return NextResponse.json({ entidad_nombre: rows[0].entidad_nombre });
+  return NextResponse.json({
+    entidad_nombre:       rows[0].entidad_nombre,
+    actividad_fecha:      rows[0].actividad_fecha,
+    actividad_hora_inicio: rows[0].actividad_hora_inicio,
+    actividad_hora_fin:   rows[0].actividad_hora_fin,
+  });
 }
 
 // POST: enviar respuesta (público, sin login)

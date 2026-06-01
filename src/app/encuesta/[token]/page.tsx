@@ -84,6 +84,7 @@ export default function EncuestaPublicaPage({ params }: { params: Promise<{ toke
   const [horaIni,  setHoraIni]  = useState("");
   const [horaFin,  setHoraFin]  = useState("");
   const [fechaCap, setFechaCap] = useState("");
+  const [camposAutocompletados, setCamposAutocompletados] = useState(false);
 
   // Sección 2
   const [objetivos,      setObjetivos]      = useState("");
@@ -103,6 +104,13 @@ export default function EncuestaPublicaPage({ params }: { params: Promise<{ toke
       .then(d => {
         if (d.error) { setEstado(d.error.includes("activo") ? "inactivo" : "error"); return; }
         setEntidadNombre(d.entidad_nombre);
+        // Autocompletar fecha y hora desde el evento vinculado
+        if (d.actividad_fecha) {
+          setFechaCap(d.actividad_fecha);
+          setCamposAutocompletados(true);
+        }
+        if (d.actividad_hora_inicio) setHoraIni(d.actividad_hora_inicio.slice(0, 5));
+        if (d.actividad_hora_fin)    setHoraFin(d.actividad_hora_fin.slice(0, 5));
         setEstado("activo");
       })
       .catch(() => setEstado("error"));
@@ -220,26 +228,34 @@ export default function EncuestaPublicaPage({ params }: { params: Promise<{ toke
               {/* Horario con relojes */}
               <div>
                 <label className={labelCls}>Horario en el que se realizó la capacitación <span className="text-red-600">*</span></label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="time"
-                    value={horaIni}
-                    onChange={e => setHoraIni(e.target.value)}
-                    className={inputCls}
-                  />
-                  <span className="text-gray-400 text-sm shrink-0">–</span>
-                  <input
-                    type="time"
-                    value={horaFin}
-                    onChange={e => setHoraFin(e.target.value)}
-                    className={inputCls}
-                  />
-                </div>
-                <p className="text-[11px] text-gray-400 mt-1">Hora inicio — Hora fin (opcional)</p>
+                {camposAutocompletados ? (
+                  <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                    <span className="text-sm text-green-800 font-medium">
+                      {horaIni}{horaFin ? ` – ${horaFin}` : ""}
+                    </span>
+                    <span className="text-[10px] text-green-600 ml-auto">Completado automáticamente</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <input type="time" value={horaIni} onChange={e => setHoraIni(e.target.value)} className={inputCls} />
+                    <span className="text-gray-400 text-sm shrink-0">–</span>
+                    <input type="time" value={horaFin} onChange={e => setHoraFin(e.target.value)} className={inputCls} />
+                  </div>
+                )}
+                {!camposAutocompletados && <p className="text-[11px] text-gray-400 mt-1">Hora inicio — Hora fin (opcional)</p>}
               </div>
               <div>
                 <label className={labelCls}>Fecha en la que se realizó la capacitación <span className="text-red-600">*</span></label>
-                <input type="date" value={fechaCap} onChange={e => setFechaCap(e.target.value)} className={inputCls} />
+                {camposAutocompletados ? (
+                  <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                    <span className="text-sm text-green-800 font-medium">
+                      {new Date(fechaCap + "T12:00:00").toLocaleDateString("es-PE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+                    </span>
+                    <span className="text-[10px] text-green-600 ml-auto">Completado automáticamente</span>
+                  </div>
+                ) : (
+                  <input type="date" value={fechaCap} onChange={e => setFechaCap(e.target.value)} className={inputCls} />
+                )}
               </div>
             </div>
 
