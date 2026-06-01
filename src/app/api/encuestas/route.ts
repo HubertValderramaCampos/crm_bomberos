@@ -62,6 +62,17 @@ export async function POST(req: Request) {
   const suffix = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
   const token = `${slug}-${suffix}`;
 
+  // Verificar si ya existe encuesta para esta actividad
+  const existente = await pool.query<{ id: number; token: string }>(
+    `SELECT id, token FROM encuesta_token WHERE actividad_id = $1 LIMIT 1`,
+    [actividad_id]
+  );
+  if (existente.rows.length > 0)
+    return NextResponse.json(
+      { error: "Ya existe una encuesta para este evento." },
+      { status: 409 }
+    );
+
   const { rows } = await pool.query<{ id: number }>(`
     INSERT INTO encuesta_token (entidad_id, token, descripcion, actividad_id)
     VALUES ($1, $2, $3, $4)

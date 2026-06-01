@@ -16,10 +16,14 @@ export async function GET(req: Request) {
   const { rows } = await pool.query<{
     id: number; fecha: string; descripcion: string | null; tipo: string;
     entidad_id: number | null; entidad_nombre: string | null;
-    lugar: string | null;
+    lugar: string | null; tiene_encuesta: boolean;
   }>(`
     SELECT a.id, a.fecha::text, a.descripcion, a.tipo,
-           a.entidad_id, e.nombre AS entidad_nombre, a.lugar
+           a.entidad_id, e.nombre AS entidad_nombre, a.lugar,
+           EXISTS (
+             SELECT 1 FROM encuesta_token t
+             WHERE t.actividad_id = a.id AND t.activo = true
+           ) AS tiene_encuesta
     FROM programacion_actividad a
     LEFT JOIN entidad e ON e.id = a.entidad_id
     WHERE (a.es_capacitacion = true OR a.tipo ILIKE '%capacit%')

@@ -15,6 +15,7 @@ interface Entidad { id: number; nombre: string; tipo: string; }
 interface Capacitacion {
   id: number; fecha: string; descripcion: string | null; tipo: string;
   entidad_id: number | null; entidad_nombre: string | null; lugar: string | null;
+  tiene_encuesta?: boolean;
 }
 interface TokenRow {
   id: number; token: string; activo: boolean; created_at: string;
@@ -319,8 +320,14 @@ function ModalNuevoEnlace({ entidades, onClose, onCreado }: {
                   {!cargando && caps.length === 0 && <p className="px-3 py-3 text-xs text-gray-400 text-center">No se encontraron capacitaciones</p>}
                   {caps.map(c => (
                     <button key={c.id} type="button" onMouseDown={() => seleccionarCap(c)}
-                      className="w-full text-left px-3 py-2.5 hover:bg-red-50 hover:text-red-700 border-b border-gray-50 last:border-0 transition-colors">
-                      <p className="text-sm font-medium truncate">{c.descripcion ?? c.tipo}</p>
+                      disabled={c.tiene_encuesta}
+                      className="w-full text-left px-3 py-2.5 border-b border-gray-50 last:border-0 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-700">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium truncate">{c.descripcion ?? c.tipo}</p>
+                        {c.tiene_encuesta && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700 shrink-0">Ya tiene encuesta</span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-2">
                         <Calendar className="w-3 h-3" />
                         {new Date(c.fecha + "T12:00:00").toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" })}
