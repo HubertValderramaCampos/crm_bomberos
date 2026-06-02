@@ -166,8 +166,26 @@ function ModalEditar({ actividad, onClose, onEditado }: {
     hora_fin:    hhmm(actividad.hora_fin),
     efectivos_asistentes: String(actividad.efectivos_asistentes ?? 0),
   });
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState("");
+  const [bomberos,       setBomberos]       = useState<Bombero[]>([]);
+  const [seleccionados,  setSeleccionados]  = useState<number[]>(
+    actividad.es_capacitacion ? actividad.participantes.map(p => p.bombero_id) : []
+  );
+  const [busqueda,       setBusqueda]       = useState("");
+  const [loading,        setLoading]        = useState(false);
+  const [error,          setError]          = useState("");
+
+  useEffect(() => {
+    if (actividad.es_capacitacion)
+      fetch("/api/bomberos").then(r => r.json()).then(setBomberos);
+  }, [actividad.es_capacitacion]);
+
+  const filtrados = bomberos.filter(b =>
+    `${b.apellidos} ${b.nombres} ${b.codigo}`.toLowerCase().includes(busqueda.toLowerCase())
+  );
+
+  function toggleBombero(id: number) {
+    setSeleccionados(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -184,7 +202,8 @@ function ModalEditar({ actividad, onClose, onEditado }: {
           lugar:       form.lugar || null,
           hora_inicio: form.hora_inicio || null,
           hora_fin:    form.hora_fin || null,
-          efectivos_asistentes: Number(form.efectivos_asistentes) || 0,
+          efectivos_asistentes: actividad.es_capacitacion ? seleccionados.length : Number(form.efectivos_asistentes) || 0,
+          participantes: actividad.es_capacitacion ? seleccionados : undefined,
         }),
       });
       const data = await res.json();
@@ -248,6 +267,37 @@ function ModalEditar({ actividad, onClose, onEditado }: {
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">Efectivos asistentes</label>
               <input type="number" min="0" value={form.efectivos_asistentes}
                 onChange={e => setForm(f => ({ ...f, efectivos_asistentes: e.target.value }))} className={inputCls} />
+            </div>
+          )}
+
+          {actividad.es_capacitacion && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-gray-700">
+                  Participantes <span className="text-red-600 font-bold ml-1">{seleccionados.length} seleccionados</span>
+                </label>
+                <button type="button" onClick={() => setSeleccionados(filtrados.map(b => b.id))}
+                  className="text-xs text-red-700 hover:underline">Seleccionar todos</button>
+              </div>
+              <input type="text" placeholder="Buscar bombero..." value={busqueda}
+                onChange={e => setBusqueda(e.target.value)} className={`${inputCls} mb-2`} />
+              <div className="border border-gray-200 rounded-lg overflow-y-auto max-h-40 divide-y divide-gray-50">
+                {filtrados.map(b => {
+                  const sel = seleccionados.includes(b.id);
+                  return (
+                    <div key={b.id} onClick={() => toggleBombero(b.id)}
+                      className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${sel ? "bg-red-50" : "hover:bg-gray-50"}`}>
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${sel ? "bg-red-600 border-red-600" : "border-gray-300"}`}>
+                        {sel && <Check className="w-2.5 h-2.5 text-white" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-gray-900 truncate">{b.apellidos.split(",")[0]}, {b.nombres.split(" ")[0]}</p>
+                        <p className="text-[10px] text-gray-400">{b.grado} · {b.codigo}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -583,7 +633,7 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
     finally { setLoading(false); }
   }
 
-  const TIPOS_ENTIDAD = ["EMPRESA", "INSTITUCIÓN PÚBLICA", "ONG", "HOSPITAL", "MUNICIPALIDAD", "OTRO"];
+  const TIPOS_ENTIDAD = ["EMPRESA", "INSTITUCIÓN PÚBLICA", "COLEGIO", "ASOCIACIÓN / AA.HH."];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">

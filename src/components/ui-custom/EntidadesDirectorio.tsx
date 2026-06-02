@@ -7,15 +7,13 @@ import {
   BookOpen, Pencil, Check,
 } from "lucide-react";
 
-const TIPOS = ["EMPRESA", "INSTITUCIÓN PÚBLICA", "ONG", "HOSPITAL", "MUNICIPALIDAD", "OTRO"];
+const TIPOS = ["EMPRESA", "INSTITUCIÓN PÚBLICA", "COLEGIO", "ASOCIACIÓN / AA.HH."];
 
 const TIPO_COLOR: Record<string, string> = {
   "EMPRESA":              "bg-blue-100 text-blue-700",
   "INSTITUCIÓN PÚBLICA":  "bg-purple-100 text-purple-700",
-  "ONG":                  "bg-green-100 text-green-700",
-  "HOSPITAL":             "bg-red-100 text-red-700",
-  "MUNICIPALIDAD":        "bg-amber-100 text-amber-700",
-  "OTRO":                 "bg-gray-100 text-gray-600",
+  "COLEGIO":              "bg-green-100 text-green-700",
+  "ASOCIACIÓN / AA.HH.":  "bg-amber-100 text-amber-700",
 };
 
 interface Entidad {

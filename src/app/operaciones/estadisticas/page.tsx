@@ -27,14 +27,14 @@ async function getEstadisticas(anio: number, mes: number | null) {
   try {
     // Condición de rango según si hay filtro de mes o no
     const whereAnio = mes
-      ? `EXTRACT(year FROM COALESCE(fecha_salida,fecha_despacho,created_at)) = ${anio}
+      ? `tipo = 'EMERGENCIA' AND EXTRACT(year FROM COALESCE(fecha_salida,fecha_despacho,created_at)) = ${anio}
          AND EXTRACT(month FROM COALESCE(fecha_salida,fecha_despacho,created_at)) = ${mes}`
-      : `EXTRACT(year FROM COALESCE(fecha_salida,fecha_despacho,created_at)) = ${anio}`;
+      : `tipo = 'EMERGENCIA' AND EXTRACT(year FROM COALESCE(fecha_salida,fecha_despacho,created_at)) = ${anio}`;
 
     const whereAnioE = mes
-      ? `EXTRACT(year FROM COALESCE(e.fecha_salida,e.fecha_despacho,e.created_at)) = ${anio}
+      ? `e.tipo = 'EMERGENCIA' AND EXTRACT(year FROM COALESCE(e.fecha_salida,e.fecha_despacho,e.created_at)) = ${anio}
          AND EXTRACT(month FROM COALESCE(e.fecha_salida,e.fecha_despacho,e.created_at)) = ${mes}`
-      : `EXTRACT(year FROM COALESCE(e.fecha_salida,e.fecha_despacho,e.created_at)) = ${anio}`;
+      : `e.tipo = 'EMERGENCIA' AND EXTRACT(year FROM COALESCE(e.fecha_salida,e.fecha_despacho,e.created_at)) = ${anio}`;
 
     const [dias, categorias, respuesta, vehiculos, mando, resumen, tendenciaMensual] = await Promise.all([
 
@@ -43,12 +43,14 @@ async function getEstadisticas(anio: number, mes: number | null) {
         mes
           ? `SELECT DATE(COALESCE(fecha_salida,fecha_despacho,created_at))::text AS dia, COUNT(*) AS total
              FROM emergencia
-             WHERE EXTRACT(year FROM COALESCE(fecha_salida,fecha_despacho,created_at)) = $1
+             WHERE tipo = 'EMERGENCIA'
+               AND EXTRACT(year FROM COALESCE(fecha_salida,fecha_despacho,created_at)) = $1
                AND EXTRACT(month FROM COALESCE(fecha_salida,fecha_despacho,created_at)) = $2
              GROUP BY dia ORDER BY dia`
           : `SELECT DATE(COALESCE(fecha_salida,fecha_despacho,created_at))::text AS dia, COUNT(*) AS total
              FROM emergencia
-             WHERE COALESCE(fecha_salida,fecha_despacho,created_at) >= NOW() - INTERVAL '60 days'
+             WHERE tipo = 'EMERGENCIA'
+               AND COALESCE(fecha_salida,fecha_despacho,created_at) >= NOW() - INTERVAL '60 days'
              GROUP BY dia ORDER BY dia`,
         mes ? [anio, mes] : []
       ),

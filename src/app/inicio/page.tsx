@@ -220,20 +220,23 @@ export default async function InicioPage() {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-gray-100">
           {[
-            { icon: ShieldCheck, label: "Estado",              value: estadoEC ?? "—",                                                          sub: null,                                                                           color: estadoText,                                                          bg: "bg-white" },
+            { icon: ShieldCheck, label: "Estado",              value: estadoEC ?? "—",                                                          sub: null,                                                                           color: estadoText,                                                          bg: estadoEC === "EN SERVICIO" ? "bg-green-600" : estadoEC === "EN EMERGENCIA" ? "bg-red-600" : "bg-amber-500" },
             { icon: Users,       label: "En turno",            value: data?.enTurno ?? "—",                                                     sub: `de ${data?.totalBomberos ?? "—"} activos`,                                    color: "text-blue-600",                                                     bg: "bg-white" },
             { icon: Truck,       label: "Flota operativa",     value: `${data?.vehiculosEnBase ?? "—"}/${data?.vehiculosTotal ?? "—"}`,           sub: data?.vehiculosFalla ? `${data.vehiculosFalla} con falla` : "todas operativas", color: data?.vehiculosFalla ? "text-amber-600" : "text-green-600",          bg: "bg-white" },
             { icon: Siren,       label: "Emergencias activas", value: data?.emergActivas ?? 0,                                                   sub: data?.emergActivas ? "en atención ahora" : "sin emergencias",                  color: (data?.emergActivas ?? 0) > 0 ? "text-red-600" : "text-gray-400",   bg: (data?.emergActivas ?? 0) > 0 ? "bg-red-50" : "bg-white" },
-          ].map(({ icon: Icon, label, value, sub, color, bg }) => (
+          ].map(({ icon: Icon, label, value, sub, color, bg }) => {
+            const esEstado = label === "Estado";
+            return (
             <div key={label} className={`${bg} px-3 py-3`}>
               <div className="flex items-center gap-1 mb-1">
-                <Icon className={`w-3 h-3 ${color}`} />
-                <p className="text-[9px] text-gray-400 uppercase tracking-widest font-medium">{label}</p>
+                <Icon className={`w-3 h-3 ${esEstado ? "text-white" : color}`} />
+                <p className={`text-[9px] uppercase tracking-widest font-medium ${esEstado ? "text-white/80" : "text-gray-400"}`}>{label}</p>
               </div>
-              <p className={`text-xl font-bold ${color}`}>{value}</p>
-              {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
+              <p className={`text-xl font-bold ${esEstado ? "text-white" : color}`}>{value}</p>
+              {sub && <p className={`text-[10px] mt-0.5 ${esEstado ? "text-white/70" : "text-gray-400"}`}>{sub}</p>}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

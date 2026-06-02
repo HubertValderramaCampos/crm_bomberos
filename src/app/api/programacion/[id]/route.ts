@@ -64,21 +64,41 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   // Acción: editar — modifica campos básicos de la actividad
   if (body.accion === "editar") {
-    const { tipo, descripcion, fecha, lugar, hora_inicio, hora_fin, efectivos_asistentes, entidad_id } = body;
-    await pool.query(
-      `UPDATE programacion_actividad
-       SET tipo = COALESCE($1, tipo),
-           descripcion = $2,
-           fecha = COALESCE($3, fecha),
-           lugar = $4,
-           hora_inicio = $5,
-           hora_fin = $6,
-           efectivos_asistentes = COALESCE($7, efectivos_asistentes),
-           entidad_id = $8
-       WHERE id = $9`,
-      [tipo, descripcion ?? null, fecha, lugar ?? null, hora_inicio ?? null, hora_fin ?? null,
-       efectivos_asistentes ?? null, entidad_id ?? null, id]
-    );
+    const { tipo, descripcion, fecha, lugar, hora_inicio, hora_fin, efectivos_asistentes, entidad_id, participantes } = body;
+    const client2 = await pool.connect();
+    try {
+      await client2.query("BEGIN");
+      await client2.query(
+        `UPDATE programacion_actividad
+         SET tipo = COALESCE($1, tipo),
+             descripcion = $2,
+             fecha = COALESCE($3, fecha),
+             lugar = $4,
+             hora_inicio = $5,
+             hora_fin = $6,
+             efectivos_asistentes = COALESCE($7, efectivos_asistentes),
+             entidad_id = $8
+         WHERE id = $9`,
+        [tipo, descripcion ?? null, fecha, lugar ?? null, hora_inicio ?? null, hora_fin ?? null,
+         efectivos_asistentes ?? null, entidad_id ?? null, id]
+      );
+      // Actualizar participantes si se enviaron
+      if (Array.isArray(participantes)) {
+        await client2.query(`DELETE FROM programacion_participante WHERE actividad_id = $1`, [id]);
+        for (const bid of participantes) {
+          await client2.query(
+            `INSERT INTO programacion_participante (actividad_id, bombero_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+            [id, bid]
+          );
+        }
+      }
+      await client2.query("COMMIT");
+    } catch (err) {
+      await client2.query("ROLLBACK");
+      throw err;
+    } finally {
+      client2.release();
+    }
     return NextResponse.json({ ok: true });
   }
 

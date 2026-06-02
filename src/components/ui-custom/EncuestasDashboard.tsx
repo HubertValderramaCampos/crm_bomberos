@@ -22,7 +22,7 @@ interface Stats {
 interface Entidad { id: number; nombre: string; tipo: string; }
 
 /* ── constantes ──────────────────────────────────────── */
-const TIPOS_ENTIDAD = ["EMPRESA", "INSTITUCIÓN PÚBLICA", "ONG", "HOSPITAL", "MUNICIPALIDAD", "OTRO"];
+const TIPOS_ENTIDAD = ["EMPRESA", "INSTITUCIÓN PÚBLICA", "COLEGIO", "ASOCIACIÓN / AA.HH."];
 
 const CALIF_ORDER  = ["Excelente", "Bueno", "Regular", "Malo"];
 const CALIF_COLORS: Record<string, string> = {
@@ -46,10 +46,8 @@ const CAMPO_LABEL: Record<string, string> = {
 const TIPO_COLOR: Record<string, string> = {
   "EMPRESA":              "#3b82f6",
   "INSTITUCIÓN PÚBLICA":  "#8b5cf6",
-  "ONG":                  "#10b981",
-  "HOSPITAL":             "#ef4444",
-  "MUNICIPALIDAD":        "#f59e0b",
-  "OTRO":                 "#6b7280",
+  "COLEGIO":              "#10b981",
+  "ASOCIACIÓN / AA.HH.":  "#f59e0b",
 };
 
 /* ── helpers ─────────────────────────────────────────── */

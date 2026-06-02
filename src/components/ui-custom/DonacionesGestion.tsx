@@ -26,10 +26,7 @@ const CATEGORIAS = [
 
 const UNIDADES = ["unidad(es)", "kg", "litros", "cajas", "bolsas", "paquetes", "sets", "metros", "pares"];
 
-const TIPOS_ENTIDAD = [
-  "INSTITUCIÓN PÚBLICA", "EMPRESA PRIVADA", "ONG", "CGBVP",
-  "MUNICIPALIDAD", "HOSPITAL", "COLEGIO", "IGLESIA", "OTRO",
-];
+const TIPOS_ENTIDAD = ["EMPRESA", "INSTITUCIÓN PÚBLICA", "COLEGIO", "ASOCIACIÓN / AA.HH."];
 
 const cls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400";
 
