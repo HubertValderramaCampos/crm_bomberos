@@ -15,7 +15,7 @@ import Link from "next/link";
 
 const MESES_ES = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-async function getInicioData(usuarioId: string, bomberoId: number | null) {
+async function getInicioData(_usuarioId: string, bomberoId: number | null) {
   const now    = new Date();
   const mesHoy = now.getMonth() + 1;
   const anioHoy = now.getFullYear();
@@ -61,7 +61,7 @@ async function getInicioData(usuarioId: string, bomberoId: number | null) {
     `),
 
     pool.query<{ estado: string; motivo: string | null; count: string }>(
-      `SELECT estado, motivo, COUNT(*) FROM vehiculo GROUP BY estado, motivo`),
+      `SELECT estado, motivo, COUNT(*) FROM vehiculo WHERE estado != 'RETIRADO' GROUP BY estado, motivo`),
 
     pool.query<{ count: string }>(
       `SELECT COUNT(*) FROM emergencia
@@ -109,7 +109,7 @@ async function getInicioData(usuarioId: string, bomberoId: number | null) {
     ) : Promise.resolve({ rows: [] }),
 
     pool.query<{ codigo: string; tipo: string; estado: string; motivo: string | null }>(
-      `SELECT codigo, tipo, estado, motivo FROM vehiculo ORDER BY codigo`),
+      `SELECT codigo, tipo, estado, motivo FROM vehiculo WHERE estado != 'RETIRADO' ORDER BY codigo`),
   ]);
 
   // Vehículos operativos = EN BASE sin motivo de falla
