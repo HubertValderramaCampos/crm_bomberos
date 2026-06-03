@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { MapPin, Camera, CheckCircle2, Loader2, AlertCircle, CalendarDays, Clock, LogIn, LogOut } from "lucide-react";
+import { MapPin, Camera, CheckCircle2, Loader2, AlertCircle, CalendarDays, Clock, LogIn, LogOut, Info } from "lucide-react";
 
 type FaceApi = typeof import("@vladmandic/face-api");
 const MODEL_URL = "/models";
@@ -17,7 +17,12 @@ async function cargarModelos(faceapi: FaceApi) {
 
 interface Asistencia {
   id: number; fecha: string; hora_entrada: string; hora_salida: string | null;
+  tipo: string; motivo: string | null;
 }
+interface HorarioProg {
+  dia_semana: number; hora_inicio: string; hora_fin: string; descripcion: string | null;
+}
+const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 
 export default function AsistenciaPage() {
   const videoRef      = useRef<HTMLVideoElement>(null);
@@ -25,17 +30,25 @@ export default function AsistenciaPage() {
   const descriptorRef = useRef<Float32Array | null>(null);
   const streamRef     = useRef<MediaStream | null>(null);
 
-  const [fase,      setFase]      = useState<"init"|"ubicacion"|"camara"|"verificando"|"ok"|"error">("init");
+  const [fase,      setFase]      = useState<"init"|"ubicacion"|"motivo"|"camara"|"verificando"|"ok"|"error">("init");
   const [msg,       setMsg]       = useState("");
   const [historial, setHistorial] = useState<Asistencia[]>([]);
+  const [horarios,  setHorarios]  = useState<HorarioProg[]>([]);
   const [posicion,  setPosicion]  = useState<{ lat: number; lng: number } | null>(null);
   const [tipo,      setTipo]      = useState<"entrada"|"salida"|null>(null);
-  const [pendiente, setPendiente] = useState<"entrada"|"salida"|null>(null); // qué marcar después de verificar GPS
+  const [pendiente, setPendiente] = useState<"entrada"|"salida"|null>(null);
+  const [motivo,    setMotivo]    = useState("");
 
   const cargarHistorial = useCallback(async () => {
     const res = await fetch("/api/formativa/asistencia");
     const data = await res.json();
     if (Array.isArray(data)) setHistorial(data);
+  }, []);
+
+  const cargarHorarios = useCallback(async () => {
+    const res = await fetch("/api/formativa/horarios");
+    const data = await res.json();
+    if (Array.isArray(data)) setHorarios(data.filter((h: HorarioProg & { activo: boolean }) => h.activo));
   }, []);
 
   useEffect(() => {
@@ -55,7 +68,7 @@ export default function AsistenciaPage() {
           return;
         }
         descriptorRef.current = new Float32Array(data.descriptor);
-        await cargarHistorial();
+        await Promise.all([cargarHistorial(), cargarHorarios()]);
         setFase("ubicacion");
         setMsg("");
       } catch {
@@ -160,9 +173,17 @@ export default function AsistenciaPage() {
       const res = await fetch("/api/formativa/asistencia", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lat: posicion.lat, lng: posicion.lng, tipo }),
+        body: JSON.stringify({ lat: posicion.lat, lng: posicion.lng, tipo, motivo: motivo || undefined }),
       });
       const data = await res.json();
+
+      // El servidor pide motivo (día no programado)
+      if (res.status === 200 && data.requiere_motivo) {
+        detenerCamara();
+        setFase("motivo");
+        setMsg(data.mensaje ?? "¿A qué viniste hoy?");
+        return;
+      }
 
       detenerCamara();
 
@@ -172,8 +193,9 @@ export default function AsistenciaPage() {
         return;
       }
 
+      const tipoAsist = data.tipo_asistencia === "extra" ? " (visita extra)" : "";
       setFase("ok");
-      setMsg(tipo === "entrada" ? "¡Entrada registrada!" : "¡Salida registrada!");
+      setMsg(tipo === "entrada" ? `¡Entrada registrada!${tipoAsist}` : "¡Salida registrada!");
       await cargarHistorial();
     } catch {
       setFase("camara");
@@ -246,6 +268,51 @@ export default function AsistenciaPage() {
            fase === "ok"    ? <CheckCircle2 className="w-4 h-4 shrink-0" /> :
                               <AlertCircle  className="w-4 h-4 shrink-0" />}
           <span>{msg}</span>
+        </div>
+      )}
+
+      {/* Horarios programados */}
+      {fase === "ubicacion" && horarios.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 space-y-1.5">
+          <p className="text-xs font-semibold text-blue-700 flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5" /> Horarios de asistencia
+          </p>
+          {horarios.map((h, i) => (
+            <p key={i} className="text-xs text-blue-600">
+              {DIAS[h.dia_semana]} {h.hora_inicio.slice(0,5)} – {h.hora_fin.slice(0,5)}
+              {h.descripcion && <span className="text-blue-400"> · {h.descripcion}</span>}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* Pantalla de motivo (día no programado) */}
+      {fase === "motivo" && (
+        <div className="space-y-3">
+          <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700 flex items-start gap-2">
+            <Info className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>Hoy no es un día de asistencia programada. ¿A qué viniste?</span>
+          </div>
+          <textarea
+            value={motivo}
+            onChange={e => setMotivo(e.target.value)}
+            rows={3}
+            placeholder="Ej: Apoye turno de guardia, actividad especial, práctica voluntaria..."
+            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+          />
+          <button
+            onClick={() => {
+              if (!motivo.trim()) return;
+              // Reanudar la cámara con el motivo
+              setFase("camara");
+              iniciarCamara();
+            }}
+            disabled={!motivo.trim()}
+            className="w-full py-3 bg-amber-500 text-white font-semibold rounded-xl hover:bg-amber-600 disabled:opacity-40 transition-colors"
+          >
+            Continuar
+          </button>
+          <button onClick={reintentar} className="w-full py-2 text-xs text-gray-400 hover:text-gray-600">Cancelar</button>
         </div>
       )}
 
@@ -332,18 +399,22 @@ export default function AsistenciaPage() {
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Historial reciente</p>
           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-50 overflow-hidden">
             {historial.slice(0, 10).map(a => (
-              <div key={a.id} className="flex items-center gap-3 px-4 py-3">
-                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                <p className="text-sm font-semibold text-gray-900 flex-1">{formatFecha(a.fecha)}</p>
-                <div className="flex items-center gap-3 text-xs text-gray-400">
-                  <span className="flex items-center gap-1">
-                    <LogIn className="w-3 h-3 text-green-500" />
-                    {formatHora(a.hora_entrada)}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <LogOut className="w-3 h-3 text-blue-500" />
-                    {formatHora(a.hora_salida)}
-                  </span>
+              <div key={a.id} className="px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">{formatFecha(a.fecha)}</p>
+                    {a.tipo === "extra" && a.motivo && (
+                      <p className="text-[10px] text-amber-600 truncate">{a.motivo}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-400 shrink-0">
+                    {a.tipo === "extra" && (
+                      <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">Extra</span>
+                    )}
+                    <span className="flex items-center gap-1"><LogIn className="w-3 h-3 text-green-500" />{formatHora(a.hora_entrada)}</span>
+                    <span className="flex items-center gap-1"><LogOut className="w-3 h-3 text-blue-500" />{formatHora(a.hora_salida)}</span>
+                  </div>
                 </div>
               </div>
             ))}

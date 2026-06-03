@@ -9,7 +9,7 @@ export default async function FormativaLayout({ children }: { children: React.Re
 
   const categoria = session.user.categoria ?? "BOMBERO";
   const esFormativo = ["ASPIRANTE", "POSTULANTE"].includes(categoria);
-  const esAdmin = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol);
+  const esAdmin = ["JEFE_COMPANIA", "ADMINISTRACION", "INSTRUCCION"].includes(session.user.rol);
 
   if (!esFormativo && !esAdmin) redirect("/dashboard");
 

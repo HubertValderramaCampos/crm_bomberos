@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import {
   Home, UserCircle, Radio, BarChart3, FileText, Users,
-  GraduationCap, CalendarCheck, BookOpen, Stethoscope,
+  GraduationCap, CalendarCheck, BookOpen, Stethoscope, Clock,
   LogOut, ChevronRight, ShieldCheck, TrendingUp,
   Scroll, Gift, CalendarDays, Building2, ScanLine, ChevronDown, Lock,
   Briefcase, Tag, Heart, ClipboardList,
@@ -74,10 +74,12 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Gestión Formativa",
     roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"],
     items: [
-      { label: "Mi progreso",       href: "/formativa/inicio",     icon: Home,          roles: ["BOMBERO"] },
-      { label: "Registrar rostro",  href: "/formativa/entrenar",   icon: GraduationCap, roles: ["BOMBERO"] },
-      { label: "Marcar asistencia", href: "/formativa/asistencia", icon: CalendarCheck, roles: ["BOMBERO"] },
-      { label: "Notas de lecciones",href: "/formativa/notas",      icon: BookOpen,      roles: ["JEFE_COMPANIA", "ADMINISTRACION"] },
+      { label: "Mi progreso",        href: "/formativa/inicio",     icon: Home,          roles: ["BOMBERO"] },
+      { label: "Registrar rostro",   href: "/formativa/entrenar",   icon: GraduationCap, roles: ["BOMBERO"] },
+      { label: "Marcar asistencia",  href: "/formativa/asistencia", icon: CalendarCheck, roles: ["BOMBERO"] },
+      { label: "Notas de lecciones", href: "/formativa/notas",      icon: BookOpen,      roles: ["JEFE_COMPANIA", "ADMINISTRACION", "INSTRUCCION"] },
+      { label: "Horarios",           href: "/formativa/horarios",   icon: Clock,         roles: ["JEFE_COMPANIA", "ADMINISTRACION", "INSTRUCCION"] },
+      { label: "Reporte asistencias",href: "/formativa/reporte",    icon: BarChart3,     roles: ["JEFE_COMPANIA", "ADMINISTRACION", "INSTRUCCION"] },
     ],
   },
 ];
