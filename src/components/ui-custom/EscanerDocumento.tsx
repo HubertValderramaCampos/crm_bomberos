@@ -1155,10 +1155,14 @@ export function EscanerDocumento({ esAdmin }: { esAdmin: boolean }) {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imagen: dataUrl }),
       });
-      const data: ResultadoIA = await res.json();
+      const data: ResultadoIA & { ia_no_disponible?: boolean } = await res.json();
       if (!res.ok) throw new Error((data as { error?: string }).error ?? "Error");
       setRes(data);
       setPaso("confirmar");
+      // Avisar si la IA no pudo analizar pero el documento puede subirse igual
+      if (data.ia_no_disponible) {
+        setErrorGlobal("La IA no está disponible. Puedes subir el documento igual y completar los datos manualmente.");
+      }
     } catch (e: unknown) {
       setErrorGlobal(e instanceof Error ? e.message : "Error al analizar el documento.");
       setPaso("captura");

@@ -123,6 +123,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ...result, entidad_sugerida, entidad_sugerida_nombre });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Error al analizar";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[analizar-documento]", msg);
+    // Si la IA falla (quota, red, etc.) devolver resultado vacío para que
+    // el documento se suba igual sin clasificación automática
+    return NextResponse.json({
+      ia_no_disponible: true,
+      tipo: null,
+      subtipo: null,
+      datos: {},
+      entidad_sugerida: null,
+      entidad_sugerida_nombre: null,
+    });
   }
 }
