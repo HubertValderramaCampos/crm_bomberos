@@ -35,7 +35,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: "Gestión Operativa",
-    roles: OPERATIVOS_Y_BOMBERO,
+    roles: TODOS,
     items: [
       { label: "Operatividad",         href: "/dashboard",                icon: Radio,         roles: OPERATIVOS_Y_BOMBERO,   seccion: "dashboard" },
       { label: "Estadísticas",         href: "/operaciones/estadisticas", icon: TrendingUp,    roles: OPERATIVOS_Y_BOMBERO,   seccion: "estadisticas" },
@@ -48,7 +48,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: "Gestión Administrativa",
-    roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"],
+    roles: TODOS,
     items: [
       { label: "Oficios Institucionales", href: "/administracion/oficios-institucionales", icon: Scroll,       roles: ["JEFE_COMPANIA", "ADMINISTRACION"],          seccion: "oficios-institucionales" },
       { label: "Oficios Varios",          href: "/administracion/oficios-varios",          icon: FileText,     roles: ["JEFE_COMPANIA", "ADMINISTRACION"],          seccion: "oficios-varios" },
@@ -62,7 +62,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: "Gestión Comercial",
-    roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"],
+    roles: TODOS,
     items: [
       { label: "Socios Estratégicos",     href: "/comercial/socios",             icon: Briefcase,     roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"], seccion: "socios" },
       { label: "Clasificación de Socios", href: "/comercial/clasificacion",      icon: Tag,           roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"], seccion: "clasificacion" },
@@ -72,7 +72,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: "Gestión Formativa",
-    roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"],
+    roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO", "INSTRUCCION"],
     items: [
       { label: "Mi progreso",        href: "/formativa/inicio",     icon: Home,          roles: ["BOMBERO"] },
       { label: "Registrar rostro",   href: "/formativa/entrenar",   icon: GraduationCap, roles: ["BOMBERO"] },
