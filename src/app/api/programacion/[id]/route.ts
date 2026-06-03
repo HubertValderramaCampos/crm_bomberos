@@ -15,9 +15,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       lugar: string | null; es_capacitacion: boolean;
       hora_inicio: string | null; hora_fin: string | null; efectivos_asistentes: number;
       entidad_nombre: string | null; finalizado: boolean; reprogramada_de: number | null;
+      area: string | null;
     }>(`SELECT a.id, a.fecha::text, a.tipo, a.descripcion, a.lugar, a.es_capacitacion,
                a.hora_inicio::text, a.hora_fin::text, a.efectivos_asistentes,
-               a.finalizado, a.reprogramada_de,
+               a.finalizado, a.reprogramada_de, a.area,
                e.nombre AS entidad_nombre
         FROM programacion_actividad a
         LEFT JOIN entidad e ON e.id = a.entidad_id
@@ -64,7 +65,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   // Acción: editar — modifica campos básicos de la actividad
   if (body.accion === "editar") {
-    const { tipo, descripcion, fecha, lugar, hora_inicio, hora_fin, efectivos_asistentes, entidad_id, participantes } = body;
+    const { tipo, descripcion, fecha, lugar, hora_inicio, hora_fin, efectivos_asistentes, entidad_id, participantes, area } = body;
     const client2 = await pool.connect();
     try {
       await client2.query("BEGIN");
@@ -77,10 +78,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
              hora_inicio = $5,
              hora_fin = $6,
              efectivos_asistentes = COALESCE($7, efectivos_asistentes),
-             entidad_id = $8
-         WHERE id = $9`,
+             entidad_id = $8,
+             area = $9
+         WHERE id = $10`,
         [tipo, descripcion ?? null, fecha, lugar ?? null, hora_inicio ?? null, hora_fin ?? null,
-         efectivos_asistentes ?? null, entidad_id ?? null, id]
+         efectivos_asistentes ?? null, entidad_id ?? null, area ?? null, id]
       );
       // Actualizar participantes si se enviaron
       if (Array.isArray(participantes)) {

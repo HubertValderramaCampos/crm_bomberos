@@ -16,12 +16,12 @@ export async function GET(req: Request) {
     lugar: string | null; es_capacitacion: boolean;
     hora_inicio: string | null; hora_fin: string | null;
     efectivos_asistentes: number; participantes: number;
-    finalizado: boolean; reprogramada_de: number | null;
+    finalizado: boolean; reprogramada_de: number | null; area: string | null;
   }>(`
     SELECT a.id, a.fecha::text, a.tipo, a.descripcion, a.lugar,
            a.es_capacitacion, a.hora_inicio::text, a.hora_fin::text,
            a.efectivos_asistentes, a.entidad_id, e.nombre AS entidad_nombre,
-           a.finalizado, a.reprogramada_de,
+           a.finalizado, a.reprogramada_de, a.area,
            COUNT(p.id)::int AS participantes
     FROM programacion_actividad a
     LEFT JOIN programacion_participante p ON p.actividad_id = a.id
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { fecha, tipo, descripcion, lugar, es_capacitacion, hora_inicio, hora_fin, participantes, entidad_id } = body;
+  const { fecha, tipo, descripcion, lugar, es_capacitacion, hora_inicio, hora_fin, participantes, entidad_id, area } = body;
 
   if (!fecha || !tipo) return NextResponse.json({ error: "Fecha y tipo son obligatorios" }, { status: 400 });
 
@@ -48,13 +48,13 @@ export async function POST(req: Request) {
     await client.query("BEGIN");
 
     const { rows } = await client.query<{ id: number }>(`
-      INSERT INTO programacion_actividad (fecha, tipo, descripcion, lugar, es_capacitacion, hora_inicio, hora_fin, efectivos_asistentes, entidad_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO programacion_actividad (fecha, tipo, descripcion, lugar, es_capacitacion, hora_inicio, hora_fin, efectivos_asistentes, entidad_id, area)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING id
     `, [fecha, tipo, descripcion || null, lugar || null, es_capacitacion || false,
         hora_inicio || null, hora_fin || null,
         es_capacitacion ? (participantes?.length ?? 0) : (body.efectivos_asistentes ?? 0),
-        entidad_id || null]);
+        entidad_id || null, area || null]);
 
     const actividadId = rows[0].id;
 

@@ -15,6 +15,26 @@ const TIPOS = [
   "Desfile / Acto cívico","Reunión de compañía","Mantenimiento","Otro",
 ];
 
+// Colores por ÁREA (prioridad sobre tipo)
+const AREAS = ["ADMINISTRACION", "IMAGEN", "INSTRUCCION"] as const;
+type Area = typeof AREAS[number];
+
+const AREA_COLOR: Record<Area, { badge: string; dia: string; hex: string }> = {
+  "ADMINISTRACION": { badge: "bg-red-100 text-red-700 border-red-200",    dia: "bg-red-600",    hex: "#dc2626" },
+  "IMAGEN":         { badge: "bg-orange-100 text-orange-700 border-orange-200", dia: "bg-orange-500", hex: "#f97316" },
+  "INSTRUCCION":    { badge: "bg-green-100 text-green-700 border-green-200",  dia: "bg-green-600",  hex: "#16a34a" },
+};
+
+function getColorBadge(area: string | null | undefined, tipo: string): string {
+  if (area && area in AREA_COLOR) return AREA_COLOR[area as Area].badge;
+  return COLOR[tipo] ?? COLOR["Otro"];
+}
+
+function getColorDia(area: string | null | undefined, tipo: string): string {
+  if (area && area in AREA_COLOR) return AREA_COLOR[area as Area].dia;
+  return COLOR_DIA[tipo] ?? "bg-gray-400";
+}
+
 const COLOR: Record<string, string> = {
   "Capacitación interna":  "bg-blue-100 text-blue-700 border-blue-200",
   "Capacitación externa":  "bg-indigo-100 text-indigo-700 border-indigo-200",
@@ -27,7 +47,6 @@ const COLOR: Record<string, string> = {
   "Otro":                  "bg-gray-100 text-gray-500 border-gray-200",
 };
 
-// Color de fondo completo para celdas del calendario
 const COLOR_DIA: Record<string, string> = {
   "Capacitación interna":  "bg-blue-500",
   "Capacitación externa":  "bg-indigo-500",
@@ -46,6 +65,7 @@ interface Actividad {
   hora_inicio: string | null; hora_fin: string | null;
   efectivos_asistentes: number; participantes: number;
   finalizado: boolean; reprogramada_de: number | null;
+  area: string | null;
 }
 
 interface Bombero { id: number; apellidos: string; nombres: string; grado: string; codigo: string; }
@@ -53,6 +73,7 @@ interface Entidad { id: number; nombre: string; tipo: string; }
 
 interface Detalle extends Omit<Actividad, "participantes"> {
   entidad_nombre?: string | null;
+  area: string | null;
   participantes: { bombero_id: number; apellidos: string; nombres: string; grado: string; asistio: boolean | null }[];
 }
 
@@ -165,6 +186,7 @@ function ModalEditar({ actividad, onClose, onEditado }: {
     hora_inicio: hhmm(actividad.hora_inicio),
     hora_fin:    hhmm(actividad.hora_fin),
     efectivos_asistentes: String(actividad.efectivos_asistentes ?? 0),
+    area:        actividad.area ?? "",
   });
   const [bomberos,       setBomberos]       = useState<Bombero[]>([]);
   const [seleccionados,  setSeleccionados]  = useState<number[]>(
@@ -227,11 +249,22 @@ function ModalEditar({ actividad, onClose, onEditado }: {
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{error}</div>}
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Tipo de actividad</label>
-            <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))} className={inputCls}>
-              {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Tipo de actividad</label>
+              <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))} className={inputCls}>
+                {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Área</label>
+              <select value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))} className={inputCls}>
+                <option value="">Sin área</option>
+                {AREAS.map(a => (
+                  <option key={a} value={a}>{a === "ADMINISTRACION" ? "Administración" : a === "IMAGEN" ? "Imagen" : "Instrucción"}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>
@@ -494,7 +527,7 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
     </div>
   );
 
-  const badge    = COLOR[data.tipo] ?? COLOR["Otro"];
+  const badge    = getColorBadge(data.area, data.tipo);
   const partics  = Array.isArray(data.participantes) ? data.participantes : [];
   const vencida  = fechaHaPasado(data.fecha) && !data.finalizado;
   const pasada   = fechaHaPasado(data.fecha);
@@ -540,6 +573,11 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
             <div>
               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                 <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded border ${badge}`}>{data.tipo}</span>
+                {data.area && (
+                  <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded border ${AREA_COLOR[data.area as Area]?.badge ?? ""}`}>
+                    {data.area === "ADMINISTRACION" ? "Administración" : data.area === "IMAGEN" ? "Imagen" : "Instrucción"}
+                  </span>
+                )}
                 {data.finalizado && (
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-green-200 text-green-800 border border-green-300">
                     <CheckCircle2 className="w-3 h-3" /> Finalizado
@@ -723,7 +761,7 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
   const [form, setForm] = useState({
     fecha: fechaInicial, tipo: "Capacitación interna", descripcion: "",
     lugar: "", es_capacitacion: true, hora_inicio: "", hora_fin: "",
-    efectivos_asistentes: "",
+    efectivos_asistentes: "", area: "",
   });
   const [entidadId, setEntidadId]         = useState<number | null>(null);
   const [entidades, setEntidades]         = useState<Entidad[]>([]);
@@ -822,14 +860,25 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
           <div className="px-5 py-4 space-y-4">
             {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{error}</div>}
 
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Tipo de actividad</label>
-              <select value={form.tipo} onChange={e => {
-                const t = e.target.value;
-                setForm(f => ({ ...f, tipo: t, es_capacitacion: t.startsWith("Capacitación") }));
-              }} className={inputCls}>
-                {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Tipo de actividad</label>
+                <select value={form.tipo} onChange={e => {
+                  const t = e.target.value;
+                  setForm(f => ({ ...f, tipo: t, es_capacitacion: t.startsWith("Capacitación") }));
+                }} className={inputCls}>
+                  {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Área</label>
+                <select value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))} className={inputCls}>
+                  <option value="">Sin área</option>
+                  {AREAS.map(a => (
+                    <option key={a} value={a}>{a === "ADMINISTRACION" ? "Administración" : a === "IMAGEN" ? "Imagen" : "Instrucción"}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div>
@@ -1069,9 +1118,11 @@ export function ProgramacionCalendario({ puedeCrear }: { puedeCrear: boolean }) 
 
       {/* Leyenda */}
       <div className="flex flex-wrap gap-2">
-        {Object.entries(COLOR).slice(0, 6).map(([tipo, cls]) => (
-          <span key={tipo} className={`text-[10px] font-medium px-2 py-0.5 rounded border ${cls}`}>{tipo}</span>
-        ))}
+        {/* Áreas */}
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-red-100 text-red-700 border-red-200">Administración</span>
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-orange-100 text-orange-700 border-orange-200">Imagen</span>
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-green-100 text-green-700 border-green-200">Instrucción</span>
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded border bg-gray-100 text-gray-500 border-gray-200">Sin área</span>
         <span className="text-[10px] font-medium px-2 py-0.5 rounded border bg-green-100 text-green-700 border-green-200 flex items-center gap-1">
           <CheckCircle2 className="w-3 h-3" /> Finalizado
         </span>
@@ -1098,7 +1149,7 @@ export function ProgramacionCalendario({ puedeCrear }: { puedeCrear: boolean }) 
                 ? "bg-green-500"
                 : fechaHaPasado(acts[0].fecha) && !acts[0].finalizado
                   ? "bg-red-500"
-                  : (COLOR_DIA[acts[0].tipo] ?? "bg-gray-400")
+                  : getColorDia(acts[0].area, acts[0].tipo)
               : "";
 
             return (
