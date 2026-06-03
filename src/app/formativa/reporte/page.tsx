@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -373,8 +373,8 @@ export default function ReporteFormativoPage() {
                       {resumen.map(b => {
                         const detalleB = detalle.filter(d => d.apellidos === b.apellidos && d.nombres === b.nombres);
                         return (
-                          <>
-                            <tr key={b.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setExpandido(expandido === b.id ? null : b.id)}>
+                          <Fragment key={b.id}>
+                            <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => setExpandido(expandido === b.id ? null : b.id)}>
                               <td className="px-4 py-2.5">
                                 <p className="font-medium text-gray-900 text-xs">{b.apellidos.split(",")[0]}, {b.nombres.split(" ")[0]}</p>
                                 <p className="text-[10px] text-gray-400">{b.grado}</p>
@@ -422,7 +422,7 @@ export default function ReporteFormativoPage() {
                                 </td>
                               </tr>
                             )}
-                          </>
+                          </Fragment>
                         );
                       })}
                     </tbody>
