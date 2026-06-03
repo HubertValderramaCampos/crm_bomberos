@@ -40,8 +40,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const eval_ = evalRes.rows[0];
 
   // Solo el evaluador asignado o el jefe pueden acceder
-  const esJefe = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol);
-  const esEvaluador = eval_.evaluador_bombero_id === session.user.bomberoId;
+  const esJefe     = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol);
+  const esEvaluador = Number(eval_.evaluador_bombero_id) === Number(session.user.bomberoId);
   if (!esJefe && !esEvaluador)
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
 
@@ -60,8 +60,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   );
   if (!evalRow.rows[0]) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  const esJefe    = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol);
-  const esEvaluador = evalRow.rows[0].evaluador_id === session.user.bomberoId;
+  const esJefe     = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol);
+  const esEvaluador = Number(evalRow.rows[0].evaluador_id) === Number(session.user.bomberoId);
   if (!esJefe && !esEvaluador)
     return NextResponse.json({ error: "Solo el evaluador asignado puede completar esta evaluación" }, { status: 403 });
 

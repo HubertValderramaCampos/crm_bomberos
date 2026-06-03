@@ -3,8 +3,8 @@ import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 
-const CUARTEL_LAT = -11.828583;
-const CUARTEL_LNG = -77.102278;
+const CUARTEL_LAT = -11.86734;
+const CUARTEL_LNG = -77.0787266;
 const RADIO_METROS = 50;
 
 function distanciaMetros(lat1: number, lng1: number, lat2: number, lng2: number): number {
