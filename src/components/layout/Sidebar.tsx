@@ -77,9 +77,9 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Mi progreso",        href: "/formativa/inicio",     icon: Home,          roles: ["BOMBERO"] },
       { label: "Registrar rostro",   href: "/formativa/entrenar",   icon: GraduationCap, roles: ["BOMBERO"] },
       { label: "Marcar asistencia",  href: "/formativa/asistencia", icon: CalendarCheck, roles: ["BOMBERO"] },
-      { label: "Notas de lecciones", href: "/formativa/notas",      icon: BookOpen,      roles: ["JEFE_COMPANIA", "ADMINISTRACION", "INSTRUCCION"] },
-      { label: "Horarios",           href: "/formativa/horarios",   icon: Clock,         roles: ["JEFE_COMPANIA", "ADMINISTRACION", "INSTRUCCION"] },
-      { label: "Reporte asistencias",href: "/formativa/reporte",    icon: BarChart3,     roles: ["JEFE_COMPANIA", "ADMINISTRACION", "INSTRUCCION"] },
+      { label: "Notas de lecciones", href: "/formativa/notas",      icon: BookOpen,      roles: ["JEFE_COMPANIA", "ADMINISTRACION", "INSTRUCCION"], seccion: "notas-formativa"    },
+      { label: "Horarios",           href: "/formativa/horarios",   icon: Clock,         roles: ["JEFE_COMPANIA", "ADMINISTRACION", "INSTRUCCION"], seccion: "horarios-formativa" },
+      { label: "Reporte asistencias",href: "/formativa/reporte",    icon: BarChart3,     roles: ["JEFE_COMPANIA", "ADMINISTRACION", "INSTRUCCION"], seccion: "reporte-formativa"  },
     ],
   },
 ];
