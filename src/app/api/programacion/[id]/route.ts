@@ -14,12 +14,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       id: number; fecha: string; tipo: string; descripcion: string | null;
       lugar: string | null; es_capacitacion: boolean;
       hora_inicio: string | null; hora_fin: string | null; efectivos_asistentes: number;
-      entidad_nombre: string | null; finalizado: boolean; reprogramada_de: number | null;
+      entidad_id: number | null; entidad_nombre: string | null; finalizado: boolean; reprogramada_de: number | null;
       area: string | null;
     }>(`SELECT a.id, a.fecha::text, a.tipo, a.descripcion, a.lugar, a.es_capacitacion,
                a.hora_inicio::text, a.hora_fin::text, a.efectivos_asistentes,
                a.finalizado, a.reprogramada_de, a.area,
-               e.nombre AS entidad_nombre
+               a.entidad_id, e.nombre AS entidad_nombre
         FROM programacion_actividad a
         LEFT JOIN entidad e ON e.id = a.entidad_id
         WHERE a.id = $1`, [id]),

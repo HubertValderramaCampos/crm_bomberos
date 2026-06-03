@@ -72,6 +72,7 @@ interface Bombero { id: number; apellidos: string; nombres: string; grado: strin
 interface Entidad { id: number; nombre: string; tipo: string; }
 
 interface Detalle extends Omit<Actividad, "participantes"> {
+  entidad_id?: number | null;
   entidad_nombre?: string | null;
   area: string | null;
   participantes: { bombero_id: number; apellidos: string; nombres: string; grado: string; asistio: boolean | null }[];
@@ -196,10 +197,23 @@ function ModalEditar({ actividad, onClose, onEditado }: {
   const [loading,        setLoading]        = useState(false);
   const [error,          setError]          = useState("");
 
+  const [entidades,          setEntidades]          = useState<Entidad[]>([]);
+  const [entidadId,          setEntidadId]          = useState<number | null>(actividad.entidad_id ?? null);
+  const [entidadSel,         setEntidadSel]         = useState<Entidad | null>(null);
+  const [busqEntidad,        setBusqEntidad]        = useState("");
+  const [mostrarEntidades,   setMostrarEntidades]   = useState(false);
+
   useEffect(() => {
     if (actividad.es_capacitacion)
       fetch("/api/bomberos").then(r => r.json()).then(setBomberos);
-  }, [actividad.es_capacitacion]);
+    fetch("/api/entidades").then(r => r.json()).then((data: Entidad[]) => {
+      setEntidades(data);
+      if (actividad.entidad_id) {
+        const found = data.find((e: Entidad) => e.id === actividad.entidad_id);
+        if (found) setEntidadSel(found);
+      }
+    });
+  }, [actividad.es_capacitacion, actividad.entidad_id]);
 
   const filtrados = bomberos.filter(b =>
     `${b.apellidos} ${b.nombres} ${b.codigo}`.toLowerCase().includes(busqueda.toLowerCase())
@@ -225,6 +239,7 @@ function ModalEditar({ actividad, onClose, onEditado }: {
           hora_inicio: form.hora_inicio || null,
           hora_fin:    form.hora_fin || null,
           efectivos_asistentes: actividad.es_capacitacion ? seleccionados.length : Number(form.efectivos_asistentes) || 0,
+          entidad_id:  entidadId,
           participantes: actividad.es_capacitacion ? seleccionados : undefined,
         }),
       });
@@ -271,6 +286,52 @@ function ModalEditar({ actividad, onClose, onEditado }: {
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">Descripción / Tema</label>
             <input type="text" value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
               placeholder="Ej: Primeros auxilios básicos" className={inputCls} />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Entidad</label>
+            <div className="relative">
+              {entidadSel ? (
+                <div className="flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg bg-indigo-50">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Building2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                    <span className="text-xs font-semibold text-indigo-800 truncate">{entidadSel.nombre}</span>
+                  </div>
+                  <button type="button" onClick={() => { setEntidadId(null); setEntidadSel(null); setBusqEntidad(""); }}
+                    className="text-gray-400 hover:text-red-500 ml-2 shrink-0"><X className="w-3.5 h-3.5" /></button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Buscar entidad..."
+                    value={busqEntidad}
+                    onChange={e => { setBusqEntidad(e.target.value); setMostrarEntidades(true); }}
+                    onFocus={() => setMostrarEntidades(true)}
+                    onBlur={() => setTimeout(() => setMostrarEntidades(false), 150)}
+                    className={`${inputCls} pl-8`}
+                  />
+                  {mostrarEntidades && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-44 overflow-y-auto">
+                      {entidades.filter(e => e.nombre.toLowerCase().includes(busqEntidad.toLowerCase())).slice(0, 8).map(e => (
+                        <div key={e.id} onMouseDown={() => { setEntidadId(e.id); setEntidadSel(e); setBusqEntidad(""); setMostrarEntidades(false); }}
+                          className="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-50 cursor-pointer">
+                          <Building2 className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                          <div>
+                            <p className="text-xs font-semibold text-gray-800">{e.nombre}</p>
+                            <p className="text-[10px] text-gray-400">{e.tipo}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {entidades.filter(e => e.nombre.toLowerCase().includes(busqEntidad.toLowerCase())).length === 0 && (
+                        <p className="px-3 py-2 text-xs text-gray-400">Sin resultados</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
