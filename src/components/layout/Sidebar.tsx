@@ -30,7 +30,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Inicio",        href: "/inicio",                      icon: Home,        roles: TODOS },
       { label: "Mi Perfil",     href: "/perfil",                      icon: UserCircle,  roles: ["BOMBERO"] },
-      { label: "Programación",  href: "/administracion/programacion", icon: CalendarDays,roles: ADMIN_Y_BOMBERO_RACHA, seccion: "programacion", rachaMin: 4 },
+      { label: "Programación",  href: "/administracion/programacion", icon: CalendarDays, roles: TODOS, seccion: "programacion" },
     ],
   },
   {

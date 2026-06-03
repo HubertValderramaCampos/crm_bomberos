@@ -18,26 +18,33 @@ export default async function Layout({ children }: { children: React.ReactNode }
 
   const rol = session.user.rol;
 
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") ?? "";
+
+  // Programación es libre para todos
+  if (pathname.startsWith("/administracion/programacion")) {
+    return <DashboardShell scrollable>{children}</DashboardShell>;
+  }
+
   if (["JEFE_COMPANIA", "ADMINISTRACION"].includes(rol)) {
     return <DashboardShell scrollable>{children}</DashboardShell>;
   }
 
-  // Bomberos: verificar racha mínima desde BD para la ruta actual
-  if (rol === "BOMBERO" && session.user.bomberoId) {
-    const headersList = await headers();
-    const pathname = headersList.get("x-pathname") ?? "";
+  // Cuentas de área (no BOMBERO): acceso libre a sus rutas permitidas
+  if (["OPERACIONES","SERVICIOS_GENERALES","INSTRUCCION","SANIDAD","IMAGEN"].includes(rol)) {
+    return <DashboardShell scrollable>{children}</DashboardShell>;
+  }
 
+  // Bomberos: verificar racha mínima desde BD para otras rutas (donaciones)
+  if (rol === "BOMBERO" && session.user.bomberoId) {
     const seccion = Object.entries(RUTA_SECCION).find(([ruta]) => pathname.startsWith(ruta))?.[1];
 
     if (seccion) {
-      // Leer racha_min desde BD
       const configRes = await pool.query<{ racha_min: number }>(
         `SELECT racha_min FROM bombero_acceso_racha WHERE seccion = $1`, [seccion]
       );
-      const rachaMin = configRes.rows[0]?.racha_min ?? 4; // fallback 4 si no está en BD
-
-      if (rachaMin === -1) redirect("/dashboard"); // bloqueado explícitamente
-
+      const rachaMin = configRes.rows[0]?.racha_min ?? 4;
+      if (rachaMin === -1) redirect("/dashboard");
       const racha = await calcularRacha(session.user.bomberoId);
       if (racha.rachaActual >= rachaMin) {
         return <DashboardShell scrollable>{children}</DashboardShell>;
