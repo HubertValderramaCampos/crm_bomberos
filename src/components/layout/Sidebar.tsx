@@ -18,8 +18,9 @@ type NavSection = { title: string; roles?: string[]; items: NavItem[] };
 
 const TODOS = ["JEFE_COMPANIA","ADMINISTRACION","SERVICIOS_GENERALES","INSTRUCCION","SANIDAD","OPERACIONES","IMAGEN","BOMBERO"];
 const OPERATIVOS = ["JEFE_COMPANIA","OPERACIONES"];
-const OPERATIVOS_Y_BOMBERO = ["JEFE_COMPANIA","OPERACIONES","BOMBERO"];
-const ADMIN_Y_BOMBERO_RACHA = ["JEFE_COMPANIA","ADMINISTRACION","BOMBERO"];
+// Para items con permisos individuales: todos los roles pueden verlos si tienen el permiso
+const OPERATIVOS_Y_BOMBERO = TODOS;
+const ADMIN_Y_BOMBERO_RACHA = TODOS;
 
 // Roles que usan permisos individuales (cuentas de área sin bombero_id)
 const ROLES_CON_PERMISOS = ["ADMINISTRACION","OPERACIONES","SERVICIOS_GENERALES","INSTRUCCION","SANIDAD","IMAGEN"];
@@ -43,20 +44,20 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Bomberos",             href: "/operaciones/personal",     icon: Users,         roles: OPERATIVOS,             seccion: "personal" },
       { label: "Asistencias",          href: "/operaciones/asistencias",  icon: CalendarCheck, roles: OPERATIVOS_Y_BOMBERO,   seccion: "asistencias" },
       { label: "Análisis",             href: "/operaciones/analisis",     icon: BarChart3,     roles: OPERATIVOS_Y_BOMBERO,   seccion: "analisis" },
-      { label: "Eval. de Emergencias",  href: "/operaciones/aph",          icon: Stethoscope,   roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"], seccion: "aph" },
+      { label: "Eval. de Emergencias",  href: "/operaciones/aph",          icon: Stethoscope,   roles: TODOS, seccion: "aph" },
     ],
   },
   {
     title: "Gestión Administrativa",
     roles: TODOS,
     items: [
-      { label: "Oficios Institucionales", href: "/administracion/oficios-institucionales", icon: Scroll,       roles: ["JEFE_COMPANIA", "ADMINISTRACION"],          seccion: "oficios-institucionales" },
-      { label: "Oficios Varios",          href: "/administracion/oficios-varios",          icon: FileText,     roles: ["JEFE_COMPANIA", "ADMINISTRACION"],          seccion: "oficios-varios" },
-      { label: "Subir Documento",         href: "/solicitar-capacitacion",                 icon: ScanLine,     roles: TODOS,                                        seccion: "solicitar-capacitacion" },
-      { label: "Ver Documentos",          href: "/documentos",                             icon: FileText,     roles: TODOS,                                        seccion: "documentos" },
-      { label: "Donaciones",              href: "/administracion/donaciones",               icon: Gift,         roles: ADMIN_Y_BOMBERO_RACHA,                        seccion: "donaciones",   rachaMin: 4 },
-      { label: "Asistencias a eventos",   href: "/administracion/asistencias-eventos",      icon: CalendarCheck,roles: ["JEFE_COMPANIA", "ADMINISTRACION"],          seccion: "programacion" }, // misma seccion que Programación → se habilitan juntas
-      { label: "Entidades",               href: "/administracion/entidades",                icon: Building2,    roles: ["JEFE_COMPANIA", "ADMINISTRACION"],          seccion: "entidades" },
+      { label: "Oficios Institucionales", href: "/administracion/oficios-institucionales", icon: Scroll,       roles: TODOS, seccion: "oficios-institucionales" },
+      { label: "Oficios Varios",          href: "/administracion/oficios-varios",          icon: FileText,     roles: TODOS, seccion: "oficios-varios" },
+      { label: "Subir Documento",         href: "/solicitar-capacitacion",                 icon: ScanLine,     roles: TODOS, seccion: "solicitar-capacitacion" },
+      { label: "Ver Documentos",          href: "/documentos",                             icon: FileText,     roles: TODOS, seccion: "documentos" },
+      { label: "Donaciones",              href: "/administracion/donaciones",               icon: Gift,         roles: TODOS, seccion: "donaciones" },
+      { label: "Asistencias a eventos",   href: "/administracion/asistencias-eventos",      icon: CalendarCheck,roles: TODOS, seccion: "programacion" },
+      { label: "Entidades",               href: "/administracion/entidades",                icon: Building2,    roles: TODOS, seccion: "entidades" },
       { label: "Permisos",                href: "/administracion/permisos",                 icon: Lock,         roles: ["JEFE_COMPANIA"],                            seccion: "permisos" },
     ],
   },
@@ -64,10 +65,10 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Gestión Comercial",
     roles: TODOS,
     items: [
-      { label: "Socios Estratégicos",     href: "/comercial/socios",             icon: Briefcase,     roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"], seccion: "socios" },
-      { label: "Clasificación de Socios", href: "/comercial/clasificacion",      icon: Tag,           roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"], seccion: "clasificacion" },
-      { label: "Proyección Social",       href: "/comercial/proyeccion-social",  icon: Heart,         roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"], seccion: "proyeccion-social" },
-      { label: "Encuestas",               href: "/comercial/encuestas",          icon: ClipboardList, roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"], seccion: "encuestas" },
+      { label: "Socios Estratégicos",     href: "/comercial/socios",             icon: Briefcase,     roles: TODOS, seccion: "socios" },
+      { label: "Clasificación de Socios", href: "/comercial/clasificacion",      icon: Tag,           roles: TODOS, seccion: "clasificacion" },
+      { label: "Proyección Social",       href: "/comercial/proyeccion-social",  icon: Heart,         roles: TODOS, seccion: "proyeccion-social" },
+      { label: "Encuestas",               href: "/comercial/encuestas",          icon: ClipboardList, roles: TODOS, seccion: "encuestas" },
     ],
   },
   {
