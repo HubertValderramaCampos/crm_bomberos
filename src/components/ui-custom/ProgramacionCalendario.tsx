@@ -202,6 +202,8 @@ function ModalEditar({ actividad, onClose, onEditado }: {
   const [entidadSel,         setEntidadSel]         = useState<Entidad | null>(null);
   const [busqEntidad,        setBusqEntidad]        = useState("");
   const [mostrarEntidades,   setMostrarEntidades]   = useState(false);
+  const [creandoEntidad,     setCreandoEntidad]     = useState(false);
+  const [nuevaEntidad,       setNuevaEntidad]       = useState({ nombre: "", tipo: "EMPRESA" });
 
   useEffect(() => {
     if (actividad.es_capacitacion)
@@ -221,6 +223,19 @@ function ModalEditar({ actividad, onClose, onEditado }: {
 
   function toggleBombero(id: number) {
     setSeleccionados(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  async function crearEntidadInline() {
+    if (!nuevaEntidad.nombre.trim()) return;
+    try {
+      const res = await fetch("/api/entidades", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(nuevaEntidad) });
+      const data = await res.json();
+      if (!res.ok) return;
+      const creada: Entidad = { id: data.id, nombre: nuevaEntidad.nombre, tipo: nuevaEntidad.tipo };
+      setEntidades(prev => [...prev, creada].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      setEntidadId(creada.id); setEntidadSel(creada); setBusqEntidad(""); setCreandoEntidad(false);
+      setNuevaEntidad({ nombre: "", tipo: "EMPRESA" });
+    } catch { /* silent */ }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -293,48 +308,64 @@ function ModalEditar({ actividad, onClose, onEditado }: {
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
               Entidad{form.tipo === "Capacitación externa" && <span className="text-red-600 ml-0.5">*</span>}
             </label>
-            <div className="relative">
-              {entidadSel ? (
-                <div className="flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg bg-indigo-50">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Building2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                    <span className="text-xs font-semibold text-indigo-800 truncate">{entidadSel.nombre}</span>
-                  </div>
-                  <button type="button" onClick={() => { setEntidadId(null); setEntidadSel(null); setBusqEntidad(""); }}
-                    className="text-gray-400 hover:text-red-500 ml-2 shrink-0"><X className="w-3.5 h-3.5" /></button>
+            {entidadSel ? (
+              <div className="flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg bg-indigo-50">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Building2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span className="text-xs font-semibold text-indigo-800 truncate">{entidadSel.nombre}</span>
+                  <span className="text-[10px] text-indigo-400 shrink-0">{entidadSel.tipo}</span>
                 </div>
-              ) : (
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="Buscar entidad..."
-                    value={busqEntidad}
-                    onChange={e => { setBusqEntidad(e.target.value); setMostrarEntidades(true); }}
-                    onFocus={() => setMostrarEntidades(true)}
-                    onBlur={() => setTimeout(() => setMostrarEntidades(false), 150)}
-                    className={`${inputCls} pl-8`}
-                  />
-                  {mostrarEntidades && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-44 overflow-y-auto">
-                      {entidades.filter(e => e.nombre.toLowerCase().includes(busqEntidad.toLowerCase())).slice(0, 8).map(e => (
-                        <div key={e.id} onMouseDown={() => { setEntidadId(e.id); setEntidadSel(e); setBusqEntidad(""); setMostrarEntidades(false); }}
-                          className="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-50 cursor-pointer">
-                          <Building2 className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                          <div>
-                            <p className="text-xs font-semibold text-gray-800">{e.nombre}</p>
-                            <p className="text-[10px] text-gray-400">{e.tipo}</p>
-                          </div>
+                <button type="button" onClick={() => { setEntidadId(null); setEntidadSel(null); setBusqEntidad(""); }}
+                  className="text-gray-400 hover:text-red-500 ml-2 shrink-0"><X className="w-3.5 h-3.5" /></button>
+              </div>
+            ) : creandoEntidad ? (
+              <div className="border border-blue-200 rounded-lg p-3 bg-blue-50 space-y-2">
+                <p className="text-xs font-semibold text-blue-700">Nueva entidad</p>
+                <input type="text" value={nuevaEntidad.nombre} onChange={e => setNuevaEntidad(n => ({ ...n, nombre: e.target.value }))}
+                  placeholder="Nombre de la empresa o institución" className={inputCls} autoFocus />
+                <select value={nuevaEntidad.tipo} onChange={e => setNuevaEntidad(n => ({ ...n, tipo: e.target.value }))} className={inputCls}>
+                  {["EMPRESA", "INSTITUCIÓN PÚBLICA", "COLEGIO", "ASOCIACIÓN / AA.HH."].map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setCreandoEntidad(false)}
+                    className="flex-1 py-1.5 text-xs text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
+                  <button type="button" onClick={crearEntidadInline}
+                    className="flex-1 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Crear y seleccionar</button>
+                </div>
+              </div>
+            ) : (
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Buscar entidad..."
+                  value={busqEntidad}
+                  onChange={e => { setBusqEntidad(e.target.value); setMostrarEntidades(true); }}
+                  onFocus={() => setMostrarEntidades(true)}
+                  onBlur={() => setTimeout(() => setMostrarEntidades(false), 150)}
+                  className={`${inputCls} pl-8`}
+                />
+                {mostrarEntidades && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-44 overflow-y-auto">
+                    {entidades.filter(e => e.nombre.toLowerCase().includes(busqEntidad.toLowerCase())).slice(0, 8).map(e => (
+                      <div key={e.id} onMouseDown={() => { setEntidadId(e.id); setEntidadSel(e); setBusqEntidad(""); setMostrarEntidades(false); }}
+                        className="flex items-center gap-2 px-3 py-2.5 hover:bg-gray-50 cursor-pointer">
+                        <Building2 className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        <div>
+                          <p className="text-xs font-semibold text-gray-800">{e.nombre}</p>
+                          <p className="text-[10px] text-gray-400">{e.tipo}</p>
                         </div>
-                      ))}
-                      {entidades.filter(e => e.nombre.toLowerCase().includes(busqEntidad.toLowerCase())).length === 0 && (
-                        <p className="px-3 py-2 text-xs text-gray-400">Sin resultados</p>
-                      )}
+                      </div>
+                    ))}
+                    <div onMouseDown={() => { setMostrarEntidades(false); setCreandoEntidad(true); }}
+                      className="flex items-center gap-2 px-3 py-2.5 hover:bg-blue-50 cursor-pointer border-t border-gray-100">
+                      <Plus className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      <span className="text-xs text-blue-600 font-medium">Crear nueva entidad</span>
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
