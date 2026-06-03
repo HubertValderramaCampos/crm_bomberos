@@ -21,6 +21,7 @@ const ROL_COLOR: Record<Rol, string> = {
 
 type SeccionDef = { id: string; label: string; grupo: string; tieneEdicion: boolean };
 
+// IDs deben coincidir EXACTAMENTE con el campo 'seccion' en Sidebar.tsx
 const SECCIONES: SeccionDef[] = [
   // Gestión Operativa
   { id: "dashboard",               label: "Operatividad",             grupo: "Gestión Operativa",      tieneEdicion: false },
@@ -34,8 +35,7 @@ const SECCIONES: SeccionDef[] = [
   { id: "oficios-institucionales", label: "Oficios Institucionales",  grupo: "Gestión Administrativa", tieneEdicion: true  },
   { id: "oficios-varios",          label: "Oficios Varios",           grupo: "Gestión Administrativa", tieneEdicion: true  },
   { id: "donaciones",              label: "Donaciones",               grupo: "Gestión Administrativa", tieneEdicion: true  },
-  { id: "programacion",            label: "Programación",             grupo: "Gestión Administrativa", tieneEdicion: true  },
-  { id: "asistencias-eventos",     label: "Asistencias a eventos",    grupo: "Gestión Administrativa", tieneEdicion: false },
+  { id: "programacion",            label: "Programación + Asist. eventos", grupo: "Gestión Administrativa", tieneEdicion: true },
   { id: "entidades",               label: "Entidades",                grupo: "Gestión Administrativa", tieneEdicion: true  },
   // Documentos
   { id: "solicitar-capacitacion",  label: "Subir Documento",          grupo: "Documentos",             tieneEdicion: false },
@@ -46,8 +46,8 @@ const SECCIONES: SeccionDef[] = [
   { id: "proyeccion-social",       label: "Proyección Social",        grupo: "Gestión Comercial",      tieneEdicion: true  },
   { id: "encuestas",               label: "Encuestas",                grupo: "Gestión Comercial",      tieneEdicion: true  },
   // Gestión Formativa
-  { id: "horarios-formativa",      label: "Horarios",                 grupo: "Gestión Formativa",      tieneEdicion: true  },
   { id: "notas-formativa",         label: "Notas de lecciones",       grupo: "Gestión Formativa",      tieneEdicion: true  },
+  { id: "horarios-formativa",      label: "Horarios",                 grupo: "Gestión Formativa",      tieneEdicion: true  },
   { id: "reporte-formativa",       label: "Reporte de asistencias",   grupo: "Gestión Formativa",      tieneEdicion: false },
 ];
 

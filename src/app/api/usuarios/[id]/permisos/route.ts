@@ -25,13 +25,23 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   const secciones: string[] = await req.json();
 
+  // IDs válidos — deben coincidir exactamente con seccion en Sidebar.tsx
+  const SECCIONES_VALIDAS = new Set([
+    "dashboard","estadisticas","partes","personal","asistencias","analisis","aph",
+    "oficios-institucionales","oficios-varios","donaciones","programacion","entidades",
+    "solicitar-capacitacion","documentos",
+    "socios","clasificacion","proyeccion-social","encuestas",
+    "notas-formativa","horarios-formativa","reporte-formativa",
+  ]);
+  const validas = secciones.filter(s => SECCIONES_VALIDAS.has(s));
+
   await pool.query(`DELETE FROM usuario_permisos WHERE usuario_id = $1`, [id]);
 
-  if (secciones.length > 0) {
-    const values = secciones.map((s, i) => `($1, $${i + 2})`).join(", ");
+  if (validas.length > 0) {
+    const values = validas.map((s, i) => `($1, $${i + 2})`).join(", ");
     await pool.query(
       `INSERT INTO usuario_permisos (usuario_id, seccion) VALUES ${values}`,
-      [id, ...secciones]
+      [id, ...validas]
     );
   }
 
