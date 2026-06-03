@@ -161,8 +161,8 @@ export default function ReporteFormativoPage() {
 
       {/* ── Panel de horarios programados ── */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <button onClick={() => setMostrarHorarios(v => !v)}
-          className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors">
+        <div className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer"
+          onClick={() => setMostrarHorarios(v => !v)}>
           <div className="flex items-center gap-2">
             <Settings className="w-4 h-4 text-red-700" />
             <span className="text-sm font-bold text-gray-900">Horarios programados</span>
@@ -177,7 +177,7 @@ export default function ReporteFormativoPage() {
             </button>
             {mostrarHorarios ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
           </div>
-        </button>
+        </div>
 
         {mostrarHorarios && (
           <div className="border-t border-gray-100 px-5 py-4">
