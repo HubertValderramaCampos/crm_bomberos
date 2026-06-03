@@ -225,6 +225,7 @@ function ModalEditar({ actividad, onClose, onEditado }: {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (form.tipo === "Capacitación externa" && !entidadId) { setError("La capacitación externa requiere seleccionar una entidad."); return; }
     setError(""); setLoading(true);
     try {
       const res = await fetch(`/api/programacion/${actividad.id}`, {
@@ -289,7 +290,9 @@ function ModalEditar({ actividad, onClose, onEditado }: {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Entidad</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              Entidad{form.tipo === "Capacitación externa" && <span className="text-red-600 ml-0.5">*</span>}
+            </label>
             <div className="relative">
               {entidadSel ? (
                 <div className="flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg bg-indigo-50">
@@ -886,6 +889,7 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
     e.preventDefault();
     if (!form.fecha || !form.tipo) { setError("Fecha y tipo son obligatorios."); return; }
     if (esCap && seleccionados.length === 0) { setError("Selecciona al menos un bombero."); return; }
+    if (form.tipo === "Capacitación externa" && !entidadId) { setError("La capacitación externa requiere seleccionar una entidad."); return; }
     setError(""); setLoading(true);
     try {
       const res = await fetch("/api/programacion", {
