@@ -42,7 +42,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Bomberos",             href: "/operaciones/personal",     icon: Users,         roles: OPERATIVOS,             seccion: "personal" },
       { label: "Asistencias",          href: "/operaciones/asistencias",  icon: CalendarCheck, roles: OPERATIVOS_Y_BOMBERO,   seccion: "asistencias" },
       { label: "Análisis",             href: "/operaciones/analisis",     icon: BarChart3,     roles: OPERATIVOS_Y_BOMBERO,   seccion: "analisis" },
-      { label: "Evaluaciones APH",     href: "/operaciones/aph",          icon: Stethoscope,   roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"], seccion: "partes" },
+      { label: "Eval. de Emergencias",  href: "/operaciones/aph",          icon: Stethoscope,   roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"], seccion: "partes" },
     ],
   },
   {

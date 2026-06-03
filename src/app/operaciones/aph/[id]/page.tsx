@@ -347,7 +347,7 @@ export default function AphFormPage({ params }: { params: Promise<{ id: string }
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900">Evaluación APH</h1>
+          <h1 className="text-xl font-bold text-gray-900">Evaluación de Emergencia</h1>
           <p className="text-sm text-gray-400">Parte {eval_?.numero_parte} · {eval_?.emerg_fecha}</p>
         </div>
         {eval_?.completada && (

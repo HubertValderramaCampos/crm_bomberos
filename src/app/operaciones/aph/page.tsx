@@ -102,9 +102,9 @@ export default function AphPage() {
         <div>
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-red-700" />
-            Evaluaciones APH
+            Evaluaciones de Emergencias
           </h1>
-          <p className="text-sm text-gray-400 mt-0.5">Formato de Evaluación de Atención Prehospitalaria</p>
+          <p className="text-sm text-gray-400 mt-0.5">APH, Rescate, Incendios y más</p>
         </div>
         {esJefe && (
           <button onClick={abrirModal}
