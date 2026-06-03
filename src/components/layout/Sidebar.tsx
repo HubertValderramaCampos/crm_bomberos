@@ -28,8 +28,9 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "__root__",
     items: [
-      { label: "Inicio",    href: "/inicio",           icon: Home,       roles: TODOS },
-      { label: "Mi Perfil", href: "/perfil",           icon: UserCircle, roles: ["BOMBERO"] },
+      { label: "Inicio",        href: "/inicio",                      icon: Home,        roles: TODOS },
+      { label: "Mi Perfil",     href: "/perfil",                      icon: UserCircle,  roles: ["BOMBERO"] },
+      { label: "Programación",  href: "/administracion/programacion", icon: CalendarDays,roles: ADMIN_Y_BOMBERO_RACHA, seccion: "programacion", rachaMin: 4 },
     ],
   },
   {
@@ -54,7 +55,6 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Subir Documento",         href: "/solicitar-capacitacion",                 icon: ScanLine,     roles: TODOS,                                        seccion: "solicitar-capacitacion" },
       { label: "Ver Documentos",          href: "/documentos",                             icon: FileText,     roles: TODOS,                                        seccion: "documentos" },
       { label: "Donaciones",              href: "/administracion/donaciones",               icon: Gift,         roles: ADMIN_Y_BOMBERO_RACHA,                        seccion: "donaciones",   rachaMin: 4 },
-      { label: "Programación",            href: "/administracion/programacion",             icon: CalendarDays, roles: ADMIN_Y_BOMBERO_RACHA,                        seccion: "programacion", rachaMin: 4 },
       { label: "Asistencias a eventos",   href: "/administracion/asistencias-eventos",      icon: CalendarCheck,roles: ["JEFE_COMPANIA", "ADMINISTRACION"],          seccion: "programacion" },
       { label: "Entidades",               href: "/administracion/entidades",                icon: Building2,    roles: ["JEFE_COMPANIA", "ADMINISTRACION"],          seccion: "entidades" },
       { label: "Permisos",                href: "/administracion/permisos",                 icon: Lock,         roles: ["JEFE_COMPANIA"],                            seccion: "permisos" },
