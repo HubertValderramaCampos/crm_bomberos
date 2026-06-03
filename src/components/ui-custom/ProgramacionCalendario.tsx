@@ -317,6 +317,161 @@ function ModalEditar({ actividad, onClose, onEditado }: {
   );
 }
 
+/* ── Tipos para asistencia ── */
+interface RegistroAsistencia {
+  bombero_id: number; apellidos: string; nombres: string; grado: string; codigo: string;
+  asistio: boolean; justificacion: string; agregado: boolean;
+}
+
+/* ── Modal Registro de Asistencia ── */
+function ModalAsistencia({ actividadId, participantesIniciales, onConfirmar, onCancelar }: {
+  actividadId: number;
+  participantesIniciales: { bombero_id: number; apellidos: string; nombres: string; grado: string }[];
+  onConfirmar: (lista: RegistroAsistencia[]) => void;
+  onCancelar: () => void;
+}) {
+  const [lista, setLista] = useState<RegistroAsistencia[]>(
+    participantesIniciales.map(p => ({
+      bombero_id: p.bombero_id, apellidos: p.apellidos, nombres: p.nombres,
+      grado: p.grado, codigo: "", asistio: true, justificacion: "", agregado: false,
+    }))
+  );
+  const [bomberosTodos, setBomberosTodos] = useState<Bombero[]>([]);
+  const [busqAgregar,   setBusqAgregar]  = useState("");
+  const [mostrarAgregar,setMostrarAgregar] = useState(false);
+  const [justAbierta,   setJustAbierta]  = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/bomberos").then(r => r.json()).then(setBomberosTodos);
+  }, []);
+
+  function setAsistio(idx: number, val: boolean) {
+    setLista(prev => prev.map((p, i) => i === idx ? { ...p, asistio: val, justificacion: val ? "" : p.justificacion } : p));
+    if (val) setJustAbierta(null);
+  }
+
+  function setJust(idx: number, val: string) {
+    setLista(prev => prev.map((p, i) => i === idx ? { ...p, justificacion: val } : p));
+  }
+
+  function agregar(b: Bombero) {
+    if (lista.find(p => p.bombero_id === b.id)) return;
+    setLista(prev => [...prev, { bombero_id: b.id, apellidos: b.apellidos, nombres: b.nombres, grado: b.grado, codigo: b.codigo, asistio: true, justificacion: "", agregado: true }]);
+    setBusqAgregar(""); setMostrarAgregar(false);
+  }
+
+  const yaIds = new Set(lista.map(p => p.bombero_id));
+  const filtradosAgregar = bomberosTodos.filter(b => !yaIds.has(b.id) && `${b.apellidos} ${b.nombres}`.toLowerCase().includes(busqAgregar.toLowerCase()));
+
+  const asistieron = lista.filter(p => p.asistio).length;
+  const faltaron   = lista.filter(p => !p.asistio).length;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="bg-gradient-to-br from-green-600 to-green-700 px-5 py-4 text-white flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold">Registro de asistencia</h2>
+            <p className="text-xs text-white/70 mt-0.5">Marca quién asistió antes de finalizar</p>
+          </div>
+          <button onClick={onCancelar} className="text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
+        </div>
+
+        {/* Resumen */}
+        <div className="grid grid-cols-2 gap-px bg-gray-100 border-b border-gray-100">
+          <div className="bg-green-50 px-4 py-2 text-center">
+            <p className="text-xl font-bold text-green-700">{asistieron}</p>
+            <p className="text-[10px] text-green-600 uppercase tracking-wide">Asistieron</p>
+          </div>
+          <div className="bg-red-50 px-4 py-2 text-center">
+            <p className="text-xl font-bold text-red-600">{faltaron}</p>
+            <p className="text-[10px] text-red-500 uppercase tracking-wide">Faltaron</p>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+          {lista.map((p, idx) => (
+            <div key={p.bombero_id} className={`rounded-xl border px-3 py-2.5 transition-colors ${p.asistio ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {p.apellidos.split(",")[0]}, {p.nombres.split(" ")[0]}
+                    {p.agregado && <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">Agregado</span>}
+                  </p>
+                  <p className="text-[10px] text-gray-400">{p.grado}</p>
+                </div>
+                {/* Toggle asistió / faltó */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => setAsistio(idx, true)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${p.asistio ? "bg-green-600 text-white" : "bg-white text-gray-400 border border-gray-200 hover:bg-green-50"}`}>
+                    ✓ Asistió
+                  </button>
+                  <button onClick={() => { setAsistio(idx, false); setJustAbierta(idx); }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${!p.asistio ? "bg-red-600 text-white" : "bg-white text-gray-400 border border-gray-200 hover:bg-red-50"}`}>
+                    ✗ Faltó
+                  </button>
+                </div>
+              </div>
+              {/* Justificación */}
+              {!p.asistio && (
+                <div className="mt-2">
+                  <input
+                    type="text"
+                    value={p.justificacion}
+                    onChange={e => setJust(idx, e.target.value)}
+                    placeholder="Justificación (opcional)"
+                    className="w-full text-xs border border-red-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-red-400 bg-white"
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Agregar efectivo extra */}
+          <div className="pt-2">
+            {!mostrarAgregar ? (
+              <button onClick={() => setMostrarAgregar(true)}
+                className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium">
+                <Plus className="w-3.5 h-3.5" /> Agregar efectivo que no estaba convocado
+              </button>
+            ) : (
+              <div className="border border-blue-200 rounded-xl p-3 bg-blue-50 space-y-2">
+                <p className="text-xs font-semibold text-blue-700">Buscar efectivo</p>
+                <input type="text" value={busqAgregar} onChange={e => setBusqAgregar(e.target.value)}
+                  autoFocus placeholder="Apellidos o código..."
+                  className="w-full text-sm border border-blue-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {filtradosAgregar.slice(0, 6).map(b => (
+                    <button key={b.id} onClick={() => agregar(b)}
+                      className="w-full text-left px-2 py-1.5 text-sm hover:bg-blue-100 rounded-lg flex items-center justify-between">
+                      <span className="font-medium">{b.apellidos.split(",")[0]}, {b.nombres.split(" ")[0]}</span>
+                      <span className="text-[10px] text-gray-400">{b.grado}</span>
+                    </button>
+                  ))}
+                  {filtradosAgregar.length === 0 && busqAgregar && <p className="text-xs text-gray-400 text-center py-2">Sin resultados</p>}
+                </div>
+                <button onClick={() => { setMostrarAgregar(false); setBusqAgregar(""); }}
+                  className="text-xs text-gray-400 hover:text-gray-600">Cancelar</button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="px-4 py-3 border-t border-gray-100 flex gap-3">
+          <button onClick={onCancelar}
+            className="flex-1 py-2.5 text-sm text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50">
+            Cancelar
+          </button>
+          <button onClick={() => onConfirmar(lista)}
+            className="flex-1 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl flex items-center justify-center gap-2">
+            <CheckCircle2 className="w-4 h-4" /> Confirmar y finalizar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Modal Ver Actividad ── */
 function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
   id: number; puedeCrear: boolean; onClose: () => void; onActualizado: () => void;
@@ -326,6 +481,7 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
   const [confirmFin, setConfirmFin]         = useState(false);
   const [reprogramar, setReprogram]         = useState(false);
   const [editando,    setEditando]          = useState(false);
+  const [registroAsistencia, setRegistroAsistencia] = useState(false);
 
   function cargar() {
     fetch(`/api/programacion/${id}`).then(r => r.json()).then(setData);
@@ -343,9 +499,22 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
   const vencida  = fechaHaPasado(data.fecha) && !data.finalizado;
   const pasada   = fechaHaPasado(data.fecha);
 
-  async function finalizar() {
+  async function finalizar(asistencias?: RegistroAsistencia[]) {
     setFin(true);
     try {
+      // Guardar asistencias si se proporcionaron
+      if (asistencias && asistencias.length > 0) {
+        await fetch(`/api/programacion/${id}/asistencia`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(asistencias.map(a => ({
+            bombero_id: a.bombero_id,
+            asistio: a.asistio,
+            justificacion: a.justificacion || null,
+            agregado: a.agregado,
+          }))),
+        });
+      }
       const res = await fetch(`/api/programacion/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -355,6 +524,7 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
     } finally {
       setFin(false);
       setConfirmFin(false);
+      setRegistroAsistencia(false);
       onActualizado();
       cargar();
     }
@@ -463,26 +633,20 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
               </div>
             )}
 
-            {/* Confirmación de finalizar */}
-            {confirmFin && (
+            {/* Confirmación de finalizar — solo para actividades sin participantes */}
+            {confirmFin && partics.length === 0 && (
               <div className="p-4 bg-green-50 border border-green-200 rounded-xl space-y-3">
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
                   <p className="text-xs font-semibold text-green-800">¿Confirmar que la actividad se realizó?</p>
                 </div>
-                <p className="text-xs text-green-700">Se marcará como finalizada y la solicitud vinculada pasará a estado <strong>Finalizado</strong>.</p>
-                {data.entidad_nombre && (
-                  <p className="text-xs text-green-700 flex items-center gap-1.5">
-                    <ClipboardList className="w-3.5 h-3.5 shrink-0" />
-                    Se generarán <strong>3 encuestas de satisfacción</strong> automáticamente para <strong>{data.entidad_nombre}</strong>.
-                  </p>
-                )}
+                <p className="text-xs text-green-700">Se marcará como finalizada.</p>
                 <div className="flex gap-2">
                   <button onClick={() => setConfirmFin(false)}
                     className="flex-1 py-2 text-xs text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
                     Cancelar
                   </button>
-                  <button onClick={finalizar} disabled={finalizando}
+                  <button onClick={() => finalizar()} disabled={finalizando}
                     className="flex-1 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg flex items-center justify-center gap-1.5">
                     {finalizando ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                     {finalizando ? "Finalizando..." : "Sí, finalizar"}
@@ -507,7 +671,7 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
                   className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors">
                   <RotateCcw className="w-4 h-4" /> Reprogramar
                 </button>
-                <button onClick={() => setConfirmFin(true)}
+                <button onClick={() => partics.length > 0 ? setRegistroAsistencia(true) : setConfirmFin(true)}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors">
                   <CheckCircle2 className="w-4 h-4" /> Marcar finalizado
                 </button>
@@ -540,6 +704,14 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
           actividad={data}
           onClose={() => setEditando(false)}
           onEditado={() => { onActualizado(); cargar(); }}
+        />
+      )}
+      {registroAsistencia && (
+        <ModalAsistencia
+          actividadId={id}
+          participantesIniciales={partics}
+          onConfirmar={(lista) => finalizar(lista)}
+          onCancelar={() => setRegistroAsistencia(false)}
         />
       )}
     </>
