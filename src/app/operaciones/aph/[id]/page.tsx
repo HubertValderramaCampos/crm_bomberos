@@ -3,33 +3,12 @@
 import { useEffect, useState, use, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Loader2, Save, CheckCircle2, ChevronLeft } from "lucide-react";
+import {
+  Loader2, Save, CheckCircle2, ChevronLeft,
+  UserPlus, X, Search, Users,
+} from "lucide-react";
 
-/* ─── Tipos ─────────────────────────────────────────────── */
-interface ItemSec { puntaje: number; obs: string; }
-type SeccionData = ItemSec[];
-
-interface EvalDetalle {
-  id: number; completada: boolean;
-  numero_parte: string; emerg_tipo: string; emerg_fecha: string;
-  emerg_direccion: string | null; emerg_distrito: string | null;
-  emerg_hora_despacho: string | null;
-  evaluado_nombre: string; evaluado_grado: string; evaluado_codigo: string;
-  evaluador_nombre: string; evaluador_grado: string; evaluador_codigo: string;
-  evaluador_bombero_id: number;
-  hora_activacion: string | null; hora_salida: string | null;
-  hora_llegada_escena: string | null; hora_traslado: string | null;
-  hora_entrega_hosp: string | null;
-  tipo_emergencia_desc: string | null; lugar_atencion: string | null;
-  sec_salida: SeccionData | null; sec_escena: SeccionData | null;
-  sec_atencion_eval: SeccionData | null; sec_atencion_proc: SeccionData | null;
-  sec_atencion_com: SeccionData | null; sec_transporte: SeccionData | null;
-  sec_reacondiciona: SeccionData | null; sec_documentacion: SeccionData | null;
-  obs_generales: string | null; conclusiones: string | null;
-  clasificacion_final: string | null;
-}
-
-/* ─── Definición de secciones ───────────────────────────── */
+/* ─── Secciones ─────────────────────────────────────────── */
 const SECCIONES = {
   sec_salida: {
     titulo: "I. Salida y Protección Personal",
@@ -59,7 +38,7 @@ const SECCIONES = {
     ],
   },
   sec_atencion_eval: {
-    titulo: "III-A. Evaluación y Criterio Clínico",
+    titulo: "III-A. Evaluación Clínica",
     items: [
       "Realiza evaluación primaria correcta",
       "Realiza evaluación secundaria adecuada",
@@ -137,131 +116,207 @@ const CLASIFICACIONES = [
   "No apto temporalmente",
 ];
 
+interface ItemSec { puntaje: number; obs: string; }
+type SeccionData = ItemSec[];
+
+interface EvaluadoData {
+  bombero_id: number;
+  apellidos: string; nombres: string; grado: string; codigo: string;
+  secs: Record<SecKey, SeccionData>;
+  obs_generales: string;
+  conclusiones: string;
+  clasificacion_final: string;
+}
+
+interface EvalDetalle {
+  id: number; completada: boolean;
+  numero_parte: string; emerg_tipo: string; emerg_fecha: string;
+  emerg_distrito: string | null; emerg_hora_despacho: string | null;
+  evaluador_nombre: string; evaluador_grado: string;
+  evaluador_bombero_id: number;
+  hora_activacion: string | null; hora_salida: string | null;
+  hora_llegada_escena: string | null; hora_traslado: string | null;
+  hora_entrega_hosp: string | null;
+  tipo_emergencia_desc: string | null; lugar_atencion: string | null;
+  evaluados: {
+    id: number; bombero_id: number; apellidos: string; nombres: string;
+    grado: string; codigo: string; clasificacion_final: string | null;
+    [key: string]: unknown;
+  }[];
+}
+
+interface Bombero { id: number; apellidos: string; nombres: string; grado: string; codigo: string; }
+
 /* ─── Helpers ───────────────────────────────────────────── */
 function initSec(items: readonly string[]): SeccionData {
   return items.map(() => ({ puntaje: 0, obs: "" }));
 }
-
-function puntajeSec(sec: SeccionData): number {
-  return sec.reduce((s, i) => s + i.puntaje, 0);
+function initSecs(): Record<SecKey, SeccionData> {
+  return Object.fromEntries(SEC_KEYS.map(k => [k, initSec(SECCIONES[k].items)])) as Record<SecKey, SeccionData>;
 }
-
-function maxSec(items: readonly string[]): number {
-  return items.length * 5;
-}
+function puntajeSec(sec: SeccionData) { return sec.reduce((s, i) => s + i.puntaje, 0); }
+function maxSec(items: readonly string[]) { return items.length * 5; }
 
 const inputCls = "border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400";
 
-/* ─── Componente de sección ─────────────────────────────── */
+/* ─── Sección individual ────────────────────────────────── */
 function SeccionForm({ titulo, items, data, onChange, soloLectura }: {
-  titulo: string;
-  items: readonly string[];
-  data: SeccionData;
-  onChange: (d: SeccionData) => void;
-  soloLectura: boolean;
+  titulo: string; items: readonly string[];
+  data: SeccionData; onChange: (d: SeccionData) => void; soloLectura: boolean;
 }) {
   const parcial = puntajeSec(data);
   const maximo  = maxSec(items);
   const pct     = maximo > 0 ? Math.round((parcial / maximo) * 100) : 0;
 
   function set(idx: number, field: "puntaje" | "obs", val: string | number) {
-    const next = data.map((it, i) => i === idx ? { ...it, [field]: val } : it);
-    onChange(next);
+    onChange(data.map((it, i) => i === idx ? { ...it, [field]: val } : it));
   }
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="px-5 py-3 bg-red-700 text-white flex items-center justify-between">
-        <h2 className="text-sm font-bold">{titulo}</h2>
-        <div className="text-right">
-          <span className="text-base font-bold">{parcial}</span>
-          <span className="text-white/60 text-xs"> / {maximo}</span>
-          <span className="ml-2 text-xs text-white/80">({pct}%)</span>
-        </div>
+      <div className="px-4 py-2.5 bg-red-700 text-white flex items-center justify-between">
+        <h3 className="text-xs font-bold">{titulo}</h3>
+        <span className="text-xs text-white/80">{parcial}/{maximo} · {pct}%</span>
       </div>
-
-      {/* Barra de progreso */}
       <div className="h-1 bg-gray-100">
-        <div className={`h-1 transition-all ${pct >= 80 ? "bg-green-500" : pct >= 60 ? "bg-amber-400" : "bg-red-500"}`}
-          style={{ width: `${pct}%` }} />
+        <div className={`h-1 ${pct >= 80 ? "bg-green-500" : pct >= 60 ? "bg-amber-400" : "bg-red-500"}`} style={{ width: `${pct}%` }} />
       </div>
-
       <div className="divide-y divide-gray-50">
         {items.map((criterio, idx) => (
-          <div key={idx} className="px-5 py-3 grid grid-cols-[1fr_120px] gap-4 items-start">
+          <div key={idx} className="px-4 py-2.5 grid grid-cols-[1fr_auto] gap-3 items-start">
             <div>
               <p className="text-xs font-medium text-gray-700">{idx + 1}. {criterio}</p>
               {!soloLectura ? (
                 <input type="text" value={data[idx]?.obs ?? ""} onChange={e => set(idx, "obs", e.target.value)}
-                  placeholder="Observaciones (opcional)"
-                  className="mt-1.5 w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-red-400 text-gray-600" />
+                  placeholder="Observación (opcional)"
+                  className="mt-1 w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-red-400 text-gray-600" />
               ) : (
-                data[idx]?.obs && <p className="mt-1 text-xs text-gray-500 italic">{data[idx].obs}</p>
+                data[idx]?.obs && <p className="mt-0.5 text-xs text-gray-500 italic">{data[idx].obs}</p>
               )}
             </div>
-            <div className="flex flex-col items-end gap-1">
-              {soloLectura ? (
-                <span className={`text-lg font-bold ${(data[idx]?.puntaje ?? 0) >= 4 ? "text-green-600" : (data[idx]?.puntaje ?? 0) >= 3 ? "text-blue-600" : (data[idx]?.puntaje ?? 0) >= 2 ? "text-amber-600" : "text-red-600"}`}>
-                  {data[idx]?.puntaje ?? "—"}
-                </span>
-              ) : (
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map(n => (
-                    <button key={n} type="button" onClick={() => set(idx, "puntaje", n)}
-                      className={`w-7 h-7 rounded-lg text-xs font-bold transition-colors ${(data[idx]?.puntaje ?? 0) === n ? "bg-red-700 text-white" : "bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-700"}`}>
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <p className="text-[10px] text-gray-400">
-                {[, "Deficiente", "Regular", "Bueno", "Muy Bueno", "Excelente"][(data[idx]?.puntaje ?? 0)] ?? "Sin calificar"}
-              </p>
-            </div>
+            {soloLectura ? (
+              <span className={`text-lg font-bold ${(data[idx]?.puntaje ?? 0) >= 4 ? "text-green-600" : (data[idx]?.puntaje ?? 0) >= 3 ? "text-blue-600" : (data[idx]?.puntaje ?? 0) >= 2 ? "text-amber-600" : "text-red-600"}`}>
+                {data[idx]?.puntaje || "—"}
+              </span>
+            ) : (
+              <div className="flex gap-0.5">
+                {[1,2,3,4,5].map(n => (
+                  <button key={n} type="button" onClick={() => set(idx, "puntaje", n)}
+                    className={`w-7 h-7 rounded-lg text-xs font-bold transition-colors ${(data[idx]?.puntaje ?? 0) === n ? "bg-red-700 text-white" : "bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-700"}`}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ))}
-      </div>
-
-      <div className="px-5 py-2.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-        <p className="text-xs text-gray-500">Puntaje parcial</p>
-        <p className="text-sm font-bold text-gray-900">{parcial} / {maximo}</p>
       </div>
     </div>
   );
 }
 
-/* ─── Página principal ──────────────────────────────────── */
+/* ─── Panel de un evaluado ──────────────────────────────── */
+function EvaluadoPanel({ ev, onChange, soloLectura }: {
+  ev: EvaluadoData; onChange: (e: EvaluadoData) => void; soloLectura: boolean;
+}) {
+  const totalObt = SEC_KEYS.reduce((s, k) => s + puntajeSec(ev.secs[k]), 0);
+  const totalMax = SEC_KEYS.reduce((s, k) => s + maxSec(SECCIONES[k].items), 0);
+  const pct      = totalMax > 0 ? Math.round((totalObt / totalMax) * 100) : 0;
+
+  function interp() {
+    if (pct >= 90) return { t: "Excelente desempeño",           cls: "text-green-700 bg-green-50 border-green-200" };
+    if (pct >= 75) return { t: "Buen desempeño",                cls: "text-blue-700 bg-blue-50 border-blue-200"   };
+    if (pct >= 60) return { t: "Desempeño regular",             cls: "text-amber-700 bg-amber-50 border-amber-200"};
+    return             { t: "Requiere reforzamiento inmediato", cls: "text-red-700 bg-red-50 border-red-200"       };
+  }
+  const { t, cls } = interp();
+
+  return (
+    <div className="space-y-4">
+      {/* Secciones */}
+      {SEC_KEYS.map(k => (
+        <SeccionForm key={k} titulo={SECCIONES[k].titulo} items={SECCIONES[k].items}
+          data={ev.secs[k]} soloLectura={soloLectura}
+          onChange={d => onChange({ ...ev, secs: { ...ev.secs, [k]: d } })} />
+      ))}
+
+      {/* Resultado */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-gray-900">Resultado</h3>
+          <span className="text-xl font-bold text-gray-900">{pct}% <span className="text-sm text-gray-400">({totalObt}/{totalMax})</span></span>
+        </div>
+        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className={`h-2.5 rounded-full ${pct>=90?"bg-green-500":pct>=75?"bg-blue-500":pct>=60?"bg-amber-400":"bg-red-500"}`} style={{width:`${pct}%`}} />
+        </div>
+        <div className={`px-3 py-2 rounded-lg border text-xs font-semibold ${cls}`}>{t}</div>
+
+        {/* Observaciones */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Observaciones generales</label>
+          {soloLectura ? <p className="text-sm text-gray-700">{ev.obs_generales || "—"}</p>
+            : <textarea value={ev.obs_generales} onChange={e => onChange({ ...ev, obs_generales: e.target.value })}
+                rows={2} className={inputCls + " w-full resize-none"} />}
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Conclusiones y recomendaciones</label>
+          {soloLectura ? <p className="text-sm text-gray-700">{ev.conclusiones || "—"}</p>
+            : <textarea value={ev.conclusiones} onChange={e => onChange({ ...ev, conclusiones: e.target.value })}
+                rows={2} className={inputCls + " w-full resize-none"} />}
+        </div>
+
+        {/* Clasificación */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-2">Clasificación final</label>
+          {soloLectura ? <p className="text-sm font-bold text-gray-900">{ev.clasificacion_final || "—"}</p>
+            : (
+              <div className="grid grid-cols-2 gap-2">
+                {CLASIFICACIONES.map(c => (
+                  <label key={c} className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded-xl border text-xs transition-colors ${ev.clasificacion_final === c ? "bg-red-700 text-white border-red-700 font-semibold" : "border-gray-200 text-gray-700 hover:border-red-300"}`}>
+                    <input type="radio" checked={ev.clasificacion_final === c} onChange={() => onChange({ ...ev, clasificacion_final: c })} className="sr-only" />
+                    {c}
+                  </label>
+                ))}
+              </div>
+            )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Página ────────────────────────────────────────────── */
 export default function AphFormPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: session } = useSession();
   const router = useRouter();
 
-  const [eval_, setEval]       = useState<EvalDetalle | null>(null);
-  const [loading, setLoading]  = useState(true);
-  const [guardando, setGuard]  = useState(false);
-  const [guardado,  setGuardado] = useState(false);
-  const [error,     setError]  = useState("");
+  const [eval_,    setEval]    = useState<EvalDetalle | null>(null);
+  const [loading,  setLoading] = useState(true);
+  const [guardando,setGuard]   = useState(false);
+  const [guardado, setGuardado]= useState(false);
+  const [error,    setError]   = useState("");
 
   // Datos generales
-  const [horaAct,   setHoraAct]   = useState("");
-  const [horaSal,   setHoraSal]   = useState("");
-  const [horaLleg,  setHoraLleg]  = useState("");
-  const [horaTras,  setHoraTras]  = useState("");
-  const [horaEntH,  setHoraEntH]  = useState("");
-  const [tipoDesc,  setTipoDesc]  = useState("");
-  const [lugar,     setLugar]     = useState("");
+  const [horaAct,  setHoraAct]  = useState("");
+  const [horaSal,  setHoraSal]  = useState("");
+  const [horaLleg, setHoraLleg] = useState("");
+  const [horaTras, setHoraTras] = useState("");
+  const [horaEntH, setHoraEntH] = useState("");
+  const [tipoDesc, setTipoDesc] = useState("");
+  const [lugar,    setLugar]    = useState("");
 
-  // Secciones
-  const [secs, setSecs] = useState<Record<SecKey, SeccionData>>(() =>
-    Object.fromEntries(SEC_KEYS.map(k => [k, initSec(SECCIONES[k].items)])) as Record<SecKey, SeccionData>
-  );
+  // Evaluados
+  const [evaluados, setEvaluados] = useState<EvaluadoData[]>([]);
+  const [tabIdx,    setTabIdx]    = useState(0);
 
-  const [obsGen,    setObsGen]    = useState("");
-  const [conclu,    setConclu]    = useState("");
-  const [clasifFin, setClasifFin] = useState("");
+  // Modal agregar bombero
+  const [modalAgregar,  setModalAgregar]  = useState(false);
+  const [bomberosTodos, setBomberosTodos] = useState<Bombero[]>([]);
+  const [busqAgregar,   setBusqAgregar]   = useState("");
 
   const cargar = useCallback(async () => {
-    const data = await fetch(`/api/aph/${id}`).then(r => r.json());
+    const data = await fetch(`/api/aph/${id}`).then(r => r.json()) as EvalDetalle & { error?: string };
     if (data.error) { setError(data.error); setLoading(false); return; }
     setEval(data);
     setHoraAct(data.hora_activacion?.slice(0,5) ?? "");
@@ -271,39 +326,49 @@ export default function AphFormPage({ params }: { params: Promise<{ id: string }
     setHoraEntH(data.hora_entrega_hosp?.slice(0,5) ?? "");
     setTipoDesc(data.tipo_emergencia_desc ?? "");
     setLugar(data.lugar_atencion ?? "");
-    setSecs(prev => Object.fromEntries(
-      SEC_KEYS.map(k => [k, data[k] ?? initSec(SECCIONES[k].items)])
-    ) as Record<SecKey, SeccionData>);
-    setObsGen(data.obs_generales ?? "");
-    setConclu(data.conclusiones ?? "");
-    setClasifFin(data.clasificacion_final ?? "");
+    setEvaluados((data.evaluados ?? []).map(ev => ({
+      bombero_id: ev.bombero_id,
+      apellidos: ev.apellidos, nombres: ev.nombres,
+      grado: ev.grado, codigo: ev.codigo,
+      secs: Object.fromEntries(
+        SEC_KEYS.map(k => [k, (ev[k] as SeccionData | null) ?? initSec(SECCIONES[k].items)])
+      ) as Record<SecKey, SeccionData>,
+      obs_generales: (ev.obs_generales as string) ?? "",
+      conclusiones: (ev.conclusiones as string) ?? "",
+      clasificacion_final: (ev.clasificacion_final as string) ?? "",
+    })));
     setLoading(false);
   }, [id]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  const soloLectura = eval_?.completada ?? false;
-  const esEvaluador = session?.user?.bomberoId === eval_?.evaluador_bombero_id;
-  const esJefe = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session?.user?.rol ?? "");
-  const puedeEditar = (esEvaluador || esJefe) && !soloLectura;
+  const esJefe     = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session?.user?.rol ?? "");
+  const esEvaluador= session?.user?.bomberoId === eval_?.evaluador_bombero_id;
+  const puedeEditar= (esEvaluador || esJefe) && !eval_?.completada;
+  const soloLectura= !puedeEditar;
 
-  // Calcular puntaje total
-  const totalObtenido = SEC_KEYS.reduce((s, k) => s + puntajeSec(secs[k]), 0);
-  const totalMaximo   = SEC_KEYS.reduce((s, k) => s + maxSec(SECCIONES[k].items), 0);
-  const pctTotal      = totalMaximo > 0 ? Math.round((totalObtenido / totalMaximo) * 100) : 0;
-
-  function interpretacion(): string {
-    if (pctTotal >= 90) return "Excelente desempeño";
-    if (pctTotal >= 75) return "Buen desempeño";
-    if (pctTotal >= 60) return "Desempeño regular";
-    return "Requiere reforzamiento inmediato";
+  async function abrirAgregar() {
+    setModalAgregar(true); setBusqAgregar("");
+    const data = await fetch("/api/bomberos").then(r => r.json());
+    setBomberosTodos(Array.isArray(data) ? data : []);
   }
 
-  function interpretColor(): string {
-    if (pctTotal >= 90) return "text-green-700 bg-green-50 border-green-200";
-    if (pctTotal >= 75) return "text-blue-700 bg-blue-50 border-blue-200";
-    if (pctTotal >= 60) return "text-amber-700 bg-amber-50 border-amber-200";
-    return "text-red-700 bg-red-50 border-red-200";
+  function agregarEvaluado(b: Bombero) {
+    if (evaluados.find(e => e.bombero_id === b.id)) return;
+    const nuevo: EvaluadoData = {
+      bombero_id: b.id, apellidos: b.apellidos, nombres: b.nombres,
+      grado: b.grado, codigo: b.codigo,
+      secs: initSecs(), obs_generales: "", conclusiones: "", clasificacion_final: "",
+    };
+    setEvaluados(prev => [...prev, nuevo]);
+    setTabIdx(evaluados.length);
+    setModalAgregar(false);
+  }
+
+  function quitarEvaluado(idx: number) {
+    if (!confirm("¿Quitar este evaluado?")) return;
+    setEvaluados(prev => prev.filter((_, i) => i !== idx));
+    setTabIdx(t => Math.max(0, t - 1));
   }
 
   async function guardar(completar = false) {
@@ -311,32 +376,36 @@ export default function AphFormPage({ params }: { params: Promise<{ id: string }
     const res = await fetch(`/api/aph/${id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        hora_activacion: horaAct || null, hora_salida: horaSal || null,
-        hora_llegada_escena: horaLleg || null, hora_traslado: horaTras || null,
-        hora_entrega_hosp: horaEntH || null,
-        tipo_emergencia_desc: tipoDesc || null, lugar_atencion: lugar || null,
-        ...secs,
-        obs_generales: obsGen || null, conclusiones: conclu || null,
-        clasificacion_final: clasifFin || null,
+        hora_activacion: horaAct||null, hora_salida: horaSal||null,
+        hora_llegada_escena: horaLleg||null, hora_traslado: horaTras||null,
+        hora_entrega_hosp: horaEntH||null,
+        tipo_emergencia_desc: tipoDesc||null, lugar_atencion: lugar||null,
+        evaluados: evaluados.map(ev => ({
+          bombero_id: ev.bombero_id, ...ev.secs,
+          obs_generales: ev.obs_generales||null,
+          conclusiones: ev.conclusiones||null,
+          clasificacion_final: ev.clasificacion_final||null,
+        })),
         completada: completar,
       }),
     });
     setGuard(false);
     if (!res.ok) { const d = await res.json(); setError(d.error ?? "Error al guardar"); return; }
-    setGuardado(true);
-    setTimeout(() => setGuardado(false), 3000);
-    if (completar) { cargar(); }
+    setGuardado(true); setTimeout(() => setGuardado(false), 3000);
+    if (completar) cargar();
   }
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-60"><Loader2 className="w-6 h-6 animate-spin text-red-700" /></div>
-  );
-
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-red-700" /></div>;
   if (error && !eval_) return (
     <div className="flex flex-col items-center justify-center h-60 gap-3">
       <p className="text-sm text-red-600">{error}</p>
       <button onClick={() => router.back()} className="text-sm text-gray-500 hover:underline">← Volver</button>
     </div>
+  );
+
+  const yaIds = new Set(evaluados.map(e => e.bombero_id));
+  const filtradosAgregar = bomberosTodos.filter(b =>
+    !yaIds.has(b.id) && `${b.apellidos} ${b.nombres} ${b.codigo}`.toLowerCase().includes(busqAgregar.toLowerCase())
   );
 
   return (
@@ -359,158 +428,113 @@ export default function AphFormPage({ params }: { params: Promise<{ id: string }
 
       {/* Datos generales */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-5 py-3 bg-gray-800 text-white">
+        <div className="px-5 py-3 bg-gray-800 text-white flex items-center justify-between">
           <h2 className="text-sm font-bold">Datos Generales</h2>
+          <div className="text-xs text-white/70">
+            Evaluador: <span className="text-white font-medium">{eval_?.evaluador_nombre}</span>
+          </div>
         </div>
-        <div className="px-5 py-4 space-y-4">
+        <div className="px-5 py-4 space-y-3">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
-              { label: "Hora de activación",       val: horaAct,  set: setHoraAct  },
-              { label: "Hora de salida",            val: horaSal,  set: setHoraSal  },
-              { label: "Hora de llegada a escena",  val: horaLleg, set: setHoraLleg },
-              { label: "Hora de traslado",          val: horaTras, set: setHoraTras },
-              { label: "Hora de entrega hospitalaria", val: horaEntH, set: setHoraEntH },
+              { label: "Activación",      val: horaAct,  set: setHoraAct  },
+              { label: "Salida",          val: horaSal,  set: setHoraSal  },
+              { label: "Llegada escena",  val: horaLleg, set: setHoraLleg },
+              { label: "Traslado",        val: horaTras, set: setHoraTras },
+              { label: "Entrega hosp.",   val: horaEntH, set: setHoraEntH },
             ].map(({ label, val, set }) => (
               <div key={label}>
-                <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
+                <label className="block text-xs text-gray-500 mb-1">{label}</label>
                 {puedeEditar
                   ? <input type="time" value={val} onChange={e => set(e.target.value)} className={inputCls + " w-full"} />
-                  : <p className="text-sm font-medium text-gray-900">{val || "—"}</p>}
+                  : <p className="text-sm font-medium">{val || "—"}</p>}
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Tipo de emergencia</label>
+              <label className="block text-xs text-gray-500 mb-1">Tipo de emergencia</label>
               {puedeEditar
                 ? <input type="text" value={tipoDesc} onChange={e => setTipoDesc(e.target.value)} placeholder={eval_?.emerg_tipo ?? ""} className={inputCls + " w-full"} />
-                : <p className="text-sm font-medium text-gray-900">{tipoDesc || eval_?.emerg_tipo || "—"}</p>}
+                : <p className="text-sm font-medium">{tipoDesc || eval_?.emerg_tipo || "—"}</p>}
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Lugar de atención</label>
+              <label className="block text-xs text-gray-500 mb-1">Lugar de atención</label>
               {puedeEditar
                 ? <input type="text" value={lugar} onChange={e => setLugar(e.target.value)} placeholder={eval_?.emerg_distrito ?? ""} className={inputCls + " w-full"} />
-                : <p className="text-sm font-medium text-gray-900">{lugar || eval_?.emerg_distrito || "—"}</p>}
-            </div>
-          </div>
-          {/* Personal */}
-          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
-            <div>
-              <p className="text-xs text-gray-400 mb-0.5">Personal evaluado</p>
-              <p className="text-sm font-bold text-gray-900">{eval_?.evaluado_nombre}</p>
-              <p className="text-xs text-gray-400">{eval_?.evaluado_grado}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 mb-0.5">Evaluador</p>
-              <p className="text-sm font-bold text-gray-900">{eval_?.evaluador_nombre}</p>
-              <p className="text-xs text-gray-400">{eval_?.evaluador_grado}</p>
+                : <p className="text-sm font-medium">{lugar || eval_?.emerg_distrito || "—"}</p>}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Escala de referencia */}
-      <div className="bg-gray-50 border border-gray-200 rounded-xl px-5 py-3">
-        <p className="text-xs font-semibold text-gray-600 mb-2">Escala: 1 Deficiente · 2 Regular · 3 Bueno · 4 Muy Bueno · 5 Excelente</p>
-        <p className="text-xs text-gray-500">Faltas: <span className="text-red-600 font-medium">Crítica</span> (compromete vida) · <span className="text-amber-600 font-medium">Mayor</span> (afecta atención) · <span className="text-gray-600 font-medium">Menor</span> (requiere mejora)</p>
-      </div>
-
-      {/* Secciones */}
-      {SEC_KEYS.map(k => (
-        <SeccionForm
-          key={k}
-          titulo={SECCIONES[k].titulo}
-          items={SECCIONES[k].items}
-          data={secs[k]}
-          onChange={d => setSecs(prev => ({ ...prev, [k]: d }))}
-          soloLectura={!puedeEditar}
-        />
-      ))}
-
-      {/* Resultado final */}
+      {/* Evaluados — tabs */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-5 py-3 bg-gray-800 text-white flex items-center justify-between">
-          <h2 className="text-sm font-bold">Resultado Final</h2>
-          <div>
-            <span className="text-2xl font-bold">{pctTotal}%</span>
-            <span className="text-white/60 text-sm ml-1">({totalObtenido}/{totalMaximo} pts)</span>
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-gray-400" />
+            <h2 className="text-sm font-bold text-gray-900">Personal evaluado</h2>
+            <span className="text-xs text-gray-400">({evaluados.length})</span>
           </div>
-        </div>
-        <div className="p-5 space-y-4">
-          {/* Barra total */}
-          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-            <div className={`h-3 rounded-full transition-all ${pctTotal >= 90 ? "bg-green-500" : pctTotal >= 75 ? "bg-blue-500" : pctTotal >= 60 ? "bg-amber-400" : "bg-red-500"}`}
-              style={{ width: `${pctTotal}%` }} />
-          </div>
-
-          {/* Tabla por sección */}
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left py-1.5 text-xs text-gray-400 font-medium">Área</th>
-                <th className="text-right py-1.5 text-xs text-gray-400 font-medium">Puntaje</th>
-                <th className="text-right py-1.5 text-xs text-gray-400 font-medium">%</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {SEC_KEYS.map(k => {
-                const obt = puntajeSec(secs[k]);
-                const max = maxSec(SECCIONES[k].items);
-                return (
-                  <tr key={k}>
-                    <td className="py-1.5 text-gray-700 text-xs">{SECCIONES[k].titulo}</td>
-                    <td className="py-1.5 text-right font-medium text-gray-900 text-xs">{obt}/{max}</td>
-                    <td className="py-1.5 text-right text-xs font-bold">
-                      <span className={max > 0 && Math.round((obt/max)*100) >= 75 ? "text-green-600" : "text-amber-600"}>
-                        {max > 0 ? Math.round((obt/max)*100) : 0}%
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {/* Interpretación */}
-          <div className={`px-4 py-3 rounded-xl border text-sm font-semibold ${interpretColor()}`}>
-            {pctTotal}% — {interpretacion()}
-          </div>
-        </div>
-      </div>
-
-      {/* Observaciones y conclusiones */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-        <h2 className="text-sm font-bold text-gray-900">Observaciones y Conclusiones</h2>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Observaciones generales</label>
-          {puedeEditar
-            ? <textarea value={obsGen} onChange={e => setObsGen(e.target.value)} rows={3} className={inputCls + " w-full resize-none"} />
-            : <p className="text-sm text-gray-700 whitespace-pre-wrap">{obsGen || "—"}</p>}
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Conclusiones y recomendaciones</label>
-          {puedeEditar
-            ? <textarea value={conclu} onChange={e => setConclu(e.target.value)} rows={3} className={inputCls + " w-full resize-none"} />
-            : <p className="text-sm text-gray-700 whitespace-pre-wrap">{conclu || "—"}</p>}
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-2">Clasificación final del personal</label>
-          {puedeEditar ? (
-            <div className="grid grid-cols-2 gap-2">
-              {CLASIFICACIONES.map(c => (
-                <label key={c} className={`flex items-center gap-2 cursor-pointer px-3 py-2.5 rounded-xl border text-sm transition-colors ${clasifFin === c ? "bg-red-700 text-white border-red-700 font-semibold" : "border-gray-200 text-gray-700 hover:border-red-300"}`}>
-                  <input type="radio" name="clasif" value={c} checked={clasifFin === c} onChange={() => setClasifFin(c)} className="sr-only" />
-                  {c}
-                </label>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm font-bold text-gray-900">{clasifFin || "—"}</p>
+          {puedeEditar && (
+            <button onClick={abrirAgregar}
+              className="flex items-center gap-1.5 text-xs font-semibold text-red-700 hover:text-red-900 transition-colors">
+              <UserPlus className="w-3.5 h-3.5" /> Agregar efectivo
+            </button>
           )}
         </div>
+
+        {evaluados.length === 0 ? (
+          <div className="px-6 py-12 text-center">
+            <Users className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+            <p className="text-sm text-gray-400">Sin evaluados.</p>
+            {puedeEditar && <p className="text-xs text-gray-400 mt-1">Agrega los efectivos que participaron en la emergencia.</p>}
+          </div>
+        ) : (
+          <>
+            {/* Tabs de evaluados */}
+            <div className="flex overflow-x-auto border-b border-gray-100 bg-gray-50">
+              {evaluados.map((ev, idx) => (
+                <button key={ev.bombero_id} onClick={() => setTabIdx(idx)}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors shrink-0 ${tabIdx === idx ? "border-red-600 text-red-700 bg-white" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${ev.clasificacion_final ? "bg-green-500" : "bg-gray-300"}`} />
+                  {ev.apellidos.split(",")[0].trim()}
+                  {puedeEditar && (
+                    <span onClick={e => { e.stopPropagation(); quitarEvaluado(idx); }}
+                      className="ml-1 text-gray-300 hover:text-red-500 transition-colors">
+                      <X className="w-3 h-3" />
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Panel del evaluado activo */}
+            {evaluados[tabIdx] && (
+              <div className="p-4">
+                <div className="mb-4 flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-2.5">
+                  <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-xs font-bold text-red-700 shrink-0">
+                    {evaluados[tabIdx].apellidos[0]}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">
+                      {evaluados[tabIdx].apellidos.split(",")[0]}, {evaluados[tabIdx].nombres.split(" ")[0]}
+                    </p>
+                    <p className="text-xs text-gray-400">{evaluados[tabIdx].grado} · {evaluados[tabIdx].codigo}</p>
+                  </div>
+                </div>
+                <EvaluadoPanel
+                  ev={evaluados[tabIdx]}
+                  soloLectura={soloLectura}
+                  onChange={updated => setEvaluados(prev => prev.map((e, i) => i === tabIdx ? updated : e))}
+                />
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      {/* Botones de acción */}
+      {/* Botones */}
       {puedeEditar && (
         <div className="flex gap-3 sticky bottom-4">
           <button onClick={() => guardar(false)} disabled={guardando}
@@ -518,15 +542,48 @@ export default function AphFormPage({ params }: { params: Promise<{ id: string }
             {guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {guardado ? "✓ Guardado" : "Guardar borrador"}
           </button>
-          <button onClick={() => guardar(true)} disabled={guardando || !clasifFin}
+          <button onClick={() => guardar(true)} disabled={guardando || evaluados.length === 0}
             className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 disabled:opacity-50 shadow-sm">
-            <CheckCircle2 className="w-4 h-4" />
-            Completar evaluación
+            <CheckCircle2 className="w-4 h-4" /> Completar evaluación
           </button>
         </div>
       )}
 
       {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+
+      {/* Modal agregar evaluado */}
+      {modalAgregar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="bg-gradient-to-br from-red-700 to-red-800 px-5 py-4 text-white flex items-center justify-between">
+              <h2 className="text-base font-bold">Agregar efectivo</h2>
+              <button onClick={() => setModalAgregar(false)} className="text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input autoFocus value={busqAgregar} onChange={e => setBusqAgregar(e.target.value)}
+                  placeholder="Buscar por apellido o código..."
+                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30" />
+              </div>
+              <div className="max-h-64 overflow-y-auto divide-y divide-gray-50 border border-gray-200 rounded-xl">
+                {filtradosAgregar.length === 0
+                  ? <p className="px-4 py-6 text-xs text-gray-400 text-center">Sin resultados</p>
+                  : filtradosAgregar.slice(0, 10).map(b => (
+                    <button key={b.id} onClick={() => agregarEvaluado(b)}
+                      className="w-full text-left px-4 py-2.5 hover:bg-red-50 transition-colors flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{b.apellidos.split(",")[0]}, {b.nombres.split(" ")[0]}</p>
+                        <p className="text-xs text-gray-400">{b.grado} · {b.codigo}</p>
+                      </div>
+                      <UserPlus className="w-4 h-4 text-red-600 shrink-0" />
+                    </button>
+                  ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
