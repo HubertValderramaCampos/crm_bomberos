@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import {
   Home, UserCircle, Radio, BarChart3, FileText, Users,
-  GraduationCap, CalendarCheck, BookOpen,
+  GraduationCap, CalendarCheck, BookOpen, Stethoscope,
   LogOut, ChevronRight, ShieldCheck, TrendingUp,
   Scroll, Gift, CalendarDays, Building2, ScanLine, ChevronDown, Lock,
   Briefcase, Tag, Heart, ClipboardList,
@@ -42,6 +42,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Bomberos",             href: "/operaciones/personal",     icon: Users,         roles: OPERATIVOS,             seccion: "personal" },
       { label: "Asistencias",          href: "/operaciones/asistencias",  icon: CalendarCheck, roles: OPERATIVOS_Y_BOMBERO,   seccion: "asistencias" },
       { label: "Análisis",             href: "/operaciones/analisis",     icon: BarChart3,     roles: OPERATIVOS_Y_BOMBERO,   seccion: "analisis" },
+      { label: "Evaluaciones APH",     href: "/operaciones/aph",          icon: Stethoscope,   roles: ["JEFE_COMPANIA", "ADMINISTRACION", "BOMBERO"], seccion: "partes" },
     ],
   },
   {
