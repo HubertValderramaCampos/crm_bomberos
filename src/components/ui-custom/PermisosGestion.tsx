@@ -22,27 +22,38 @@ const ROL_COLOR: Record<Rol, string> = {
 type SeccionDef = { id: string; label: string; grupo: string; tieneEdicion: boolean };
 
 const SECCIONES: SeccionDef[] = [
+  // Gestión Operativa
   { id: "dashboard",               label: "Operatividad",             grupo: "Gestión Operativa",      tieneEdicion: false },
   { id: "estadisticas",            label: "Estadísticas",             grupo: "Gestión Operativa",      tieneEdicion: false },
   { id: "partes",                  label: "Partes de Emergencia",     grupo: "Gestión Operativa",      tieneEdicion: false },
   { id: "personal",                label: "Bomberos",                 grupo: "Gestión Operativa",      tieneEdicion: false },
   { id: "asistencias",             label: "Asistencias",              grupo: "Gestión Operativa",      tieneEdicion: false },
   { id: "analisis",                label: "Análisis",                 grupo: "Gestión Operativa",      tieneEdicion: false },
-  { id: "oficios-institucionales", label: "Oficios Institucionales",  grupo: "Gestión Administrativa", tieneEdicion: false },
-  { id: "oficios-varios",          label: "Oficios Varios",           grupo: "Gestión Administrativa", tieneEdicion: false },
+  { id: "aph",                     label: "Eval. de Emergencias",     grupo: "Gestión Operativa",      tieneEdicion: true  },
+  // Gestión Administrativa
+  { id: "oficios-institucionales", label: "Oficios Institucionales",  grupo: "Gestión Administrativa", tieneEdicion: true  },
+  { id: "oficios-varios",          label: "Oficios Varios",           grupo: "Gestión Administrativa", tieneEdicion: true  },
   { id: "donaciones",              label: "Donaciones",               grupo: "Gestión Administrativa", tieneEdicion: true  },
   { id: "programacion",            label: "Programación",             grupo: "Gestión Administrativa", tieneEdicion: true  },
-  { id: "entidades",               label: "Entidades",                grupo: "Gestión Administrativa", tieneEdicion: false },
+  { id: "asistencias-eventos",     label: "Asistencias a eventos",    grupo: "Gestión Administrativa", tieneEdicion: false },
+  { id: "entidades",               label: "Entidades",                grupo: "Gestión Administrativa", tieneEdicion: true  },
+  // Documentos
   { id: "solicitar-capacitacion",  label: "Subir Documento",          grupo: "Documentos",             tieneEdicion: false },
   { id: "documentos",              label: "Ver Documentos",           grupo: "Documentos",             tieneEdicion: false },
+  // Gestión Comercial
   { id: "socios",                  label: "Socios Estratégicos",      grupo: "Gestión Comercial",      tieneEdicion: false },
   { id: "clasificacion",           label: "Clasificación de Socios",  grupo: "Gestión Comercial",      tieneEdicion: true  },
   { id: "proyeccion-social",       label: "Proyección Social",        grupo: "Gestión Comercial",      tieneEdicion: true  },
   { id: "encuestas",               label: "Encuestas",                grupo: "Gestión Comercial",      tieneEdicion: true  },
+  // Gestión Formativa
+  { id: "horarios-formativa",      label: "Horarios",                 grupo: "Gestión Formativa",      tieneEdicion: true  },
+  { id: "notas-formativa",         label: "Notas de lecciones",       grupo: "Gestión Formativa",      tieneEdicion: true  },
+  { id: "reporte-formativa",       label: "Reporte de asistencias",   grupo: "Gestión Formativa",      tieneEdicion: false },
 ];
 
-const GRUPOS_AREA     = ["Gestión Operativa", "Gestión Administrativa", "Documentos"];
-const GRUPOS_BOMBERO  = ["Gestión Operativa", "Gestión Administrativa", "Documentos", "Gestión Comercial"];
+const TODOS_LOS_GRUPOS = ["Gestión Operativa", "Gestión Administrativa", "Documentos", "Gestión Comercial", "Gestión Formativa"];
+const GRUPOS_AREA      = TODOS_LOS_GRUPOS;
+const GRUPOS_BOMBERO   = ["Gestión Operativa", "Gestión Administrativa", "Documentos", "Gestión Comercial"];
 
 /* ── Permisos de área ───────────────────────────────────────────────── */
 
