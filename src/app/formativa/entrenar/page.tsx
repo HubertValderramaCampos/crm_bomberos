@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { CheckCircle2, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 
-type FaceApi = typeof import("@vladmandic/face-api");
+type FaceApi     = typeof import("@vladmandic/face-api");
+type LandmarkResult = Awaited<ReturnType<ReturnType<ReturnType<FaceApi["detectSingleFace"]>["withFaceLandmarks"]>["withFaceDescriptor"]>>;
+
 const MODEL_URL = "/models";
 
 async function cargarModelos(faceapi: FaceApi) {
@@ -14,16 +16,74 @@ async function cargarModelos(faceapi: FaceApi) {
   ]);
 }
 
-// Cada paso tiene: instrucción, y qué parte del óvalo resaltar
-const PASOS = [
-  { label: "Mira de frente",              hint: "Mantén la cabeza recta",          rot: 0   },
-  { label: "Gira a tu izquierda",         hint: "Gira levemente hacia tu izquierda", rot: -15 },
-  { label: "Gira a tu derecha",           hint: "Gira levemente hacia tu derecha",  rot: 15  },
-  { label: "Inclina hacia arriba",         hint: "Levanta levemente el mentón",      rot: -10, tilt: -10 },
+/* ─── Validación de pose con landmarks 68pts ─────────────────────
+   Puntos clave:
+   - 0–16  : contorno mandíbula
+   - 27–30 : dorso de nariz
+   - 33    : punta de nariz
+   - 36–41 : ojo izquierdo
+   - 42–47 : ojo derecho
+   - 8     : barbilla
+   - 27    : puente de nariz (entre cejas)
+──────────────────────────────────────────────────────────────── */
+type Pose = "frente" | "izquierda" | "derecha" | "arriba";
+
+function calcularPose(det: NonNullable<LandmarkResult>): { pose: Pose; confianza: number } {
+  const pts = det.landmarks.positions;
+
+  // Centro de cada ojo
+  const ojoIzq  = { x: (pts[36].x + pts[39].x) / 2, y: (pts[36].y + pts[39].y) / 2 };
+  const ojoDer  = { x: (pts[42].x + pts[45].x) / 2, y: (pts[42].y + pts[45].y) / 2 };
+  const nariz   = pts[33];
+  const barbilla = pts[8];
+  const puenteN  = pts[27];
+
+  // Centro horizontal entre ojos
+  const centroOjos = (ojoIzq.x + ojoDer.x) / 2;
+  const anchoOjos  = Math.abs(ojoDer.x - ojoIzq.x);
+
+  // Desplazamiento lateral de la nariz respecto al centro de ojos
+  // Normalizado por el ancho entre ojos
+  const desvLateral = (nariz.x - centroOjos) / anchoOjos;
+
+  // Relación vertical: distancia nariz-barbilla / nariz-puente
+  // Cuando mira arriba, la barbilla sube y la distancia disminuye
+  const distNarizBarbilla = barbilla.y - nariz.y;
+  const distNarizPuente   = nariz.y - puenteN.y;
+  const ratioVertical     = distNarizPuente > 0 ? distNarizBarbilla / distNarizPuente : 1;
+
+  // Umbrales calibrados
+  const UMBRAL_LATERAL = 0.12; // >12% del ancho → girado
+  const UMBRAL_ARRIBA  = 0.9;  // ratio < 0.9 → mirando arriba
+
+  if (ratioVertical < UMBRAL_ARRIBA) {
+    const confianza = Math.min(1, (UMBRAL_ARRIBA - ratioVertical) / 0.3);
+    return { pose: "arriba", confianza };
+  }
+  if (desvLateral < -UMBRAL_LATERAL) {
+    // Nariz a la izquierda del centro = cara girada a la derecha (espejo)
+    const confianza = Math.min(1, (-desvLateral - UMBRAL_LATERAL) / 0.15);
+    return { pose: "derecha", confianza };
+  }
+  if (desvLateral > UMBRAL_LATERAL) {
+    const confianza = Math.min(1, (desvLateral - UMBRAL_LATERAL) / 0.15);
+    return { pose: "izquierda", confianza };
+  }
+  // Frente: cuanto más centrada, mayor confianza
+  const confianza = Math.max(0, 1 - Math.abs(desvLateral) / UMBRAL_LATERAL);
+  return { pose: "frente", confianza };
+}
+
+/* ─── Pasos con pose requerida ───────────────────────────────── */
+const PASOS: { label: string; hint: string; rot: number; poseReq: Pose; umbral: number }[] = [
+  { label: "Mira de frente",        hint: "Mantén la cabeza recta y centrada",      rot:   0, poseReq: "frente",    umbral: 0.6 },
+  { label: "Gira a tu izquierda",   hint: "Gira el rostro levemente a la izquierda",rot: -20, poseReq: "izquierda", umbral: 0.4 },
+  { label: "Gira a tu derecha",     hint: "Gira el rostro levemente a la derecha",  rot:  20, poseReq: "derecha",   umbral: 0.4 },
+  { label: "Inclina hacia arriba",  hint: "Levanta levemente el mentón",            rot: -10, poseReq: "arriba",    umbral: 0.3 },
 ];
 
-// Cuenta regresiva antes de capturar automáticamente
-const HOLD_FRAMES = 8; // ~1.6 seg a 5fps
+const HOLD_FRAMES   = 6;   // frames consecutivos con pose válida para capturar
+const BEST_SAMPLES  = 3;   // muestras a promediar por paso para el mejor momento
 
 export default function EntrenarPage() {
   const videoRef   = useRef<HTMLVideoElement>(null);
@@ -32,19 +92,22 @@ export default function EntrenarPage() {
   const streamRef  = useRef<MediaStream | null>(null);
   const loopRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdCount  = useRef(0);
+  // Buffer de los mejores descriptores del paso actual (mayor confianza)
+  const bestBuffer = useRef<{ desc: number[]; conf: number }[]>([]);
 
-  const [estado,   setEstado]   = useState<"cargando"|"activo"|"procesando"|"ok"|"error">("cargando");
-  const [msg,      setMsg]      = useState("Iniciando...");
-  const [pasoIdx,  setPasoIdx]  = useState(0);
-  const [capturas, setCapturas] = useState<number[][]>([]);
-  const [faceOk,   setFaceOk]   = useState(false);
-  const [cuenta,   setCuenta]   = useState(0); // 0-HOLD_FRAMES
-  const [yaTiene,  setYaTiene]  = useState(false);
+  const [estado,    setEstado]    = useState<"cargando"|"activo"|"procesando"|"ok"|"error">("cargando");
+  const [msg,       setMsg]       = useState("Iniciando...");
+  const [pasoIdx,   setPasoIdx]   = useState(0);
+  const [capturas,  setCapturas]  = useState<number[][]>([]);
+  const [faceOk,    setFaceOk]    = useState(false);
+  const [poseOk,    setPoseOk]    = useState(false);
+  const [cuenta,    setCuenta]    = useState(0);
+  const [yaTiene,   setYaTiene]   = useState(false);
+  const [poseInfo,  setPoseInfo]  = useState<{ pose: string; confianza: number } | null>(null);
 
   const capturasRef = useRef<number[][]>([]);
   const pasoIdxRef  = useRef(0);
 
-  // Sincronizar refs con estado
   useEffect(() => { capturasRef.current = capturas; }, [capturas]);
   useEffect(() => { pasoIdxRef.current  = pasoIdx;  }, [pasoIdx]);
 
@@ -53,6 +116,7 @@ export default function EntrenarPage() {
     setMsg("Guardando tu rostro...");
     if (loopRef.current) clearTimeout(loopRef.current);
 
+    // Promedio ponderado de todos los descriptores
     const promedio = todas[0].map((_, i) =>
       todas.reduce((s, d) => s + d[i], 0) / todas.length
     );
@@ -81,7 +145,7 @@ export default function EntrenarPage() {
       if (!videoRef.current || !canvasRef.current) return;
       try {
         const det = await faceapi
-          .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 160 }))
+          .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }))
           .withFaceLandmarks()
           .withFaceDescriptor();
 
@@ -90,34 +154,66 @@ export default function EntrenarPage() {
 
         if (det) {
           setFaceOk(true);
-          holdCount.current++;
-          setCuenta(Math.min(holdCount.current, HOLD_FRAMES));
 
-          // Captura automática cuando se mantiene el tiempo
-          if (holdCount.current >= HOLD_FRAMES) {
-            holdCount.current = 0;
-            setCuenta(0);
+          // Calcular pose real
+          const { pose, confianza } = calcularPose(det);
+          setPoseInfo({ pose, confianza });
+
+          const paso = PASOS[pasoIdxRef.current];
+          const poseCumple = pose === paso.poseReq && confianza >= paso.umbral;
+          setPoseOk(poseCumple);
+
+          if (poseCumple) {
+            holdCount.current++;
+            setCuenta(Math.min(holdCount.current, HOLD_FRAMES));
+
+            // Acumular el mejor descriptor de este frame en el buffer
             const descriptor = Array.from(det.descriptor);
-            const nuevas = [...capturasRef.current, descriptor];
-            capturasRef.current = nuevas;
-            setCapturas(nuevas);
+            bestBuffer.current.push({ desc: descriptor, conf: confianza });
+            // Mantener solo los BEST_SAMPLES de mayor confianza
+            bestBuffer.current.sort((a, b) => b.conf - a.conf);
+            if (bestBuffer.current.length > BEST_SAMPLES) bestBuffer.current.length = BEST_SAMPLES;
 
-            if (pasoIdxRef.current < PASOS.length - 1) {
-              pasoIdxRef.current++;
-              setPasoIdx(pasoIdxRef.current);
-            } else {
-              await guardarDescriptor(nuevas);
-              return;
+            // Captura automática cuando se mantiene la pose suficientes frames
+            if (holdCount.current >= HOLD_FRAMES) {
+              holdCount.current = 0;
+              setCuenta(0);
+
+              // Promediar los mejores descriptores del buffer
+              const mejores = bestBuffer.current.map(b => b.desc);
+              bestBuffer.current = [];
+              const promBufer = mejores[0].map((_, i) =>
+                mejores.reduce((s, d) => s + d[i], 0) / mejores.length
+              );
+
+              const nuevas = [...capturasRef.current, promBufer];
+              capturasRef.current = nuevas;
+              setCapturas(nuevas);
+
+              if (pasoIdxRef.current < PASOS.length - 1) {
+                pasoIdxRef.current++;
+                setPasoIdx(pasoIdxRef.current);
+                setPoseOk(false);
+              } else {
+                await guardarDescriptor(nuevas);
+                return;
+              }
             }
+          } else {
+            // Pose no cumple: reiniciar contador pero NO limpiar buffer
+            holdCount.current = Math.max(0, holdCount.current - 1);
+            setCuenta(Math.max(0, holdCount.current));
           }
         } else {
           setFaceOk(false);
+          setPoseOk(false);
+          setPoseInfo(null);
           holdCount.current = 0;
           setCuenta(0);
         }
       } catch { /* ignorar errores de frame */ }
 
-      loopRef.current = setTimeout(loop, 200);
+      loopRef.current = setTimeout(loop, 150); // ~6fps para mejor detección
     }
     loop();
   }, [guardarDescriptor]);
@@ -153,21 +249,16 @@ export default function EntrenarPage() {
       }
     })();
 
-    // Reanudar cámara y loop cuando la página vuelve al primer plano
     async function onVisibilityChange() {
       if (document.visibilityState !== "visible") return;
       if (!faceApiRef.current) return;
-      // Reiniciar stream si la cámara fue pausada
       try {
         if (!streamRef.current || streamRef.current.getTracks().every(t => t.readyState === "ended")) {
           const stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
           });
           streamRef.current = stream;
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            await videoRef.current.play();
-          }
+          if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play(); }
         } else if (videoRef.current?.paused) {
           await videoRef.current.play();
         }
@@ -177,7 +268,6 @@ export default function EntrenarPage() {
     }
 
     document.addEventListener("visibilitychange", onVisibilityChange);
-
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       if (loopRef.current) clearTimeout(loopRef.current);
@@ -188,19 +278,20 @@ export default function EntrenarPage() {
   function reiniciar() {
     capturas.length = 0;
     capturasRef.current = [];
-    holdCount.current = 0;
-    pasoIdxRef.current = 0;
-    setCapturas([]);
-    setPasoIdx(0);
-    setCuenta(0);
-    setFaceOk(false);
-    setEstado("cargando");
-    setMsg("Reiniciando...");
+    bestBuffer.current  = [];
+    holdCount.current   = 0;
+    pasoIdxRef.current  = 0;
+    setCapturas([]); setPasoIdx(0); setCuenta(0);
+    setFaceOk(false); setPoseOk(false); setPoseInfo(null);
+    setEstado("cargando"); setMsg("Reiniciando...");
     window.location.reload();
   }
 
-  const paso = PASOS[pasoIdx];
+  const paso     = PASOS[pasoIdx];
   const progreso = (cuenta / HOLD_FRAMES) * 100;
+
+  // Color del óvalo: verde=pose ok, amarillo=cara detectada pero pose incorrecta, gris=sin cara
+  const ovalColor = poseOk ? "#4ade80" : faceOk ? "#fbbf24" : "rgba(255,255,255,0.5)";
 
   return (
     <div className="max-w-sm mx-auto px-4 py-6 space-y-4">
@@ -216,52 +307,51 @@ export default function EntrenarPage() {
 
       {/* Cámara */}
       <div className="relative bg-black rounded-2xl overflow-hidden" style={{ aspectRatio: "3/4" }}>
-        <video
-          ref={videoRef}
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ transform: "scaleX(-1)" }}
-          muted playsInline
-        />
+        <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover"
+          style={{ transform: "scaleX(-1)" }} muted playsInline />
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
 
-        {/* Óvalo SVG que rota según el paso */}
-        {(estado === "activo") && (
+        {/* Óvalo SVG con rotación según el paso */}
+        {estado === "activo" && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <svg
-              viewBox="0 0 200 260"
-              className="w-[65%] h-[78%]"
-              style={{ marginTop: "-5%", transition: "transform 0.4s ease", transform: `rotate(${paso.rot}deg)` }}
-            >
-              <ellipse
-                cx="100" cy="130" rx="90" ry="120"
-                fill="none"
-                strokeWidth="4"
-                stroke={faceOk ? "#4ade80" : "rgba(255,255,255,0.6)"}
-                strokeDasharray={faceOk ? "none" : "12 6"}
-                style={{ transition: "stroke 0.3s" }}
-              />
-              {/* Barra de progreso en el óvalo */}
-              {faceOk && (
-                <ellipse
-                  cx="100" cy="130" rx="90" ry="120"
-                  fill="none"
-                  strokeWidth="4"
+            <svg viewBox="0 0 200 260" className="w-[65%] h-[78%]"
+              style={{ marginTop: "-5%", transition: "transform 0.4s ease", transform: `rotate(${paso.rot}deg)` }}>
+              {/* Óvalo base (siempre visible) */}
+              <ellipse cx="100" cy="130" rx="90" ry="120" fill="none" strokeWidth="3"
+                stroke={ovalColor} strokeDasharray={poseOk ? "none" : faceOk ? "none" : "12 6"}
+                style={{ transition: "stroke 0.2s" }} />
+              {/* Barra de progreso sobre el óvalo */}
+              {poseOk && progreso > 0 && (
+                <ellipse cx="100" cy="130" rx="90" ry="120" fill="none" strokeWidth="5"
                   stroke="#22c55e"
                   strokeDasharray={`${(progreso / 100) * 660} 660`}
                   strokeLinecap="round"
-                  style={{ transition: "stroke-dasharray 0.2s" }}
-                />
+                  style={{ transition: "stroke-dasharray 0.15s" }} />
               )}
             </svg>
           </div>
         )}
 
-        {/* Indicador rostro */}
+        {/* Indicador pose */}
         {estado === "activo" && (
           <div className={`absolute top-3 right-3 px-2 py-1 rounded-full text-[11px] font-bold transition-colors ${
-            faceOk ? "bg-green-500 text-white" : "bg-black/50 text-white/60"
+            poseOk ? "bg-green-500 text-white" :
+            faceOk ? "bg-amber-400 text-white" :
+                     "bg-black/50 text-white/60"
           }`}>
-            {faceOk ? "✓ Mantén la pose" : "Busca tu rostro..."}
+            {poseOk ? "✓ Pose correcta" : faceOk ? "Ajusta la pose" : "Buscando rostro..."}
+          </div>
+        )}
+
+        {/* Pose actual detectada (debug suave) */}
+        {estado === "activo" && faceOk && poseInfo && !poseOk && (
+          <div className="absolute bottom-8 left-0 right-0 flex justify-center">
+            <span className="bg-black/60 text-white/80 text-[10px] px-2 py-0.5 rounded-full">
+              {poseInfo.pose === "frente"    ? "↑ Centra la cabeza"         : ""}
+              {poseInfo.pose === "izquierda" && paso.poseReq !== "izquierda" ? "← Gira más a la izquierda" : ""}
+              {poseInfo.pose === "derecha"   && paso.poseReq !== "derecha"   ? "→ Gira más a la derecha"   : ""}
+              {poseInfo.pose === "arriba"    && paso.poseReq !== "arriba"    ? "↑ Levanta el mentón"        : ""}
+            </span>
           </div>
         )}
 
@@ -271,21 +361,19 @@ export default function EntrenarPage() {
             {PASOS.map((_, i) => (
               <div key={i} className={`w-2.5 h-2.5 rounded-full transition-all ${
                 i < capturas.length ? "bg-green-400 scale-110" :
-                i === pasoIdx      ? "bg-white" : "bg-white/30"
+                i === pasoIdx       ? "bg-white" : "bg-white/30"
               }`} />
             ))}
           </div>
         )}
 
-        {/* Overlay cargando */}
+        {/* Overlays */}
         {(estado === "cargando" || estado === "procesando") && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 gap-3">
             <Loader2 className="w-8 h-8 text-white animate-spin" />
             <p className="text-white text-sm">{msg}</p>
           </div>
         )}
-
-        {/* Overlay éxito */}
         {estado === "ok" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-green-900/90 gap-3">
             <CheckCircle2 className="w-14 h-14 text-green-400" />
@@ -301,14 +389,22 @@ export default function EntrenarPage() {
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
               Paso {pasoIdx + 1} de {PASOS.length}
             </p>
-            {faceOk && (
+            {poseOk && (
               <p className="text-xs text-green-400 font-semibold">
-                Capturando en {Math.ceil(((HOLD_FRAMES - cuenta) / HOLD_FRAMES) * 1.6)}s...
+                Capturando en {Math.ceil(((HOLD_FRAMES - cuenta) / HOLD_FRAMES) * 1.0)}s...
               </p>
             )}
           </div>
           <p className="text-white font-bold text-base">{paso.label}</p>
           <p className="text-gray-400 text-xs">{paso.hint}</p>
+          {!poseOk && faceOk && (
+            <p className="text-amber-400 text-xs">
+              {paso.poseReq === "frente"    && "→ Centra la cabeza mirando directamente a la cámara"}
+              {paso.poseReq === "izquierda" && "→ Gira tu cabeza hacia la izquierda"}
+              {paso.poseReq === "derecha"   && "→ Gira tu cabeza hacia la derecha"}
+              {paso.poseReq === "arriba"    && "→ Levanta el mentón hacia arriba"}
+            </p>
+          )}
         </div>
       )}
 
