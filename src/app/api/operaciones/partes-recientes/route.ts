@@ -10,6 +10,7 @@ export async function GET() {
   const { rows } = await pool.query(`
     SELECT id, numero_parte, tipo, created_at::text
     FROM emergencia
+    WHERE tipo NOT IN ('COMISION', 'EMERGENCIA CANCELADA')
     ORDER BY created_at DESC
     LIMIT 100
   `);

@@ -16,6 +16,7 @@ interface EvalRow {
   numero_parte: string; emerg_tipo: string; emerg_fecha: string;
   evaluador_nombre: string;
   total_evaluados: number; evaluados_completos: number;
+  pct_promedio: number | null;
 }
 interface Parte { id: number; numero_parte: string; tipo: string; created_at: string; }
 interface EfectivoModal {
@@ -244,12 +245,24 @@ export default function AphPage() {
                   <p className="text-xs text-gray-500">
                     Evaluador: <span className="font-semibold text-gray-800">{ev.evaluador_nombre}</span>
                   </p>
-                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                    <Users className="w-3.5 h-3.5" />
-                    <span>{ev.total_evaluados} evaluado{ev.total_evaluados !== 1 ? "s" : ""}</span>
-                    {ev.total_evaluados > 0 && (
-                      <span className={`ml-1 font-medium ${ev.evaluados_completos === ev.total_evaluados ? "text-green-600" : "text-amber-600"}`}>
-                        ({ev.evaluados_completos}/{ev.total_evaluados} con clasificación)
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <Users className="w-3.5 h-3.5" />
+                      <span>{ev.total_evaluados} evaluado{ev.total_evaluados !== 1 ? "s" : ""}</span>
+                      {ev.total_evaluados > 0 && (
+                        <span className={`font-medium ${ev.evaluados_completos === ev.total_evaluados ? "text-green-600" : "text-amber-600"}`}>
+                          ({ev.evaluados_completos}/{ev.total_evaluados} con clasificación)
+                        </span>
+                      )}
+                    </div>
+                    {ev.pct_promedio !== null && ev.pct_promedio > 0 && (
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        ev.pct_promedio >= 80 ? "bg-green-100 text-green-700" :
+                        ev.pct_promedio >= 60 ? "bg-blue-100 text-blue-700" :
+                        ev.pct_promedio >= 40 ? "bg-amber-100 text-amber-700" :
+                        "bg-red-100 text-red-700"
+                      }`}>
+                        {ev.pct_promedio}%
                       </span>
                     )}
                   </div>

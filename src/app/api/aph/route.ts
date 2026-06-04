@@ -21,7 +21,32 @@ export async function GET() {
            DATE(e.created_at)::text AS emerg_fecha,
            ber.apellidos || ', ' || ber.nombres AS evaluador_nombre,
            COUNT(ev.id)::int AS total_evaluados,
-           COUNT(ev.id) FILTER (WHERE ev.clasificacion_final IS NOT NULL)::int AS evaluados_completos
+           COUNT(ev.id) FILTER (WHERE ev.clasificacion_final IS NOT NULL)::int AS evaluados_completos,
+           -- Promedio de puntaje % sobre todos los evaluados con al menos una sección
+           ROUND(
+             AVG(
+               (
+                 COALESCE((SELECT SUM((item->>'puntaje')::int) FROM jsonb_array_elements(ev.sec_salida)        item), 0) +
+                 COALESCE((SELECT SUM((item->>'puntaje')::int) FROM jsonb_array_elements(ev.sec_escena)        item), 0) +
+                 COALESCE((SELECT SUM((item->>'puntaje')::int) FROM jsonb_array_elements(ev.sec_atencion_eval) item), 0) +
+                 COALESCE((SELECT SUM((item->>'puntaje')::int) FROM jsonb_array_elements(ev.sec_atencion_proc) item), 0) +
+                 COALESCE((SELECT SUM((item->>'puntaje')::int) FROM jsonb_array_elements(ev.sec_atencion_com)  item), 0) +
+                 COALESCE((SELECT SUM((item->>'puntaje')::int) FROM jsonb_array_elements(ev.sec_transporte)    item), 0) +
+                 COALESCE((SELECT SUM((item->>'puntaje')::int) FROM jsonb_array_elements(ev.sec_reacondiciona) item), 0) +
+                 COALESCE((SELECT SUM((item->>'puntaje')::int) FROM jsonb_array_elements(ev.sec_documentacion) item), 0)
+               )::float /
+               NULLIF(
+                 COALESCE(jsonb_array_length(ev.sec_salida),0) +
+                 COALESCE(jsonb_array_length(ev.sec_escena),0) +
+                 COALESCE(jsonb_array_length(ev.sec_atencion_eval),0) +
+                 COALESCE(jsonb_array_length(ev.sec_atencion_proc),0) +
+                 COALESCE(jsonb_array_length(ev.sec_atencion_com),0) +
+                 COALESCE(jsonb_array_length(ev.sec_transporte),0) +
+                 COALESCE(jsonb_array_length(ev.sec_reacondiciona),0) +
+                 COALESCE(jsonb_array_length(ev.sec_documentacion),0), 0
+               ) * 5.0 * 100
+             )
+           )::int AS pct_promedio
     FROM aph_evaluacion a
     JOIN emergencia e   ON e.id  = a.emergencia_id
     JOIN bombero ber    ON ber.id = a.evaluador_id
