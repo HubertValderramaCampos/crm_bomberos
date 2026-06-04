@@ -316,34 +316,40 @@ export default function AphFormPage({ params }: { params: Promise<{ id: string }
   const [busqAgregar,   setBusqAgregar]   = useState("");
 
   const cargar = useCallback(async () => {
-    const data = await fetch(`/api/aph/${id}`).then(r => r.json()) as EvalDetalle & { error?: string };
-    if (data.error) { setError(data.error); setLoading(false); return; }
-    setEval(data);
-    setHoraAct(data.hora_activacion?.slice(0,5) ?? "");
-    setHoraSal(data.hora_salida?.slice(0,5) ?? "");
-    setHoraLleg(data.hora_llegada_escena?.slice(0,5) ?? "");
-    setHoraTras(data.hora_traslado?.slice(0,5) ?? "");
-    setHoraEntH(data.hora_entrega_hosp?.slice(0,5) ?? "");
-    setTipoDesc(data.tipo_emergencia_desc ?? "");
-    setLugar(data.lugar_atencion ?? "");
-    setEvaluados((data.evaluados ?? []).map(ev => ({
-      bombero_id: ev.bombero_id,
-      apellidos: ev.apellidos, nombres: ev.nombres,
-      grado: ev.grado, codigo: ev.codigo,
-      secs: Object.fromEntries(
-        SEC_KEYS.map(k => [k, (ev[k] as SeccionData | null) ?? initSec(SECCIONES[k].items)])
-      ) as Record<SecKey, SeccionData>,
-      obs_generales: (ev.obs_generales as string) ?? "",
-      conclusiones: (ev.conclusiones as string) ?? "",
-      clasificacion_final: (ev.clasificacion_final as string) ?? "",
-    })));
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/aph/${id}`);
+      const data = await res.json() as EvalDetalle & { error?: string };
+      if (data.error) { setError(data.error); setLoading(false); return; }
+      setEval(data);
+      setHoraAct(data.hora_activacion?.slice(0,5) ?? "");
+      setHoraSal(data.hora_salida?.slice(0,5) ?? "");
+      setHoraLleg(data.hora_llegada_escena?.slice(0,5) ?? "");
+      setHoraTras(data.hora_traslado?.slice(0,5) ?? "");
+      setHoraEntH(data.hora_entrega_hosp?.slice(0,5) ?? "");
+      setTipoDesc(data.tipo_emergencia_desc ?? "");
+      setLugar(data.lugar_atencion ?? "");
+      setEvaluados((data.evaluados ?? []).map(ev => ({
+        bombero_id: ev.bombero_id,
+        apellidos: ev.apellidos, nombres: ev.nombres,
+        grado: ev.grado, codigo: ev.codigo,
+        secs: Object.fromEntries(
+          SEC_KEYS.map(k => [k, (ev[k] as SeccionData | null) ?? initSec(SECCIONES[k].items)])
+        ) as Record<SecKey, SeccionData>,
+        obs_generales: (ev.obs_generales as string) ?? "",
+        conclusiones: (ev.conclusiones as string) ?? "",
+        clasificacion_final: (ev.clasificacion_final as string) ?? "",
+      })));
+    } catch {
+      setError("Error al cargar la evaluación");
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
   const esJefe     = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session?.user?.rol ?? "");
-  const esEvaluador= session?.user?.bomberoId === eval_?.evaluador_bombero_id;
+  const esEvaluador= Number(session?.user?.bomberoId) === Number(eval_?.evaluador_bombero_id);
   const puedeEditar= (esEvaluador || esJefe) && !eval_?.completada;
   const soloLectura= !puedeEditar;
 
