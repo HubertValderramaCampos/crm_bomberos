@@ -51,7 +51,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!esJefe && !esEvaluador)
       return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
 
-    return NextResponse.json({ ...eval_, evaluados: evaluadosRes.rows });
+    // Lista de efectivos que salieron al parte (solo para quien puede editar)
+    let efectivosParte: { bombero_id: number }[] = [];
+    if ((esJefe || esEvaluador) && !eval_.completada) {
+      const epRes = await pool.query(
+        `SELECT ee.bombero_id FROM emergencia_efectivo ee WHERE ee.emergencia_id=$1`,
+        [eval_.emergencia_id]
+      );
+      efectivosParte = epRes.rows;
+    }
+
+    return NextResponse.json({ ...eval_, evaluados: evaluadosRes.rows, efectivos_parte: efectivosParte });
   } catch (err) {
     console.error("[GET /api/aph/id]", err);
     return NextResponse.json({ error: "Error al cargar la evaluación" }, { status: 500 });

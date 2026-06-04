@@ -129,7 +129,7 @@ interface EvaluadoData {
 }
 
 interface EvalDetalle {
-  id: number; completada: boolean;
+  id: number; completada: boolean; emergencia_id: number;
   numero_parte: string; emerg_tipo: string; emerg_fecha: string;
   emerg_distrito: string | null; emerg_hora_despacho: string | null;
   emerg_hora_salida: string | null; emerg_hora_llegada: string | null;
@@ -145,6 +145,8 @@ interface EvalDetalle {
     grado: string; codigo: string; clasificacion_final: string | null;
     [key: string]: unknown;
   }[];
+  // IDs de efectivos que salieron al parte (solo cuando se puede editar)
+  efectivos_parte: { bombero_id: number }[];
 }
 
 interface Bombero { id: number; apellidos: string; nombres: string; grado: string; codigo: string; }
@@ -358,8 +360,15 @@ export default function AphFormPage({ params }: { params: Promise<{ id: string }
 
   async function abrirAgregar() {
     setModalAgregar(true); setBusqAgregar("");
-    const data = await fetch("/api/bomberos").then(r => r.json());
-    setBomberosTodos(Array.isArray(data) ? data : []);
+    // Solo mostrar efectivos que salieron al parte (ya vienen en eval_.efectivos_parte)
+    if (eval_?.efectivos_parte?.length) {
+      const ids = eval_.efectivos_parte.map(e => e.bombero_id);
+      const data = await fetch("/api/bomberos").then(r => r.json());
+      const todos: Bombero[] = Array.isArray(data) ? data : [];
+      setBomberosTodos(todos.filter(b => ids.includes(b.id)));
+    } else {
+      setBomberosTodos([]);
+    }
   }
 
   function agregarEvaluado(b: Bombero) {
@@ -565,30 +574,41 @@ export default function AphFormPage({ params }: { params: Promise<{ id: string }
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
             <div className="bg-gradient-to-br from-red-700 to-red-800 px-5 py-4 text-white flex items-center justify-between">
-              <h2 className="text-base font-bold">Agregar efectivo</h2>
+              <div>
+                <h2 className="text-base font-bold">Agregar efectivo</h2>
+                <p className="text-xs text-white/70 mt-0.5">Solo personal que salió al parte</p>
+              </div>
               <button onClick={() => setModalAgregar(false)} className="text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-4 space-y-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                <input autoFocus value={busqAgregar} onChange={e => setBusqAgregar(e.target.value)}
-                  placeholder="Buscar por apellido o código..."
-                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30" />
-              </div>
-              <div className="max-h-64 overflow-y-auto divide-y divide-gray-50 border border-gray-200 rounded-xl">
-                {filtradosAgregar.length === 0
-                  ? <p className="px-4 py-6 text-xs text-gray-400 text-center">Sin resultados</p>
-                  : filtradosAgregar.slice(0, 10).map(b => (
-                    <button key={b.id} onClick={() => agregarEvaluado(b)}
-                      className="w-full text-left px-4 py-2.5 hover:bg-red-50 transition-colors flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{b.apellidos.split(",")[0]}, {b.nombres.split(" ")[0]}</p>
-                        <p className="text-xs text-gray-400">{b.grado} · {b.codigo}</p>
-                      </div>
-                      <UserPlus className="w-4 h-4 text-red-600 shrink-0" />
-                    </button>
-                  ))}
-              </div>
+              {bomberosTodos.length === 0 ? (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-3 text-center">
+                  Todos los efectivos del parte ya están en la evaluación.
+                </p>
+              ) : (
+                <>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                    <input autoFocus value={busqAgregar} onChange={e => setBusqAgregar(e.target.value)}
+                      placeholder="Buscar por apellido o código..."
+                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30" />
+                  </div>
+                  <div className="max-h-64 overflow-y-auto divide-y divide-gray-50 border border-gray-200 rounded-xl">
+                    {filtradosAgregar.length === 0
+                      ? <p className="px-4 py-6 text-xs text-gray-400 text-center">Sin resultados</p>
+                      : filtradosAgregar.slice(0, 20).map(b => (
+                        <button key={b.id} onClick={() => agregarEvaluado(b)}
+                          className="w-full text-left px-4 py-2.5 hover:bg-red-50 transition-colors flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{b.apellidos.split(",")[0]}, {b.nombres.split(" ")[0]}</p>
+                            <p className="text-xs text-gray-400">{b.grado} · {b.codigo}</p>
+                          </div>
+                          <UserPlus className="w-4 h-4 text-red-600 shrink-0" />
+                        </button>
+                      ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
