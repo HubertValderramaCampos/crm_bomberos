@@ -15,14 +15,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       pool.query(`
         SELECT a.*,
                e.numero_parte, e.tipo AS emerg_tipo, e.direccion AS emerg_direccion,
-               e.distrito_id AS emerg_distrito,
+               d.nombre AS emerg_distrito,
                DATE(e.created_at)::text AS emerg_fecha,
-               e.fecha_despacho::text  AS emerg_hora_despacho,
+               e.fecha_despacho::text   AS emerg_hora_despacho,
+               e.fecha_salida::text     AS emerg_hora_salida,
+               e.fecha_llegada::text    AS emerg_hora_llegada,
+               te.descripcion           AS emerg_tipo_desc,
                ber.apellidos || ', ' || ber.nombres AS evaluador_nombre,
                ber.grado AS evaluador_grado, ber.codigo AS evaluador_codigo,
                ber.id AS evaluador_bombero_id
         FROM aph_evaluacion a
         JOIN emergencia e ON e.id  = a.emergencia_id
+        LEFT JOIN distrito d        ON d.id  = e.distrito_id
+        LEFT JOIN tipo_emergencia te ON te.id = e.tipo_emergencia_id
         JOIN bombero ber  ON ber.id = a.evaluador_id
         WHERE a.id = $1
       `, [id]),

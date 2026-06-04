@@ -132,6 +132,8 @@ interface EvalDetalle {
   id: number; completada: boolean;
   numero_parte: string; emerg_tipo: string; emerg_fecha: string;
   emerg_distrito: string | null; emerg_hora_despacho: string | null;
+  emerg_hora_salida: string | null; emerg_hora_llegada: string | null;
+  emerg_tipo_desc: string | null; emerg_direccion: string | null;
   evaluador_nombre: string; evaluador_grado: string;
   evaluador_bombero_id: number;
   hora_activacion: string | null; hora_salida: string | null;
@@ -321,13 +323,14 @@ export default function AphFormPage({ params }: { params: Promise<{ id: string }
       const data = await res.json() as EvalDetalle & { error?: string };
       if (data.error) { setError(data.error); setLoading(false); return; }
       setEval(data);
-      setHoraAct(data.hora_activacion?.slice(0,5) ?? "");
-      setHoraSal(data.hora_salida?.slice(0,5) ?? "");
-      setHoraLleg(data.hora_llegada_escena?.slice(0,5) ?? "");
+      // Pre-llenar desde el parte si el evaluador aún no ha guardado el campo
+      setHoraAct(data.hora_activacion?.slice(0,5) ?? data.emerg_hora_despacho?.slice(11,16) ?? "");
+      setHoraSal(data.hora_salida?.slice(0,5)     ?? data.emerg_hora_salida?.slice(11,16)   ?? "");
+      setHoraLleg(data.hora_llegada_escena?.slice(0,5) ?? data.emerg_hora_llegada?.slice(11,16) ?? "");
       setHoraTras(data.hora_traslado?.slice(0,5) ?? "");
       setHoraEntH(data.hora_entrega_hosp?.slice(0,5) ?? "");
-      setTipoDesc(data.tipo_emergencia_desc ?? "");
-      setLugar(data.lugar_atencion ?? "");
+      setTipoDesc(data.tipo_emergencia_desc ?? data.emerg_tipo_desc ?? data.emerg_tipo ?? "");
+      setLugar(data.lugar_atencion ?? data.emerg_direccion ?? "");
       setEvaluados((data.evaluados ?? []).map(ev => ({
         bombero_id: ev.bombero_id,
         apellidos: ev.apellidos, nombres: ev.nombres,
