@@ -10,42 +10,47 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { id } = await params;
 
-  const [evalRes, evaluadosRes] = await Promise.all([
-    pool.query(`
-      SELECT a.*,
-             e.numero_parte, e.tipo AS emerg_tipo, e.direccion AS emerg_direccion,
-             e.distrito AS emerg_distrito,
-             DATE(e.created_at)::text AS emerg_fecha,
-             e.fecha_despacho::text  AS emerg_hora_despacho,
-             ber.apellidos || ', ' || ber.nombres AS evaluador_nombre,
-             ber.grado AS evaluador_grado, ber.codigo AS evaluador_codigo,
-             ber.id AS evaluador_bombero_id
-      FROM aph_evaluacion a
-      JOIN emergencia e ON e.id  = a.emergencia_id
-      JOIN bombero ber  ON ber.id = a.evaluador_id
-      WHERE a.id = $1
-    `, [id]),
-    pool.query(`
-      SELECT ev.*,
-             b.apellidos, b.nombres, b.grado, b.codigo
-      FROM aph_evaluado ev
-      JOIN bombero b ON b.id = ev.bombero_id
-      WHERE ev.evaluacion_id = $1
-      ORDER BY b.apellidos
-    `, [id]),
-  ]);
+  try {
+    const [evalRes, evaluadosRes] = await Promise.all([
+      pool.query(`
+        SELECT a.*,
+               e.numero_parte, e.tipo AS emerg_tipo, e.direccion AS emerg_direccion,
+               e.distrito_id AS emerg_distrito,
+               DATE(e.created_at)::text AS emerg_fecha,
+               e.fecha_despacho::text  AS emerg_hora_despacho,
+               ber.apellidos || ', ' || ber.nombres AS evaluador_nombre,
+               ber.grado AS evaluador_grado, ber.codigo AS evaluador_codigo,
+               ber.id AS evaluador_bombero_id
+        FROM aph_evaluacion a
+        JOIN emergencia e ON e.id  = a.emergencia_id
+        JOIN bombero ber  ON ber.id = a.evaluador_id
+        WHERE a.id = $1
+      `, [id]),
+      pool.query(`
+        SELECT ev.*,
+               b.apellidos, b.nombres, b.grado, b.codigo
+        FROM aph_evaluado ev
+        JOIN bombero b ON b.id = ev.bombero_id
+        WHERE ev.evaluacion_id = $1
+        ORDER BY b.apellidos
+      `, [id]),
+    ]);
 
-  if (!evalRes.rows[0]) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+    if (!evalRes.rows[0]) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  const eval_ = evalRes.rows[0];
+    const eval_ = evalRes.rows[0];
 
-  // Solo el evaluador asignado o el jefe pueden acceder
-  const esJefe     = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol);
-  const esEvaluador = Number(eval_.evaluador_bombero_id) === Number(session.user.bomberoId);
-  if (!esJefe && !esEvaluador)
-    return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+    // Solo el evaluador asignado o el jefe pueden acceder
+    const esJefe     = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol);
+    const esEvaluador = Number(eval_.evaluador_bombero_id) === Number(session.user.bomberoId);
+    if (!esJefe && !esEvaluador)
+      return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
 
-  return NextResponse.json({ ...eval_, evaluados: evaluadosRes.rows });
+    return NextResponse.json({ ...eval_, evaluados: evaluadosRes.rows });
+  } catch (err) {
+    console.error("[GET /api/aph/id]", err);
+    return NextResponse.json({ error: "Error al cargar la evaluación" }, { status: 500 });
+  }
 }
 
 // PUT: guardar datos generales + lista de evaluados con sus secciones
