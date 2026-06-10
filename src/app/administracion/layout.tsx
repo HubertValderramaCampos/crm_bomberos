@@ -1,3 +1,4 @@
+import { ROLES_JEFE } from "@/lib/roles";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -26,7 +27,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
     return <DashboardShell scrollable>{children}</DashboardShell>;
   }
 
-  if (["JEFE_COMPANIA", "ADMINISTRACION"].includes(rol)) {
+  if (ROLES_JEFE.includes(rol)) {
     return <DashboardShell scrollable>{children}</DashboardShell>;
   }
 

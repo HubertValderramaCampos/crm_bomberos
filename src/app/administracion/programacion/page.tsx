@@ -1,3 +1,4 @@
+import { ROLES_JEFE } from "@/lib/roles";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -9,7 +10,7 @@ export default async function ProgramacionPage() {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
-  const puedeCrear = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol);
+  const puedeCrear = ROLES_JEFE.includes(session.user.rol);
 
   return (
     <div className="space-y-4 pb-6">

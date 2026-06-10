@@ -1,4 +1,5 @@
 "use client";
+import { ROLES_JEFE } from "@/lib/roles";
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
@@ -33,7 +34,7 @@ const CLASIF_COLORS: Record<string, string> = {
 
 export default function AphPage() {
   const { data: session } = useSession();
-  const esJefe = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session?.user?.rol ?? "");
+  const esJefe = ROLES_JEFE.includes(session?.user?.rol ?? "");
 
   const [evaluaciones, setEvaluaciones] = useState<EvalRow[]>([]);
   const [loading,      setLoading]      = useState(true);

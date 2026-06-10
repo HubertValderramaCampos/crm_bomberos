@@ -1,3 +1,4 @@
+import { ROLES_JEFE } from "@/lib/roles";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
@@ -8,7 +9,7 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const esJefe = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol);
+  const esJefe = ROLES_JEFE.includes(session.user.rol);
   const bomberoId = session.user.bomberoId;
 
   // Solo jefe/admin pueden ver evaluaciones; evaluador ve las suyas
@@ -63,7 +64,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  if (!["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol))
+  if (!ROLES_JEFE.includes(session.user.rol))
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
 
   const { emergencia_id, evaluador_id } = await req.json();

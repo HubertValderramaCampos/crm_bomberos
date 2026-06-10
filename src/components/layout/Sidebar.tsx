@@ -16,8 +16,8 @@ import { ROL_LABELS } from "@/lib/permissions";
 type NavItem = { label: string; href: string; icon: React.ElementType; roles: string[]; seccion?: string; rachaMin?: number };
 type NavSection = { title: string; roles?: string[]; items: NavItem[] };
 
-const TODOS = ["JEFE_COMPANIA","ADMINISTRACION","SERVICIOS_GENERALES","INSTRUCCION","SANIDAD","OPERACIONES","IMAGEN","BOMBERO"];
-const OPERATIVOS = ["JEFE_COMPANIA","OPERACIONES"];
+const TODOS = ["JEFE_COMPANIA","SEGUNDO_JEFE","ADMINISTRACION","SERVICIOS_GENERALES","INSTRUCCION","SANIDAD","OPERACIONES","IMAGEN","BOMBERO"];
+const OPERATIVOS = ["JEFE_COMPANIA","SEGUNDO_JEFE","OPERACIONES"];
 // Para items con permisos individuales: todos los roles pueden verlos si tienen el permiso
 const OPERATIVOS_Y_BOMBERO = TODOS;
 const ADMIN_Y_BOMBERO_RACHA = TODOS;
@@ -190,7 +190,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   }, [rol]);
 
   useEffect(() => {
-    const rolesAdmin = ["JEFE_COMPANIA", "ADMINISTRACION"];
+    const rolesAdmin = ROLES_JEFE;
     if (!rolesAdmin.includes(rol)) return;
     function cargar() {
       fetch("/api/solicitudes-capacitacion/pendientes")

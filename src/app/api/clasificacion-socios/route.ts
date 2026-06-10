@@ -1,9 +1,10 @@
+import { ROLES_JEFE } from "@/lib/roles";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 
-const ROLES_ADMIN = ["JEFE_COMPANIA", "ADMINISTRACION"];
+const ROLES_ADMIN = ROLES_JEFE;
 
 export async function GET() {
   const session = await getServerSession(authOptions);

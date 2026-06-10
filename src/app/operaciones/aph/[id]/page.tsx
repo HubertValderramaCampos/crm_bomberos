@@ -1,4 +1,5 @@
 "use client";
+import { ROLES_JEFE } from "@/lib/roles";
 
 import { useEffect, useState, use, useCallback } from "react";
 import { useSession } from "next-auth/react";
@@ -353,7 +354,7 @@ export default function AphFormPage({ params }: { params: Promise<{ id: string }
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  const esJefe     = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session?.user?.rol ?? "");
+  const esJefe     = ROLES_JEFE.includes(session?.user?.rol ?? "");
   const esEvaluador= Number(session?.user?.bomberoId) === Number(eval_?.evaluador_bombero_id);
   const puedeEditar= (esEvaluador || esJefe) && !eval_?.completada;
   const soloLectura= !puedeEditar;

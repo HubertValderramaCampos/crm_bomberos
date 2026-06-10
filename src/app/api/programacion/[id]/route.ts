@@ -1,3 +1,4 @@
+import { ROLES_JEFE } from "@/lib/roles";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
@@ -42,7 +43,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const esAdmin = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol);
+  const esAdmin = ROLES_JEFE.includes(session.user.rol);
   if (!esAdmin) return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
 
   const { id } = await params;
@@ -179,7 +180,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const esAdmin = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol);
+  const esAdmin = ROLES_JEFE.includes(session.user.rol);
   if (!esAdmin) return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
 
   const { id } = await params;

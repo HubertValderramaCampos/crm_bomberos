@@ -1,5 +1,7 @@
+import { ROLES_JEFE } from "@/lib/roles";
 export const ROLES = {
   JEFE_COMPANIA:       "JEFE_COMPANIA",
+  SEGUNDO_JEFE:        "SEGUNDO_JEFE",
   ADMINISTRACION:      "ADMINISTRACION",
   SERVICIOS_GENERALES: "SERVICIOS_GENERALES",
   INSTRUCCION:         "INSTRUCCION",
@@ -13,6 +15,7 @@ export type Rol = (typeof ROLES)[keyof typeof ROLES];
 
 export const ROL_LABELS: Record<Rol, string> = {
   JEFE_COMPANIA:       "Jefe de Compañía",
+  SEGUNDO_JEFE:        "Segundo Jefe",
   ADMINISTRACION:      "Área de Administración",
   SERVICIOS_GENERALES: "Área de Servicios Generales",
   INSTRUCCION:         "Área de Instrucción",
@@ -22,13 +25,13 @@ export const ROL_LABELS: Record<Rol, string> = {
   BOMBERO:             "Efectivo",
 };
 
-export const PATH_AREA_MAP: Record<string, Rol[]> = {
-  "/administracion": ["JEFE_COMPANIA", "ADMINISTRACION"],
-  "/servicios-generales": ["JEFE_COMPANIA", "SERVICIOS_GENERALES"],
-  "/instruccion": ["JEFE_COMPANIA", "INSTRUCCION"],
-  "/sanidad": ["JEFE_COMPANIA", "SANIDAD"],
-  "/operaciones": ["JEFE_COMPANIA", "OPERACIONES"],
-  "/imagen": ["JEFE_COMPANIA", "IMAGEN"],
+export const PATH_AREA_MAP: Record<string, string[]> = {
+  "/administracion":    [...ROLES_JEFE],
+  "/servicios-generales": ["JEFE_COMPANIA", "SEGUNDO_JEFE", "SERVICIOS_GENERALES"],
+  "/instruccion":       ["JEFE_COMPANIA", "SEGUNDO_JEFE", "INSTRUCCION"],
+  "/sanidad":           ["JEFE_COMPANIA", "SEGUNDO_JEFE", "SANIDAD"],
+  "/operaciones":       ["JEFE_COMPANIA", "SEGUNDO_JEFE", "OPERACIONES"],
+  "/imagen":            ["JEFE_COMPANIA", "SEGUNDO_JEFE", "IMAGEN"],
 };
 
 export function canAccessPath(rol: string, pathname: string): boolean {
@@ -42,6 +45,7 @@ export function canAccessPath(rol: string, pathname: string): boolean {
 export function getDefaultPath(rol: string): string {
   const map: Record<string, string> = {
     JEFE_COMPANIA:       "/dashboard",
+    SEGUNDO_JEFE:        "/dashboard",
     ADMINISTRACION:      "/administracion",
     SERVICIOS_GENERALES: "/servicios-generales",
     INSTRUCCION:         "/instruccion",

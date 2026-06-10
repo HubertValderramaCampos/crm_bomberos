@@ -1,3 +1,4 @@
+import { ROLES_JEFE } from "@/lib/roles";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -8,7 +9,7 @@ import { PermisosGestion } from "@/components/ui-custom/PermisosGestion";
 export default async function PermisosPage() {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
-  if (session.user.rol !== "JEFE_COMPANIA") redirect("/dashboard");
+  if (!ROLES_JEFE.includes(session.user.rol)) redirect("/dashboard");
 
   return (
     <div className="space-y-4 pb-6">

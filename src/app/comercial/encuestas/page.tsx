@@ -1,4 +1,5 @@
 "use client";
+import { ROLES_JEFE } from "@/lib/roles";
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
@@ -487,7 +488,7 @@ function GrupoEncuesta({ grupo, baseUrl, puedeEditar, onDesactivar, onEliminar, 
 /* ── Página principal ───────────────────────────────────────────── */
 export default function EncuestasPage() {
   const { data: session } = useSession();
-  const puedeEditar = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session?.user?.rol ?? "");
+  const puedeEditar = ROLES_JEFE.includes(session?.user?.rol ?? "");
 
   const [tab,       setTab]       = useState<"dashboard" | "enlaces">("dashboard");
   const [tokens,    setTokens]    = useState<TokenRow[]>([]);

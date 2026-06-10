@@ -1,3 +1,4 @@
+import { ROLES_JEFE } from "@/lib/roles";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -29,7 +30,7 @@ export default async function ClasificacionPage() {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
-  const puedeAdmin = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol);
+  const puedeAdmin = ROLES_JEFE.includes(session.user.rol);
   const { clasificaciones, socios } = await getData().catch(() => ({ clasificaciones: [], socios: [] }));
 
   return (

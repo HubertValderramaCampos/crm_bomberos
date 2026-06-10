@@ -1,4 +1,5 @@
 "use client";
+import { ROLES_JEFE } from "@/lib/roles";
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
@@ -17,7 +18,7 @@ const inputCls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm foc
 
 export default function NotasFormativasPage() {
   const { data: session } = useSession();
-  const esAdmin = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session?.user?.rol ?? "");
+  const esAdmin = ROLES_JEFE.includes(session?.user?.rol ?? "");
 
   const [bomberos,     setBomberos]     = useState<Bombero[]>([]);
   const [bomberoSel,   setBomberoSel]   = useState<Bombero | null>(null);

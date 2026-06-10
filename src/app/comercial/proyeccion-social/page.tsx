@@ -1,4 +1,5 @@
 "use client";
+import { ROLES_JEFE } from "@/lib/roles";
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
@@ -93,7 +94,7 @@ function FormEvento({
 
 export default function ProyeccionSocialPage() {
   const { data: session } = useSession();
-  const puedeAdmin = ["JEFE_COMPANIA", "ADMINISTRACION"].includes(session?.user?.rol ?? "");
+  const puedeAdmin = ROLES_JEFE.includes(session?.user?.rol ?? "");
 
   const [eventos,    setEventos]    = useState<Evento[]>([]);
   const [loading,    setLoading]    = useState(true);

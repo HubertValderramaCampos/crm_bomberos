@@ -1,3 +1,4 @@
+import { ROLES_JEFE } from "@/lib/roles";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
@@ -25,7 +26,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ tokenId
 export async function DELETE(req: Request, { params }: { params: Promise<{ tokenId: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  if (!["JEFE_COMPANIA", "ADMINISTRACION"].includes(session.user.rol))
+  if (!ROLES_JEFE.includes(session.user.rol))
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
 
   const { tokenId } = await params;
