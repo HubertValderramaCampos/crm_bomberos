@@ -12,6 +12,7 @@ import {
   Briefcase, Tag, Heart, ClipboardList,
 } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
+import { ROLES_JEFE } from "@/lib/roles";
 
 type NavItem = { label: string; href: string; icon: React.ElementType; roles: string[]; seccion?: string; rachaMin?: number };
 type NavSection = { title: string; roles?: string[]; items: NavItem[] };

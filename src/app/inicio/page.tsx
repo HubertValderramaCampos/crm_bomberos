@@ -155,7 +155,7 @@ export default async function InicioPage() {
   }
 
   const esBombero  = rol === "BOMBERO";
-  const esOperativo = rol === "JEFE_COMPANIA" || rol === "OPERACIONES";
+  const esOperativo = rol === "JEFE_COMPANIA" || rol === "SEGUNDO_JEFE" || rol === "OPERACIONES";
 
   const [data, racha] = await Promise.all([
     getInicioData(session.user.id, bomberoId ?? null).catch(() => null),
