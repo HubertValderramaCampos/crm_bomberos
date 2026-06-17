@@ -448,7 +448,7 @@ function ModalEditar({ actividad, onClose, onEditado }: {
 /* ── Tipos para asistencia ── */
 interface RegistroAsistencia {
   bombero_id: number; apellidos: string; nombres: string; grado: string; codigo: string;
-  asistio: boolean; justificacion: string; agregado: boolean;
+  asistio: boolean; justificacion: string; agregado: boolean; es_instructor: boolean;
 }
 
 /* ── Modal Registro de Asistencia ── */
@@ -461,7 +461,7 @@ function ModalAsistencia({ actividadId, participantesIniciales, onConfirmar, onC
   const [lista, setLista] = useState<RegistroAsistencia[]>(
     participantesIniciales.map(p => ({
       bombero_id: p.bombero_id, apellidos: p.apellidos, nombres: p.nombres,
-      grado: p.grado, codigo: "", asistio: true, justificacion: "", agregado: false,
+      grado: p.grado, codigo: "", asistio: true, justificacion: "", agregado: false, es_instructor: false,
     }))
   );
   const [bomberosTodos, setBomberosTodos] = useState<Bombero[]>([]);
@@ -484,7 +484,7 @@ function ModalAsistencia({ actividadId, participantesIniciales, onConfirmar, onC
 
   function agregar(b: Bombero) {
     if (lista.find(p => p.bombero_id === b.id)) return;
-    setLista(prev => [...prev, { bombero_id: b.id, apellidos: b.apellidos, nombres: b.nombres, grado: b.grado, codigo: b.codigo, asistio: true, justificacion: "", agregado: true }]);
+    setLista(prev => [...prev, { bombero_id: b.id, apellidos: b.apellidos, nombres: b.nombres, grado: b.grado, codigo: b.codigo, asistio: true, justificacion: "", agregado: true, es_instructor: false }]);
     setBusqAgregar(""); setMostrarAgregar(false);
   }
 
@@ -500,7 +500,7 @@ function ModalAsistencia({ actividadId, participantesIniciales, onConfirmar, onC
         <div className="bg-gradient-to-br from-green-600 to-green-700 px-5 py-4 text-white flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold">Registro de asistencia</h2>
-            <p className="text-xs text-white/70 mt-0.5">Marca quién asistió antes de finalizar</p>
+            <p className="text-xs text-white/70 mt-0.5">Marca asistencia · 🎓 = dictó la capacitación</p>
           </div>
           <button onClick={onCancelar} className="text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
         </div>
@@ -528,7 +528,7 @@ function ModalAsistencia({ actividadId, participantesIniciales, onConfirmar, onC
                   </p>
                   <p className="text-[10px] text-gray-400">{p.grado}</p>
                 </div>
-                {/* Toggle asistió / faltó */}
+                {/* Toggles */}
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => setAsistio(idx, true)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${p.asistio ? "bg-green-600 text-white" : "bg-white text-gray-400 border border-gray-200 hover:bg-green-50"}`}>
@@ -537,6 +537,11 @@ function ModalAsistencia({ actividadId, participantesIniciales, onConfirmar, onC
                   <button onClick={() => { setAsistio(idx, false); setJustAbierta(idx); }}
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${!p.asistio ? "bg-red-600 text-white" : "bg-white text-gray-400 border border-gray-200 hover:bg-red-50"}`}>
                     ✗ Faltó
+                  </button>
+                  <button onClick={() => setLista(prev => prev.map((r, i) => i === idx ? { ...r, es_instructor: !r.es_instructor } : r))}
+                    title="Dictó / fue instructor"
+                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors ${p.es_instructor ? "bg-blue-600 text-white" : "bg-white text-gray-400 border border-gray-200 hover:bg-blue-50"}`}>
+                    🎓
                   </button>
                 </div>
               </div>

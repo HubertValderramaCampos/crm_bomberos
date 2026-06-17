@@ -35,7 +35,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   const { id } = await params;
   const participantes: {
-    bombero_id: number; asistio: boolean; justificacion: string | null; agregado: boolean;
+    bombero_id: number; asistio: boolean; justificacion: string | null; agregado: boolean; es_instructor?: boolean;
   }[] = await req.json();
 
   const client = await pool.connect();
@@ -43,20 +43,20 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     await client.query("BEGIN");
 
     for (const p of participantes) {
+      const esInstructor = p.es_instructor ?? false;
       if (p.agregado) {
-        // Insertar nuevo participante agregado al finalizar
         await client.query(`
-          INSERT INTO programacion_participante (actividad_id, bombero_id, asistio, justificacion, agregado_al_finalizar)
-          VALUES ($1, $2, $3, $4, true)
+          INSERT INTO programacion_participante (actividad_id, bombero_id, asistio, justificacion, agregado_al_finalizar, es_instructor)
+          VALUES ($1, $2, $3, $4, true, $5)
           ON CONFLICT (actividad_id, bombero_id)
-          DO UPDATE SET asistio = $3, justificacion = $4, agregado_al_finalizar = true
-        `, [id, p.bombero_id, p.asistio, p.justificacion ?? null]);
+          DO UPDATE SET asistio = $3, justificacion = $4, agregado_al_finalizar = true, es_instructor = $5
+        `, [id, p.bombero_id, p.asistio, p.justificacion ?? null, esInstructor]);
       } else {
         await client.query(`
           UPDATE programacion_participante
-          SET asistio = $1, justificacion = $2
-          WHERE actividad_id = $3 AND bombero_id = $4
-        `, [p.asistio, p.justificacion ?? null, id, p.bombero_id]);
+          SET asistio = $1, justificacion = $2, es_instructor = $3
+          WHERE actividad_id = $4 AND bombero_id = $5
+        `, [p.asistio, p.justificacion ?? null, esInstructor, id, p.bombero_id]);
       }
     }
 
