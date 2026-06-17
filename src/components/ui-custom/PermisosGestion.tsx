@@ -3,11 +3,12 @@ import { useState, useEffect, useCallback } from "react";
 import { ShieldCheck, ChevronDown, Save, Loader2, Users, Flame } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
 
-type Rol = "JEFE_COMPANIA" | "ADMINISTRACION" | "OPERACIONES" | "SERVICIOS_GENERALES" | "INSTRUCCION" | "SANIDAD" | "IMAGEN" | "BOMBERO";
+type Rol = "JEFE_COMPANIA" | "SEGUNDO_JEFE" | "ADMINISTRACION" | "OPERACIONES" | "SERVICIOS_GENERALES" | "INSTRUCCION" | "SANIDAD" | "IMAGEN" | "BOMBERO";
 type CuentaArea = { id: number; rol: Rol; activo: boolean; codigo: string };
 
 const ROL_COLOR: Record<Rol, string> = {
   JEFE_COMPANIA:       "bg-red-100 text-red-800 border-red-200",
+  SEGUNDO_JEFE:        "bg-orange-100 text-orange-800 border-orange-200",
   ADMINISTRACION:      "bg-purple-100 text-purple-800 border-purple-200",
   OPERACIONES:         "bg-blue-100 text-blue-800 border-blue-200",
   SERVICIOS_GENERALES: "bg-green-100 text-green-800 border-green-200",
