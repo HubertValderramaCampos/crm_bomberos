@@ -9,7 +9,7 @@ import {
   GraduationCap, CalendarCheck, BookOpen, Stethoscope, Clock,
   LogOut, ChevronRight, ShieldCheck, TrendingUp,
   Scroll, Gift, CalendarDays, Building2, ScanLine, ChevronDown, Lock,
-  Briefcase, Tag, Heart, ClipboardList,
+  Briefcase, Tag, Heart, ClipboardList, Award,
 } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
 import { ROLES_JEFE } from "@/lib/roles";
@@ -79,8 +79,15 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Mi progreso",        href: "/formativa/inicio",     icon: Home,          roles: ["BOMBERO"] },
       { label: "Registrar rostro",   href: "/formativa/entrenar",   icon: GraduationCap, roles: ["BOMBERO"] },
       { label: "Marcar asistencia",  href: "/formativa/asistencia", icon: CalendarCheck, roles: ["BOMBERO"] },
-
-      { label: "Reporte asistencias",href: "/formativa/reporte",    icon: BarChart3,     roles: ["JEFE_COMPANIA", "ADMINISTRACION", "INSTRUCCION"], seccion: "reporte-formativa"  },
+      { label: "Reporte asistencias",href: "/formativa/reporte",    icon: BarChart3,     roles: ["JEFE_COMPANIA", "ADMINISTRACION", "INSTRUCCION"], seccion: "reporte-formativa" },
+    ],
+  },
+  {
+    title: "Instrucción",
+    roles: ["JEFE_COMPANIA", "SEGUNDO_JEFE", "ADMINISTRACION", "INSTRUCCION"],
+    items: [
+      { label: "Ranking Instructores",  href: "/instruccion/cursos",          icon: Award,         roles: ["JEFE_COMPANIA", "SEGUNDO_JEFE", "ADMINISTRACION", "INSTRUCCION"] },
+      { label: "Asistencia a Cursos",   href: "/instruccion/certificaciones", icon: GraduationCap, roles: ["JEFE_COMPANIA", "SEGUNDO_JEFE", "ADMINISTRACION", "INSTRUCCION"] },
     ],
   },
 ];
