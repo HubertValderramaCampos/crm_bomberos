@@ -30,7 +30,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  if (!ROLES_JEFE.includes(session.user.rol))
+  if (!ROLES_JEFE.includes(session.user.rol) && session.user.rol !== "INSTRUCCION")
     return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
 
   const { id } = await params;
