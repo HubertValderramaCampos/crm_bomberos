@@ -58,8 +58,24 @@ const GRUPOS_BOMBERO   = ["Gestión Operativa", "Gestión Administrativa", "Docu
 
 /* ── Permisos de área ───────────────────────────────────────────────── */
 
+const TODAS_LAS_SECCIONES = SECCIONES.map(s => s.id);
+
+// BD guarda [] = acceso completo, [lista] = solo esas secciones permitidas.
+// La UI muestra marcado lo que SÍ puede ver:
+//   BD [] → UI todas marcadas (acceso completo)
+//   BD [lista] → UI solo esas marcadas
+// Al guardar: si todas marcadas → BD [], si algunas → BD [esas]
+function bdAUi(bdPermisos: string[]): string[] {
+  return bdPermisos.length === 0 ? [...TODAS_LAS_SECCIONES] : [...bdPermisos];
+}
+function uiABd(uiPermisos: string[]): string[] {
+  const todasMarcadas = TODAS_LAS_SECCIONES.every(id => uiPermisos.includes(id));
+  return todasMarcadas ? [] : uiPermisos;
+}
+
 function TarjetaCuenta({ cuenta, esSelf }: { cuenta: CuentaArea; esSelf: boolean }) {
   const [expandido, setExpandido] = useState(false);
+  // permisos en formato UI (lo que SÍ puede ver, null = cargando)
   const [permisos,  setPermisos]  = useState<string[] | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [guardado,  setGuardado]  = useState(false);
@@ -68,7 +84,7 @@ function TarjetaCuenta({ cuenta, esSelf }: { cuenta: CuentaArea; esSelf: boolean
     if (!expandido || permisos !== null) return;
     fetch(`/api/usuarios/${cuenta.id}/permisos`)
       .then(r => r.json())
-      .then(d => setPermisos(Array.isArray(d) ? d : []));
+      .then(d => setPermisos(bdAUi(Array.isArray(d) ? d : [])));
   }, [expandido, cuenta.id, permisos]);
 
   function toggle(seccion: string) {
@@ -91,12 +107,17 @@ function TarjetaCuenta({ cuenta, esSelf }: { cuenta: CuentaArea; esSelf: boolean
     await fetch(`/api/usuarios/${cuenta.id}/permisos`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(permisos),
+      body: JSON.stringify(uiABd(permisos)),
     });
     setGuardando(false);
     setGuardado(true);
     setTimeout(() => setGuardado(false), 3000);
   }
+
+  const totalSecciones = TODAS_LAS_SECCIONES.length;
+  const marcadas = permisos?.length ?? 0;
+  const esCompleto = marcadas === totalSecciones;
+  const bloqueadas = totalSecciones - marcadas;
 
   return (
     <div className={`bg-white border rounded-xl ${esSelf ? "border-red-200" : "border-gray-200"}`}>
@@ -117,9 +138,9 @@ function TarjetaCuenta({ cuenta, esSelf }: { cuenta: CuentaArea; esSelf: boolean
           </span>
         </div>
         {permisos !== null && (
-          permisos.length === 0
+          esCompleto
             ? <span className="text-xs text-green-600 font-medium shrink-0">Acceso completo</span>
-            : <span className="text-xs text-amber-600 font-medium shrink-0">{permisos.length} secciones restringidas</span>
+            : <span className="text-xs text-amber-600 font-medium shrink-0">{bloqueadas} sección{bloqueadas !== 1 ? "es" : ""} bloqueada{bloqueadas !== 1 ? "s" : ""}</span>
         )}
         <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200 ${expandido ? "rotate-180" : ""}`} />
       </button>
@@ -130,11 +151,10 @@ function TarjetaCuenta({ cuenta, esSelf }: { cuenta: CuentaArea; esSelf: boolean
             <p className="text-sm text-gray-400 text-center py-4">Cargando...</p>
           ) : (
             <>
-              {/* Aviso modelo restrictivo */}
-              <div className={`text-xs px-3 py-2 rounded-lg border ${permisos.length === 0 ? "bg-green-50 border-green-200 text-green-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
-                {permisos.length === 0
-                  ? "✓ Sin restricciones — acceso completo al rol. Marca secciones para limitar el acceso."
-                  : `Solo puede ver las ${permisos.length} secciones marcadas. Desmarca todas para restaurar acceso completo.`}
+              <div className={`text-xs px-3 py-2 rounded-lg border ${esCompleto ? "bg-green-50 border-green-200 text-green-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
+                {esCompleto
+                  ? "✓ Acceso completo — puede ver todas las secciones. Desmarca para restringir."
+                  : `Puede ver ${marcadas} de ${totalSecciones} secciones. Las secciones desmarcadas están bloqueadas.`}
               </div>
 
               {GRUPOS_AREA.map(grupo => {
@@ -162,7 +182,9 @@ function TarjetaCuenta({ cuenta, esSelf }: { cuenta: CuentaArea; esSelf: boolean
                             onChange={() => toggle(s.id)}
                             className="w-3.5 h-3.5 rounded accent-red-600 shrink-0"
                           />
-                          <span className="text-xs text-gray-600 group-hover:text-gray-900 transition-colors">{s.label}</span>
+                          <span className={`text-xs transition-colors ${permisos.includes(s.id) ? "text-gray-700 group-hover:text-gray-900" : "text-gray-400 line-through"}`}>
+                            {s.label}
+                          </span>
                         </label>
                       ))}
                     </div>
@@ -171,13 +193,13 @@ function TarjetaCuenta({ cuenta, esSelf }: { cuenta: CuentaArea; esSelf: boolean
               })}
               <div className="flex items-center justify-between pt-2 border-t border-gray-200">
                 <span className="text-xs text-gray-400">
-                  {permisos.length === 0 ? "Acceso completo" : `${permisos.length} de ${SECCIONES.filter(s => GRUPOS_AREA.includes(s.grupo)).length} secciones`}
+                  {marcadas} de {totalSecciones} secciones habilitadas
                 </span>
                 <div className="flex items-center gap-2">
-                  {permisos.length > 0 && (
-                    <button onClick={() => { setPermisos([]); setGuardado(false); }}
+                  {!esCompleto && (
+                    <button onClick={() => { setPermisos([...TODAS_LAS_SECCIONES]); setGuardado(false); }}
                       className="text-xs text-gray-400 hover:text-gray-600 underline">
-                      Quitar restricciones
+                      Dar acceso completo
                     </button>
                   )}
                   <button
