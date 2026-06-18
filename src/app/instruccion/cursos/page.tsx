@@ -26,12 +26,16 @@ export default function CursosPage() {
   const [anio, setAnio] = useState(anioActual);
   const [data, setData] = useState<Instructor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sintetico, setSintetico] = useState(false);
 
   useEffect(() => {
     setLoading(true);
     fetch(`/api/instruccion/ranking-instructores?anio=${anio}`)
       .then(r => r.json())
-      .then(d => setData(Array.isArray(d) ? d : []))
+      .then(d => {
+        setData(Array.isArray(d.data) ? d.data : []);
+        setSintetico(d.sintetico ?? false);
+      })
       .finally(() => setLoading(false));
   }, [anio]);
 
@@ -46,7 +50,7 @@ export default function CursosPage() {
       />
 
       {/* Filtro año */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <label className="text-sm font-medium text-gray-600">Año:</label>
         <select
           value={anio}
@@ -57,6 +61,11 @@ export default function CursosPage() {
             <option key={a} value={a}>{a}</option>
           ))}
         </select>
+        {sintetico && (
+          <span className="text-xs px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-600 rounded-full font-medium">
+            Datos de muestra — aún no hay instructores registrados para {anio}
+          </span>
+        )}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -67,12 +76,7 @@ export default function CursosPage() {
         ) : data.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-2">
             <BookOpen className="w-8 h-8 text-gray-300" />
-            <p className="text-sm text-gray-400">
-              Sin instructores registrados para {anio}.
-            </p>
-            <p className="text-xs text-gray-400">
-              Marca el ícono 🎓 en las asistencias para registrar instructores.
-            </p>
+            <p className="text-sm text-gray-400">Sin data para {anio}.</p>
           </div>
         ) : (
           <table className="w-full text-sm">
