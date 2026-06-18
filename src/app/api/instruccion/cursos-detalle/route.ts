@@ -43,7 +43,7 @@ export async function GET(req: Request) {
       LEFT JOIN programacion_participante pp ON pp.actividad_id = a.id
       LEFT JOIN bombero b                    ON b.id  = pp.bombero_id
       WHERE a.es_capacitacion = true
-        AND a.finalizado      = true
+        AND (a.finalizado = true OR a.fecha < CURRENT_DATE)
         AND EXTRACT(year FROM a.fecha) = $1
       GROUP BY a.id, a.fecha, a.tipo, a.descripcion, a.lugar, e.nombre, a.hora_inicio, a.hora_fin
       ORDER BY a.fecha DESC
