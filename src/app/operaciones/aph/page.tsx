@@ -19,7 +19,11 @@ interface EvalRow {
   total_evaluados: number; evaluados_completos: number;
   pct_promedio: number | null;
 }
-interface Parte { id: number; numero_parte: string; tipo: string; created_at: string; al_mando_nombre: string | null; }
+interface Parte {
+  id: number; numero_parte: string; tipo: string; created_at: string;
+  fecha_salida: string | null; direccion: string | null; distrito: string | null;
+  tipo_desc: string | null; numero_efectivos: number | null; al_mando_nombre: string | null;
+}
 interface EfectivoModal {
   bombero_id: number; apellidos: string; nombres: string; grado: string; codigo: string;
 }
@@ -132,10 +136,15 @@ export default function AphPage() {
   })();
   const clasificaciones = [...new Set(stats.map(r => r.clasificacion))];
 
-  const partesFiltrados = partes.filter(p =>
-    p.numero_parte.toLowerCase().includes(busqParte.toLowerCase()) ||
-    p.tipo.toLowerCase().includes(busqParte.toLowerCase())
-  );
+  const busqLower = busqParte.toLowerCase();
+  const partesFiltrados = busqParte.length === 0
+    ? partes
+    : partes.filter(p =>
+        p.numero_parte.toLowerCase().includes(busqLower) ||
+        (p.tipo_desc ?? p.tipo).toLowerCase().includes(busqLower) ||
+        (p.direccion ?? "").toLowerCase().includes(busqLower) ||
+        (p.distrito ?? "").toLowerCase().includes(busqLower)
+      );
 
   const pendientes  = evaluaciones.filter(e => !e.completada).length;
   const completadas = evaluaciones.filter(e => e.completada).length;
@@ -320,22 +329,37 @@ export default function AphPage() {
                     <div className="relative mb-2">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                       <input value={busqParte} onChange={e => setBusqParte(e.target.value)}
-                        placeholder="Buscar por número o tipo..."
+                        placeholder="Buscar por número, tipo o dirección..."
                         className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30" />
                     </div>
-                    {busqParte.length > 0 && (
-                      <div className="max-h-44 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-50">
-                        {partesFiltrados.length === 0
-                          ? <p className="px-4 py-4 text-xs text-gray-400 text-center">Sin resultados</p>
-                          : partesFiltrados.slice(0, 20).map(p => (
-                            <button key={p.id} onClick={() => seleccionarParte(p)}
-                              className="w-full text-left px-3 py-2.5 hover:bg-red-50 transition-colors">
-                              <p className="text-sm font-bold text-gray-900">{p.numero_parte}</p>
-                              <p className="text-xs text-gray-400">{p.tipo} · {new Date(p.created_at).toLocaleDateString("es-PE")}</p>
-                            </button>
-                          ))}
-                      </div>
-                    )}
+                    <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-50">
+                      {partesFiltrados.length === 0
+                        ? <p className="px-4 py-4 text-xs text-gray-400 text-center">Sin resultados</p>
+                        : partesFiltrados.slice(0, 30).map(p => (
+                          <button key={p.id} onClick={() => seleccionarParte(p)}
+                            className="w-full text-left px-3 py-3 hover:bg-red-50 transition-colors">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="text-xs font-mono font-bold text-red-700 shrink-0">{p.numero_parte}</span>
+                              <span className="text-[10px] text-gray-400 shrink-0">
+                                {p.fecha_salida
+                                  ? new Date(p.fecha_salida).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" })
+                                  : new Date(p.created_at).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" })}
+                              </span>
+                            </div>
+                            <p className="text-xs font-semibold text-gray-800 mt-0.5 leading-snug">
+                              {p.tipo_desc ?? p.tipo}
+                            </p>
+                            {(p.direccion || p.distrito) && (
+                              <p className="text-[11px] text-gray-500 mt-0.5 truncate">
+                                📍 {[p.direccion, p.distrito].filter(Boolean).join(" — ")}
+                              </p>
+                            )}
+                            {p.numero_efectivos != null && p.numero_efectivos > 0 && (
+                              <p className="text-[10px] text-gray-400 mt-0.5">{p.numero_efectivos} ef.</p>
+                            )}
+                          </button>
+                        ))}
+                    </div>
                   </>
                 )}
               </div>
