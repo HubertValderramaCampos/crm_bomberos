@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     pool.query("SELECT COUNT(*) FROM emergencia"),
   ]);
 
-  let parteEfectivos = null;
+  let parteEfectivos: { count: number | null; rows: unknown[] } | null = null;
   if (emergenciaId) {
     const r = await pool.query("SELECT * FROM emergencia_efectivo WHERE emergencia_id = $1 LIMIT 10", [emergenciaId]);
     parteEfectivos = { count: r.rowCount, rows: r.rows };
