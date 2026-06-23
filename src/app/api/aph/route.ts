@@ -71,14 +71,6 @@ export async function POST(req: Request) {
   if (!emergencia_id || !evaluador_id)
     return NextResponse.json({ error: "Faltan campos obligatorios" }, { status: 400 });
 
-  // El evaluador debe haber salido a esa emergencia
-  const evalCheck = await pool.query(
-    `SELECT 1 FROM emergencia_efectivo WHERE emergencia_id=$1 AND bombero_id=$2`,
-    [emergencia_id, evaluador_id]
-  );
-  if (!evalCheck.rows[0])
-    return NextResponse.json({ error: "El evaluador no participó en esa emergencia." }, { status: 422 });
-
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -89,18 +81,6 @@ export async function POST(req: Request) {
       [emergencia_id, evaluador_id, Number(session.user.id)]
     );
     const evalId = rows[0].id;
-
-    // Pre-insertar todos los efectivos que salieron a esa emergencia
-    const efectivos = await client.query(
-      `SELECT ee.bombero_id FROM emergencia_efectivo ee WHERE ee.emergencia_id=$1`,
-      [emergencia_id]
-    );
-    for (const ef of efectivos.rows) {
-      await client.query(
-        `INSERT INTO aph_evaluado (evaluacion_id, bombero_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-        [evalId, ef.bombero_id]
-      );
-    }
 
     await client.query("COMMIT");
     return NextResponse.json({ id: evalId }, { status: 201 });

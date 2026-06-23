@@ -52,12 +52,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!esJefe && !esEvaluador)
       return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
 
-    // Lista de efectivos que salieron al parte (solo para quien puede editar)
+    // Lista de todos los bomberos activos (para agregar evaluados)
     let efectivosParte: { bombero_id: number }[] = [];
     if ((esJefe || esEvaluador) && !eval_.completada) {
       const epRes = await pool.query(
-        `SELECT ee.bombero_id FROM emergencia_efectivo ee WHERE ee.emergencia_id=$1`,
-        [eval_.emergencia_id]
+        `SELECT id AS bombero_id FROM bombero WHERE activo = true ORDER BY apellidos`
       );
       efectivosParte = epRes.rows;
     }
