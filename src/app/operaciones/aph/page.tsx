@@ -42,12 +42,14 @@ export default function AphPage() {
 
   // Modal crear
   const [partes,         setPartes]         = useState<Parte[]>([]);
-  const [efectivosModal, setEfectivosModal] = useState<EfectivoModal[]>([]);
+  const [bomberosTodos,  setBomberosTodos]  = useState<EfectivoModal[]>([]);
   const [parteId,        setParteId]        = useState("");
   const [parteSelec,     setParteSelec]     = useState<Parte | null>(null);
   const [busqParte,      setBusqParte]      = useState("");
   const [evaluadorId,    setEvaluadorId]    = useState("");
-  const [cargandoEf,     setCargandoEf]     = useState(false);
+  const [busqEvaluador,  setBusqEvaluador]  = useState("");
+  const [mostrarEval,    setMostrarEval]    = useState(false);
+  const [evaluadorSel,   setEvaluadorSel]   = useState<EfectivoModal | null>(null);
   const [generando,      setGenerando]      = useState(false);
   const [error,          setError]          = useState("");
 
@@ -79,23 +81,18 @@ export default function AphPage() {
 
   async function abrirModal() {
     setModal(true); setError("");
-    setParteId(""); setParteSelec(null); setBusqParte(""); setEvaluadorId(""); setEfectivosModal([]);
-    const pRes = await fetch("/api/operaciones/partes-recientes").then(r => r.json()).catch(() => []);
+    setParteId(""); setParteSelec(null); setBusqParte("");
+    setEvaluadorId(""); setBusqEvaluador(""); setEvaluadorSel(null); setMostrarEval(false);
+    const [pRes, bRes] = await Promise.all([
+      fetch("/api/operaciones/partes-recientes").then(r => r.json()).catch(() => []),
+      fetch("/api/aph/efectivos-parte").then(r => r.json()).catch(() => []),
+    ]);
     setPartes(Array.isArray(pRes) ? pRes : []);
+    setBomberosTodos(Array.isArray(bRes) ? bRes : []);
   }
 
-  // Al seleccionar parte, cargar efectivos que asistieron
-  async function seleccionarParte(p: Parte) {
-    setParteSelec(p); setParteId(String(p.id));
-    setBusqParte(""); setEvaluadorId("");
-    setCargandoEf(true);
-    try {
-      const res = await fetch(`/api/aph/efectivos-parte?emergencia_id=${p.id}`);
-      const data = await res.json();
-      setEfectivosModal(Array.isArray(data) ? data : []);
-    } finally {
-      setCargandoEf(false);
-    }
+  function seleccionarParte(p: Parte) {
+    setParteSelec(p); setParteId(String(p.id)); setBusqParte("");
   }
 
   async function crear() {
@@ -338,37 +335,62 @@ export default function AphPage() {
                 )}
               </div>
 
-              {/* Paso 2: seleccionar evaluador (solo entre efectivos del parte) */}
+              {/* Paso 2: seleccionar evaluador */}
               {parteSelec && (
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                     Evaluador asignado *
-                    <span className="ml-1 font-normal text-gray-400">(debe haber salido al parte)</span>
                   </label>
-                  {cargandoEf ? (
-                    <div className="flex items-center gap-2 text-xs text-gray-400 py-2">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando efectivos...
+                  {evaluadorSel ? (
+                    <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg bg-blue-50">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">
+                          {evaluadorSel.apellidos}, {evaluadorSel.nombres.split(" ")[0]}
+                        </p>
+                        <p className="text-xs text-gray-500">{evaluadorSel.grado}</p>
+                      </div>
+                      <button type="button" onClick={() => { setEvaluadorSel(null); setEvaluadorId(""); setBusqEvaluador(""); }}
+                        className="text-gray-400 hover:text-red-500 shrink-0">
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
-                  ) : efectivosModal.length === 0 ? (
-                    <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                      No hay efectivos registrados para este parte.
-                    </p>
                   ) : (
-                    <select value={evaluadorId} onChange={e => setEvaluadorId(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30">
-                      <option value="">Seleccionar evaluador...</option>
-                      {efectivosModal.map(b => (
-                        <option key={b.bombero_id} value={String(b.bombero_id)}>
-                          {b.apellidos}, {b.nombres.split(" ")[0]} — {b.grado}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={busqEvaluador}
+                        onChange={e => { setBusqEvaluador(e.target.value); setMostrarEval(true); }}
+                        onFocus={() => setMostrarEval(true)}
+                        onBlur={() => setTimeout(() => setMostrarEval(false), 150)}
+                        placeholder="Buscar evaluador por apellido..."
+                        className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                      />
+                      {mostrarEval && busqEvaluador.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-44 overflow-y-auto">
+                          {bomberosTodos
+                            .filter(b => `${b.apellidos} ${b.nombres} ${b.codigo ?? ""}`.toLowerCase().includes(busqEvaluador.toLowerCase()))
+                            .slice(0, 10)
+                            .map(b => (
+                              <div key={b.bombero_id}
+                                onMouseDown={() => { setEvaluadorSel(b); setEvaluadorId(String(b.bombero_id)); setBusqEvaluador(""); setMostrarEval(false); }}
+                                className="flex items-center gap-2 px-3 py-2.5 hover:bg-blue-50 cursor-pointer">
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-900">{b.apellidos}, {b.nombres.split(" ")[0]}</p>
+                                  <p className="text-xs text-gray-400">{b.grado}</p>
+                                </div>
+                              </div>
+                            ))}
+                          {bomberosTodos.filter(b => `${b.apellidos} ${b.nombres}`.toLowerCase().includes(busqEvaluador.toLowerCase())).length === 0 && (
+                            <p className="text-xs text-gray-400 text-center py-3">Sin resultados</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
-                  {efectivosModal.length > 0 && (
-                    <p className="text-[11px] text-gray-400 mt-1">
-                      {efectivosModal.length} efectivo{efectivosModal.length !== 1 ? "s" : ""} registrado{efectivosModal.length !== 1 ? "s" : ""} en este parte — se pre-cargarán automáticamente.
-                    </p>
-                  )}
+                  <p className="text-[11px] text-gray-400 mt-1.5">
+                    El evaluador podrá registrar quiénes fueron al parte y completar las evaluaciones.
+                  </p>
                 </div>
               )}
             </div>
