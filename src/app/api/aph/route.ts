@@ -82,18 +82,6 @@ export async function POST(req: Request) {
     );
     const evalId = rows[0].id;
 
-    // Pre-insertar los efectivos nominales del parte como evaluados
-    const efectivos = await client.query(
-      `SELECT ee.bombero_id FROM emergencia_efectivo ee WHERE ee.emergencia_id = $1`,
-      [emergencia_id]
-    );
-    for (const ef of efectivos.rows) {
-      await client.query(
-        `INSERT INTO aph_evaluado (evaluacion_id, bombero_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-        [evalId, ef.bombero_id]
-      );
-    }
-
     await client.query("COMMIT");
     return NextResponse.json({ id: evalId }, { status: 201 });
   } catch (err: unknown) {
