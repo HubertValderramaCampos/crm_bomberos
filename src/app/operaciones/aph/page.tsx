@@ -50,6 +50,8 @@ export default function AphPage() {
   const [busqEvaluador,  setBusqEvaluador]  = useState("");
   const [mostrarEval,    setMostrarEval]    = useState(false);
   const [evaluadorSel,   setEvaluadorSel]   = useState<EfectivoModal | null>(null);
+  const [efectivosParte, setEfectivosParte] = useState<number>(0);
+  const [cargandoParte,  setCargandoParte]  = useState(false);
   const [generando,      setGenerando]      = useState(false);
   const [error,          setError]          = useState("");
 
@@ -83,6 +85,7 @@ export default function AphPage() {
     setModal(true); setError("");
     setParteId(""); setParteSelec(null); setBusqParte("");
     setEvaluadorId(""); setBusqEvaluador(""); setEvaluadorSel(null); setMostrarEval(false);
+    setEfectivosParte(0);
     const [pRes, bRes] = await Promise.all([
       fetch("/api/operaciones/partes-recientes").then(r => r.json()).catch(() => []),
       fetch("/api/aph/efectivos-parte").then(r => r.json()).catch(() => []),
@@ -91,8 +94,16 @@ export default function AphPage() {
     setBomberosTodos(Array.isArray(bRes) ? bRes : []);
   }
 
-  function seleccionarParte(p: Parte) {
+  async function seleccionarParte(p: Parte) {
     setParteSelec(p); setParteId(String(p.id)); setBusqParte("");
+    setEfectivosParte(0); setCargandoParte(true);
+    try {
+      const res = await fetch(`/api/aph/efectivos-parte?emergencia_id=${p.id}`);
+      const data = await res.json();
+      setEfectivosParte(Array.isArray(data) ? data.length : 0);
+    } finally {
+      setCargandoParte(false);
+    }
   }
 
   async function crear() {
@@ -303,12 +314,21 @@ export default function AphPage() {
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Parte de emergencia *</label>
                 {parteSelec ? (
                   <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-red-800">{parteSelec.numero_parte}</p>
                       <p className="text-xs text-red-600">{parteSelec.tipo} · {new Date(parteSelec.created_at).toLocaleDateString("es-PE")}</p>
+                      {cargandoParte ? (
+                        <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Cargando efectivos...</p>
+                      ) : efectivosParte > 0 ? (
+                        <p className="text-xs text-green-700 font-medium mt-0.5">
+                          {efectivosParte} efectivo{efectivosParte !== 1 ? "s" : ""} registrados — se pre-cargarán en la evaluación
+                        </p>
+                      ) : (
+                        <p className="text-xs text-amber-600 mt-0.5">Sin efectivos nominales registrados en este parte</p>
+                      )}
                     </div>
-                    <button onClick={() => { setParteSelec(null); setParteId(""); setEvaluadorId(""); setEfectivosModal([]); }}
-                      className="text-red-400 hover:text-red-700 ml-2"><X className="w-4 h-4" /></button>
+                    <button onClick={() => { setParteSelec(null); setParteId(""); setEvaluadorId(""); setEvaluadorSel(null); setBusqEvaluador(""); setEfectivosParte(0); }}
+                      className="text-red-400 hover:text-red-700 ml-2 shrink-0"><X className="w-4 h-4" /></button>
                   </div>
                 ) : (
                   <>
@@ -389,7 +409,7 @@ export default function AphPage() {
                     </div>
                   )}
                   <p className="text-[11px] text-gray-400 mt-1.5">
-                    El evaluador podrá registrar quiénes fueron al parte y completar las evaluaciones.
+                    El evaluador completará los datos de la emergencia y las calificaciones.
                   </p>
                 </div>
               )}
