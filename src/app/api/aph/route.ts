@@ -82,6 +82,18 @@ export async function POST(req: Request) {
     );
     const evalId = rows[0].id;
 
+    // Pre-insertar el efectivo al mando del parte (si existe y tiene bombero_id)
+    const manRes = await client.query(
+      `SELECT al_mando_id FROM emergencia WHERE id = $1 AND al_mando_id IS NOT NULL`,
+      [emergencia_id]
+    );
+    if (manRes.rows[0]?.al_mando_id) {
+      await client.query(
+        `INSERT INTO aph_evaluado (evaluacion_id, bombero_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [evalId, manRes.rows[0].al_mando_id]
+      );
+    }
+
     await client.query("COMMIT");
     return NextResponse.json({ id: evalId }, { status: 201 });
   } catch (err: unknown) {

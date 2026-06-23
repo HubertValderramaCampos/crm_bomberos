@@ -19,7 +19,7 @@ interface EvalRow {
   total_evaluados: number; evaluados_completos: number;
   pct_promedio: number | null;
 }
-interface Parte { id: number; numero_parte: string; tipo: string; created_at: string; }
+interface Parte { id: number; numero_parte: string; tipo: string; created_at: string; al_mando_nombre: string | null; }
 interface EfectivoModal {
   bombero_id: number; apellidos: string; nombres: string; grado: string; codigo: string;
 }
@@ -306,6 +306,11 @@ export default function AphPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-red-800">{parteSelec.numero_parte}</p>
                       <p className="text-xs text-red-600">{parteSelec.tipo} · {new Date(parteSelec.created_at).toLocaleDateString("es-PE")}</p>
+                      {parteSelec.al_mando_nombre && (
+                        <p className="text-xs text-green-700 font-medium mt-0.5">
+                          Al mando: {parteSelec.al_mando_nombre} — se agregará automáticamente
+                        </p>
+                      )}
                     </div>
                     <button onClick={() => { setParteSelec(null); setParteId(""); setEvaluadorId(""); setEvaluadorSel(null); setBusqEvaluador(""); }}
                       className="text-red-400 hover:text-red-700 ml-2 shrink-0"><X className="w-4 h-4" /></button>

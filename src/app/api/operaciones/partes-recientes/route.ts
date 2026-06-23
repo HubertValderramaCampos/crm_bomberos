@@ -8,10 +8,12 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { rows } = await pool.query(`
-    SELECT id, numero_parte, tipo, created_at::text
-    FROM emergencia
-    WHERE tipo NOT IN ('COMISION', 'EMERGENCIA CANCELADA')
-    ORDER BY created_at DESC
+    SELECT e.id, e.numero_parte, e.tipo, e.created_at::text,
+           b.grado || ' ' || b.apellidos || ', ' || b.nombres AS al_mando_nombre
+    FROM emergencia e
+    LEFT JOIN bombero b ON b.id = e.al_mando_id
+    WHERE e.tipo NOT IN ('COMISION', 'EMERGENCIA CANCELADA')
+    ORDER BY e.created_at DESC
     LIMIT 100
   `);
   return NextResponse.json(rows);
