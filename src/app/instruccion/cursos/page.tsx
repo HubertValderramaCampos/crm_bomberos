@@ -26,7 +26,6 @@ export default function CursosPage() {
   const [anio, setAnio] = useState(anioActual);
   const [data, setData] = useState<Instructor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sintetico, setSintetico] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -34,7 +33,6 @@ export default function CursosPage() {
       .then(r => r.json())
       .then(d => {
         setData(Array.isArray(d.data) ? d.data : []);
-        setSintetico(d.sintetico ?? false);
       })
       .finally(() => setLoading(false));
   }, [anio]);
@@ -61,11 +59,6 @@ export default function CursosPage() {
             <option key={a} value={a}>{a}</option>
           ))}
         </select>
-        {sintetico && (
-          <span className="text-xs px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-600 rounded-full font-medium">
-            Datos de muestra — aún no hay instructores registrados para {anio}
-          </span>
-        )}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

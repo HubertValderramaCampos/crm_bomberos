@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { fecha, tipo, descripcion, lugar, es_capacitacion, hora_inicio, hora_fin, participantes, entidad_id, area } = body;
+  const { fecha, tipo, descripcion, lugar, es_capacitacion, hora_inicio, hora_fin, participantes, entidad_id, area, expositor_id } = body;
 
   if (!fecha || !tipo) return NextResponse.json({ error: "Fecha y tipo son obligatorios" }, { status: 400 });
 
@@ -60,10 +60,20 @@ export async function POST(req: Request) {
 
     if (es_capacitacion && Array.isArray(participantes) && participantes.length > 0) {
       for (const bomberoId of participantes) {
+        const esInstructor = typeof expositor_id === "number" && bomberoId === expositor_id;
         await client.query(`
-          INSERT INTO programacion_participante (actividad_id, bombero_id) VALUES ($1, $2)
+          INSERT INTO programacion_participante (actividad_id, bombero_id, es_instructor)
+          VALUES ($1, $2, $3)
           ON CONFLICT DO NOTHING
-        `, [actividadId, bomberoId]);
+        `, [actividadId, bomberoId, esInstructor]);
+      }
+      // Si el expositor no estaba en la lista de convocados, insertarlo igual
+      if (typeof expositor_id === "number" && !participantes.includes(expositor_id)) {
+        await client.query(`
+          INSERT INTO programacion_participante (actividad_id, bombero_id, es_instructor)
+          VALUES ($1, $2, true)
+          ON CONFLICT DO NOTHING
+        `, [actividadId, expositor_id]);
       }
     }
 

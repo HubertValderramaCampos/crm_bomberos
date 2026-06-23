@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   ChevronLeft, ChevronRight, Plus, X, Clock, MapPin,
   Users, BookOpen, Calendar, Check, Loader2, Building2, Search,
-  CheckCircle2, AlertCircle, CalendarClock, RotateCcw, Copy, ClipboardList, Pencil,
+  CheckCircle2, AlertCircle, CalendarClock, RotateCcw, Copy, ClipboardList, Pencil, GraduationCap,
 } from "lucide-react";
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -876,6 +876,9 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
   const [busqueda, setBusqueda]           = useState("");
   const [loading, setLoading]             = useState(false);
   const [error, setError]                 = useState("");
+  const [expositorId, setExpositorId]     = useState<number | null>(null);
+  const [busqExpositor, setBusqExpositor] = useState("");
+  const [mostrarExpositor, setMostrarExpositor] = useState(false);
 
   useEffect(() => {
     fetch("/api/bomberos").then(r => r.json()).then(setBomberos);
@@ -936,6 +939,7 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
           entidad_id: entidadId,
           participantes: esCap ? seleccionados : [],
           efectivos_asistentes: esCap ? seleccionados.length : Number(form.efectivos_asistentes) || 0,
+          expositor_id: form.tipo === "Capacitación interna" ? expositorId : null,
         }),
       });
       if (!res.ok) { const d = await res.json(); setError(d.error ?? "Error al guardar."); return; }
@@ -1082,11 +1086,61 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
               </div>
             )}
 
+            {esCap && form.tipo === "Capacitación interna" && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Expositor</label>
+                {expositorId ? (
+                  <div className="flex items-center gap-2 px-3 py-2 border border-amber-200 rounded-lg bg-amber-50">
+                    <GraduationCap className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span className="flex-1 text-sm text-gray-900 truncate">
+                      {bomberos.find(b => b.id === expositorId)?.apellidos ?? ""}, {bomberos.find(b => b.id === expositorId)?.nombres ?? ""}
+                    </span>
+                    <button type="button" onClick={() => { setExpositorId(null); setBusqExpositor(""); }} className="text-gray-400 hover:text-gray-600">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={busqExpositor}
+                      onChange={e => { setBusqExpositor(e.target.value); setMostrarExpositor(true); }}
+                      onFocus={() => setMostrarExpositor(true)}
+                      onBlur={() => setTimeout(() => setMostrarExpositor(false), 150)}
+                      placeholder="Buscar expositor..."
+                      className={`${inputCls} pl-9`}
+                    />
+                    {mostrarExpositor && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                        {bomberos
+                          .filter(b => `${b.apellidos} ${b.nombres} ${b.codigo}`.toLowerCase().includes(busqExpositor.toLowerCase()))
+                          .slice(0, 8)
+                          .map(b => (
+                            <div key={b.id} onMouseDown={() => { setExpositorId(b.id); setBusqExpositor(""); setMostrarExpositor(false); }}
+                              className="flex items-center gap-2 px-3 py-2.5 hover:bg-amber-50 cursor-pointer">
+                              <GraduationCap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                              <div>
+                                <p className="text-xs font-semibold text-gray-800">{b.apellidos.split(",")[0]}, {b.nombres.split(" ")[0]}</p>
+                                <p className="text-[10px] text-gray-400">{b.grado} · {b.codigo}</p>
+                              </div>
+                            </div>
+                          ))}
+                        {bomberos.filter(b => `${b.apellidos} ${b.nombres}`.toLowerCase().includes(busqExpositor.toLowerCase())).length === 0 && (
+                          <p className="text-xs text-gray-400 text-center py-3">Sin resultados</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {esCap && (
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-semibold text-gray-700">
-                    Bomberos participantes
+                    Bomberos convocados
                     <span className="ml-2 text-red-600 font-bold">{seleccionados.length} seleccionados</span>
                   </p>
                   <button type="button" onClick={toggleTodos} className="text-xs text-red-700 hover:underline font-medium">

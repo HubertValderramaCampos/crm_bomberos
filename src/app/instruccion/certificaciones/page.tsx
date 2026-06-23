@@ -225,7 +225,6 @@ export default function CertificacionesPage() {
   const [anio,    setAnio]    = useState(anioActual);
   const [cursos,  setCursos]  = useState<Curso[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sintetico, setSintetico] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -233,7 +232,6 @@ export default function CertificacionesPage() {
       .then(r => r.json())
       .then(d => {
         setCursos(Array.isArray(d.data) ? d.data : []);
-        setSintetico(d.sintetico ?? false);
       })
       .finally(() => setLoading(false));
   }, [anio]);
@@ -263,11 +261,6 @@ export default function CertificacionesPage() {
         >
           {anios.map(a => <option key={a} value={a}>{a}</option>)}
         </select>
-        {sintetico && (
-          <span className="text-xs px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-600 rounded-full font-medium">
-            Datos de muestra — aún no hay capacitaciones registradas para {anio}
-          </span>
-        )}
       </div>
 
       {loading ? (
