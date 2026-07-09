@@ -11,18 +11,37 @@ const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto"
 const DIAS  = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 
 const TIPOS = [
-  "Capacitación interna","Capacitación externa","Simulacro","Campaña preventiva",
+  "Capacitación interna","Capacitación externa","Capacitación CGBVP","Simulacro","Campaña preventiva",
   "Desfile / Acto cívico","Reunión de compañía","Mantenimiento","Otro",
 ];
 
 // Colores por ÁREA (prioridad sobre tipo)
-const AREAS = ["ADMINISTRACION", "IMAGEN", "INSTRUCCION"] as const;
+const AREAS = [
+  "PRIMERA_JEFATURA", "SEGUNDA_JEFATURA", "ADMINISTRACION", "OPERACIONES",
+  "APH", "SERVICIOS", "INSTRUCCION", "IMAGEN",
+] as const;
 type Area = typeof AREAS[number];
 
+const AREA_LABELS: Record<Area, string> = {
+  "PRIMERA_JEFATURA": "1° Jefatura",
+  "SEGUNDA_JEFATURA": "2° Jefatura",
+  "ADMINISTRACION":   "Administración",
+  "OPERACIONES":      "Operaciones",
+  "APH":              "APH",
+  "SERVICIOS":        "Servicios",
+  "INSTRUCCION":      "Instrucción",
+  "IMAGEN":           "Imagen",
+};
+
 const AREA_COLOR: Record<Area, { badge: string; dia: string; hex: string }> = {
-  "ADMINISTRACION": { badge: "bg-red-100 text-red-700 border-red-200",    dia: "bg-red-600",    hex: "#dc2626" },
-  "IMAGEN":         { badge: "bg-orange-100 text-orange-700 border-orange-200", dia: "bg-orange-500", hex: "#f97316" },
-  "INSTRUCCION":    { badge: "bg-green-100 text-green-700 border-green-200",  dia: "bg-green-600",  hex: "#16a34a" },
+  "PRIMERA_JEFATURA": { badge: "bg-slate-200 text-slate-800 border-slate-300",   dia: "bg-slate-700",  hex: "#334155" },
+  "SEGUNDA_JEFATURA": { badge: "bg-zinc-200 text-zinc-700 border-zinc-300",      dia: "bg-zinc-600",   hex: "#52525b" },
+  "ADMINISTRACION":   { badge: "bg-red-100 text-red-700 border-red-200",        dia: "bg-red-600",    hex: "#dc2626" },
+  "OPERACIONES":      { badge: "bg-blue-100 text-blue-700 border-blue-200",     dia: "bg-blue-600",   hex: "#2563eb" },
+  "APH":              { badge: "bg-pink-100 text-pink-700 border-pink-200",     dia: "bg-pink-600",   hex: "#db2777" },
+  "SERVICIOS":        { badge: "bg-cyan-100 text-cyan-700 border-cyan-200",     dia: "bg-cyan-600",   hex: "#0891b2" },
+  "INSTRUCCION":      { badge: "bg-green-100 text-green-700 border-green-200",  dia: "bg-green-600",  hex: "#16a34a" },
+  "IMAGEN":           { badge: "bg-orange-100 text-orange-700 border-orange-200", dia: "bg-orange-500", hex: "#f97316" },
 };
 
 function getColorBadge(area: string | null | undefined, tipo: string): string {
@@ -38,6 +57,7 @@ function getColorDia(area: string | null | undefined, tipo: string): string {
 const COLOR: Record<string, string> = {
   "Capacitación interna":  "bg-blue-100 text-blue-700 border-blue-200",
   "Capacitación externa":  "bg-indigo-100 text-indigo-700 border-indigo-200",
+  "Capacitación CGBVP":    "bg-violet-100 text-violet-700 border-violet-200",
   "Simulacro":             "bg-amber-100 text-amber-700 border-amber-200",
   "Campaña preventiva":    "bg-green-100 text-green-700 border-green-200",
   "Desfile / Acto cívico": "bg-purple-100 text-purple-700 border-purple-200",
@@ -50,6 +70,7 @@ const COLOR: Record<string, string> = {
 const COLOR_DIA: Record<string, string> = {
   "Capacitación interna":  "bg-blue-500",
   "Capacitación externa":  "bg-indigo-500",
+  "Capacitación CGBVP":    "bg-violet-500",
   "Simulacro":             "bg-amber-500",
   "Campaña preventiva":    "bg-green-500",
   "Desfile / Acto cívico": "bg-purple-500",
@@ -75,7 +96,7 @@ interface Detalle extends Omit<Actividad, "participantes"> {
   entidad_id?: number | null;
   entidad_nombre?: string | null;
   area: string | null;
-  participantes: { bombero_id: number; apellidos: string; nombres: string; grado: string; asistio: boolean | null }[];
+  participantes: { bombero_id: number; apellidos: string; nombres: string; grado: string; asistio: boolean | null; es_instructor: boolean }[];
 }
 
 function hhmm(t: string | null) { return t ? t.slice(0, 5) : ""; }
@@ -292,7 +313,7 @@ function ModalEditar({ actividad, onClose, onEditado }: {
               <select value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))} className={inputCls}>
                 <option value="">Sin área</option>
                 {AREAS.map(a => (
-                  <option key={a} value={a}>{a === "ADMINISTRACION" ? "Administración" : a === "IMAGEN" ? "Imagen" : "Instrucción"}</option>
+                  <option key={a} value={a}>{AREA_LABELS[a]}</option>
                 ))}
               </select>
             </div>
@@ -454,14 +475,14 @@ interface RegistroAsistencia {
 /* ── Modal Registro de Asistencia ── */
 function ModalAsistencia({ actividadId, participantesIniciales, onConfirmar, onCancelar }: {
   actividadId: number;
-  participantesIniciales: { bombero_id: number; apellidos: string; nombres: string; grado: string }[];
+  participantesIniciales: { bombero_id: number; apellidos: string; nombres: string; grado: string; es_instructor?: boolean }[];
   onConfirmar: (lista: RegistroAsistencia[]) => void;
   onCancelar: () => void;
 }) {
   const [lista, setLista] = useState<RegistroAsistencia[]>(
     participantesIniciales.map(p => ({
       bombero_id: p.bombero_id, apellidos: p.apellidos, nombres: p.nombres,
-      grado: p.grado, codigo: "", asistio: true, justificacion: "", agregado: false, es_instructor: false,
+      grado: p.grado, codigo: "", asistio: true, justificacion: "", agregado: false, es_instructor: p.es_instructor ?? false,
     }))
   );
   const [bomberosTodos, setBomberosTodos] = useState<Bombero[]>([]);
@@ -675,7 +696,7 @@ function ModalVer({ id, puedeCrear, onClose, onActualizado }: {
                 <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded border ${badge}`}>{data.tipo}</span>
                 {data.area && (
                   <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded border ${AREA_COLOR[data.area as Area]?.badge ?? ""}`}>
-                    {data.area === "ADMINISTRACION" ? "Administración" : data.area === "IMAGEN" ? "Imagen" : "Instrucción"}
+                    {AREA_LABELS[data.area as Area] ?? data.area}
                   </span>
                 )}
                 {data.finalizado && (
@@ -939,7 +960,7 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
           entidad_id: entidadId,
           participantes: esCap ? seleccionados : [],
           efectivos_asistentes: esCap ? seleccionados.length : Number(form.efectivos_asistentes) || 0,
-          expositor_id: form.tipo === "Capacitación interna" ? expositorId : null,
+          expositor_id: (form.tipo === "Capacitación interna" || form.tipo === "Capacitación CGBVP") ? expositorId : null,
         }),
       });
       if (!res.ok) { const d = await res.json(); setError(d.error ?? "Error al guardar."); return; }
@@ -980,7 +1001,7 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
                 <select value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))} className={inputCls}>
                   <option value="">Sin área</option>
                   {AREAS.map(a => (
-                    <option key={a} value={a}>{a === "ADMINISTRACION" ? "Administración" : a === "IMAGEN" ? "Imagen" : "Instrucción"}</option>
+                    <option key={a} value={a}>{AREA_LABELS[a]}</option>
                   ))}
                 </select>
               </div>
@@ -1086,7 +1107,7 @@ function ModalCrear({ fecha: fechaInicial, onClose, onCreated }: { fecha: string
               </div>
             )}
 
-            {esCap && form.tipo === "Capacitación interna" && (
+            {esCap && (form.tipo === "Capacitación interna" || form.tipo === "Capacitación CGBVP") && (
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Expositor</label>
                 {expositorId ? (
@@ -1274,9 +1295,9 @@ export function ProgramacionCalendario({ puedeCrear }: { puedeCrear: boolean }) 
       {/* Leyenda */}
       <div className="flex flex-wrap gap-2">
         {/* Áreas */}
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-red-100 text-red-700 border-red-200">Administración</span>
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-orange-100 text-orange-700 border-orange-200">Imagen</span>
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-green-100 text-green-700 border-green-200">Instrucción</span>
+        {AREAS.map(a => (
+          <span key={a} className={`text-[10px] font-bold px-2 py-0.5 rounded border ${AREA_COLOR[a].badge}`}>{AREA_LABELS[a]}</span>
+        ))}
         <span className="text-[10px] font-medium px-2 py-0.5 rounded border bg-gray-100 text-gray-500 border-gray-200">Sin área</span>
         <span className="text-[10px] font-medium px-2 py-0.5 rounded border bg-green-100 text-green-700 border-green-200 flex items-center gap-1">
           <CheckCircle2 className="w-3 h-3" /> Finalizado

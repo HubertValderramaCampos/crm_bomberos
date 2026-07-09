@@ -24,7 +24,7 @@ export async function GET(req: Request) {
       JOIN programacion_actividad a ON a.id = p.actividad_id
       JOIN bombero b                ON b.id = p.bombero_id
       WHERE p.es_instructor = true
-        AND a.tipo = 'Capacitación interna'
+        AND a.es_capacitacion = true
         AND (a.finalizado = true OR a.fecha < CURRENT_DATE)
         AND EXTRACT(year FROM a.fecha) = $1
       GROUP BY b.id, b.apellidos, b.nombres, b.grado, b.codigo

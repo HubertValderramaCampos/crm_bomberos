@@ -25,8 +25,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         LEFT JOIN entidad e ON e.id = a.entidad_id
         WHERE a.id = $1`, [id]),
 
-    pool.query<{ bombero_id: number; apellidos: string; nombres: string; grado: string; asistio: boolean | null }>(`
-      SELECT p.bombero_id, b.apellidos, b.nombres, b.grado, p.asistio
+    pool.query<{ bombero_id: number; apellidos: string; nombres: string; grado: string; asistio: boolean | null; es_instructor: boolean }>(`
+      SELECT p.bombero_id, b.apellidos, b.nombres, b.grado, p.asistio, p.es_instructor
       FROM programacion_participante p
       JOIN bombero b ON b.id = p.bombero_id
       WHERE p.actividad_id = $1
@@ -85,9 +85,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         [tipo, descripcion ?? null, fecha, lugar ?? null, hora_inicio ?? null, hora_fin ?? null,
          efectivos_asistentes ?? null, entidad_id ?? null, area ?? null, id]
       );
-      // Actualizar participantes si se enviaron
+      // Actualizar participantes si se enviaron — sin borrar a los que se mantienen,
+      // para no perder su asistencia / es_instructor ya registrados
       if (Array.isArray(participantes)) {
-        await client2.query(`DELETE FROM programacion_participante WHERE actividad_id = $1`, [id]);
+        if (participantes.length > 0) {
+          await client2.query(
+            `DELETE FROM programacion_participante WHERE actividad_id = $1 AND bombero_id <> ALL($2::int[])`,
+            [id, participantes]
+          );
+        } else {
+          await client2.query(`DELETE FROM programacion_participante WHERE actividad_id = $1`, [id]);
+        }
         for (const bid of participantes) {
           await client2.query(
             `INSERT INTO programacion_participante (actividad_id, bombero_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
