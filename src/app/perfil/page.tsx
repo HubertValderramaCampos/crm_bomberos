@@ -7,6 +7,7 @@ import {
   User, Clock, CalendarCheck, Siren, ShieldCheck,
   Phone, Mail, UserCircle2, Settings, Cake,
   Flame, Lock, CheckCircle, Star, Award, Truck, Users,
+  GraduationCap, X,
 } from "lucide-react";
 import { HORAS_REGLAMENTO } from "@/lib/reglamento";
 import { calcularRacha } from "@/lib/racha";
@@ -27,7 +28,7 @@ interface BomberoRow {
 async function getPerfilData(bomberoId: number) {
   const client = await pool.connect();
   try {
-    const [bombero, historial, emergencias] = await Promise.all([
+    const [bombero, historial, emergencias, capacitaciones] = await Promise.all([
 
       client.query<BomberoRow>(`
         SELECT b.id, b.codigo, b.grado, b.apellidos, b.nombres, b.dni,
@@ -65,12 +66,26 @@ async function getPerfilData(bomberoId: number) {
         ORDER BY COALESCE(e.fecha_salida, e.fecha_despacho) DESC NULLS LAST
         LIMIT 20
       `, [bomberoId]),
+
+      client.query<{
+        actividad_id: number; tipo: string; descripcion: string | null;
+        fecha: string; asistio: boolean | null; es_instructor: boolean;
+      }>(`
+        SELECT a.id AS actividad_id, a.tipo, a.descripcion, a.fecha::text,
+               p.asistio, p.es_instructor
+        FROM programacion_participante p
+        JOIN programacion_actividad a ON a.id = p.actividad_id
+        WHERE p.bombero_id = $1 AND a.es_capacitacion = true
+        ORDER BY a.fecha DESC
+        LIMIT 30
+      `, [bomberoId]),
     ]);
 
     return {
-      bombero:     bombero.rows[0] ?? null,
-      historial:   historial.rows,
-      emergencias: emergencias.rows,
+      bombero:        bombero.rows[0] ?? null,
+      historial:      historial.rows,
+      emergencias:    emergencias.rows,
+      capacitaciones: capacitaciones.rows,
     };
   } finally {
     client.release();
@@ -84,8 +99,8 @@ export default async function PerfilPage() {
 
   const bomberoId = session.user.bomberoId!;
 
-  const [{ bombero, historial, emergencias }, racha] = await Promise.all([
-    getPerfilData(bomberoId).catch(() => ({ bombero: null, historial: [], emergencias: [] })),
+  const [{ bombero, historial, emergencias, capacitaciones }, racha] = await Promise.all([
+    getPerfilData(bomberoId).catch(() => ({ bombero: null, historial: [], emergencias: [], capacitaciones: [] })),
     calcularRacha(bomberoId).catch(() => null),
   ]);
 
@@ -452,6 +467,63 @@ export default async function PerfilPage() {
                 </div>
               </div>
             )}
+
+            {/* Capacitaciones */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-gray-400" />
+                <p className="text-sm font-semibold text-gray-900">Capacitaciones</p>
+                <span className="ml-auto text-xs text-gray-400">{capacitaciones.length} registradas</span>
+              </div>
+              {capacitaciones.length === 0 ? (
+                <p className="px-5 py-8 text-center text-sm text-gray-400">Aún no tienes capacitaciones registradas.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-100">
+                        {["Tipo","Tema","Fecha","Estado"].map(h => (
+                          <th key={h} className="text-left px-4 py-2.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {capacitaciones.map((c, i) => (
+                        <tr key={i} className="hover:bg-gray-50">
+                          <td className="px-4 py-2.5 font-medium text-gray-700">{c.tipo}</td>
+                          <td className="px-4 py-2.5 text-gray-600 max-w-[220px]"><p className="truncate">{c.descripcion ?? "—"}</p></td>
+                          <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">
+                            {new Date(c.fecha + "T12:00:00").toLocaleDateString("es-PE", { day:"2-digit", month:"short", year:"numeric" })}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {c.es_instructor && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">
+                                  <GraduationCap className="w-3 h-3" /> Instructor
+                                </span>
+                              )}
+                              {c.asistio === true && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">
+                                  <CheckCircle className="w-3 h-3" /> Asistió
+                                </span>
+                              )}
+                              {c.asistio === false && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">
+                                  <X className="w-3 h-3" /> Faltó
+                                </span>
+                              )}
+                              {c.asistio === null && !c.es_instructor && (
+                                <span className="text-[10px] text-gray-400">Convocado</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
 
           </div>
         </div>
