@@ -5,8 +5,10 @@ import pool from "@/lib/db";
 import { MascotaHero } from "@/components/ui-custom/MascotaHero";
 import { RankingCard } from "@/components/ui-custom/RankingCard";
 import { ProgresoCard } from "@/components/ui-custom/ProgresoCard";
+import { PerformanceHeroInicio } from "@/components/ui-custom/PerformanceHeroInicio";
 import { HORAS_REGLAMENTO } from "@/lib/reglamento";
 import { calcularRacha } from "@/lib/racha";
+import { toISO, rangoPeriodo, labelPeriodo, getPerformanceData, linkWhatsappRequena } from "@/lib/performanceCia";
 import {
   Users, Siren, Clock, Truck, ShieldCheck,
   CalendarCheck, AlertTriangle, Award,
@@ -157,10 +159,16 @@ export default async function InicioPage() {
   const esBombero  = rol === "BOMBERO";
   const esOperativo = rol === "JEFE_COMPANIA" || rol === "SEGUNDO_JEFE" || rol === "OPERACIONES";
 
-  const [data, racha] = await Promise.all([
+  const { inicio: inicioSemana, fin: finSemana, inicioISO, finISO } = rangoPeriodo("semana", toISO(new Date()));
+
+  const [data, racha, performance] = await Promise.all([
     getInicioData(session.user.id, bomberoId ?? null).catch(() => null),
     esBombero && bomberoId ? calcularRacha(bomberoId).catch(() => null) : Promise.resolve(null),
+    getPerformanceData(inicioISO, finISO).catch(() => ({ unidades: [], requena: null })),
   ]);
+
+  const performanceLabel = labelPeriodo("semana", inicioSemana, finSemana);
+  const linkWaPerformance = linkWhatsappRequena(performance.requena);
 
   // Nombre para el saludo: primero apellido real de DB, fallback a token
   const primerApellido = data?.nombreMostrar
@@ -239,6 +247,13 @@ export default async function InicioPage() {
           })}
         </div>
       </div>
+
+      {/* ── OPERATIVIDAD DE LA COMPAÑÍA — hero ── */}
+      <PerformanceHeroInicio
+        unidades={performance.unidades}
+        periodoLabel={performanceLabel}
+        linkWa={linkWaPerformance}
+      />
 
       {/* ── SECCIÓN BOMBERO — layout 2 columnas ── */}
       {esBombero && (
