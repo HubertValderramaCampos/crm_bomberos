@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { CheckCircle2, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Loader2, RefreshCw, ShieldCheck, ArrowLeft, ArrowRight, Locate, type LucideIcon } from "lucide-react";
 
 type FaceApi     = typeof import("@vladmandic/face-api");
 type LandmarkResult = Awaited<ReturnType<ReturnType<ReturnType<FaceApi["detectSingleFace"]>["withFaceLandmarks"]>["withFaceDescriptor"]>>;
@@ -19,14 +19,22 @@ async function cargarModelos(faceapi: FaceApi) {
 /* ─── Validación de pose con landmarks 68pts ─────────────────────
    Puntos clave:
    - 0–16  : contorno mandíbula
-   - 27–30 : dorso de nariz
    - 33    : punta de nariz
    - 36–41 : ojo izquierdo
    - 42–47 : ojo derecho
-   - 8     : barbilla
-   - 27    : puente de nariz (entre cejas)
+
+   Nota: se descartó un 4° paso de "mentón arriba" que existía antes. Se
+   estimaba con una razón de distancias verticales entre landmarks 2D
+   (nariz-barbilla / nariz-puente), y resultó poco confiable: a) el ángulo
+   de cabecera hacia atrás no es algo que estos 68 puntos midan bien sin una
+   pose 3D real (solvePnP), b) en la inclinación fuerte que el propio umbral
+   exigía, el punto del puente de la nariz podía terminar más abajo que la
+   punta de la nariz en la proyección 2D, invirtiendo el cálculo justo en el
+   punto donde el usuario más se esforzaba. El giro lateral (izquierda/
+   derecha) sí es geométricamente estable porque es un desplazamiento
+   horizontal simple, por eso se mantiene.
 ──────────────────────────────────────────────────────────────── */
-type Pose = "frente" | "izquierda" | "derecha" | "arriba";
+type Pose = "frente" | "izquierda" | "derecha";
 
 function calcularPose(det: NonNullable<LandmarkResult>): { pose: Pose; confianza: number } {
   const pts = det.landmarks.positions;
@@ -35,8 +43,6 @@ function calcularPose(det: NonNullable<LandmarkResult>): { pose: Pose; confianza
   const ojoIzq  = { x: (pts[36].x + pts[39].x) / 2, y: (pts[36].y + pts[39].y) / 2 };
   const ojoDer  = { x: (pts[42].x + pts[45].x) / 2, y: (pts[42].y + pts[45].y) / 2 };
   const nariz   = pts[33];
-  const barbilla = pts[8];
-  const puenteN  = pts[27];
 
   // Centro horizontal entre ojos
   const centroOjos = (ojoIzq.x + ojoDer.x) / 2;
@@ -46,20 +52,9 @@ function calcularPose(det: NonNullable<LandmarkResult>): { pose: Pose; confianza
   // Normalizado por el ancho entre ojos
   const desvLateral = (nariz.x - centroOjos) / anchoOjos;
 
-  // Relación vertical: distancia nariz-barbilla / nariz-puente
-  // Cuando mira arriba, la barbilla sube y la distancia disminuye
-  const distNarizBarbilla = barbilla.y - nariz.y;
-  const distNarizPuente   = nariz.y - puenteN.y;
-  const ratioVertical     = distNarizPuente > 0 ? distNarizBarbilla / distNarizPuente : 1;
-
-  // Umbrales calibrados
+  // Umbral calibrado
   const UMBRAL_LATERAL = 0.12; // >12% del ancho → girado
-  const UMBRAL_ARRIBA  = 0.9;  // ratio < 0.9 → mirando arriba
 
-  if (ratioVertical < UMBRAL_ARRIBA) {
-    const confianza = Math.min(1, (UMBRAL_ARRIBA - ratioVertical) / 0.3);
-    return { pose: "arriba", confianza };
-  }
   if (desvLateral < -UMBRAL_LATERAL) {
     // Nariz a la izquierda del centro = cara girada a la derecha (espejo)
     const confianza = Math.min(1, (-desvLateral - UMBRAL_LATERAL) / 0.15);
@@ -75,12 +70,20 @@ function calcularPose(det: NonNullable<LandmarkResult>): { pose: Pose; confianza
 }
 
 /* ─── Pasos con pose requerida ───────────────────────────────── */
-const PASOS: { label: string; hint: string; rot: number; poseReq: Pose; umbral: number }[] = [
-  { label: "Mira de frente",        hint: "Mantén la cabeza recta y centrada",      rot:   0, poseReq: "frente",    umbral: 0.6 },
-  { label: "Gira a tu izquierda",   hint: "Gira el rostro levemente a la izquierda",rot: -20, poseReq: "izquierda", umbral: 0.4 },
-  { label: "Gira a tu derecha",     hint: "Gira el rostro levemente a la derecha",  rot:  20, poseReq: "derecha",   umbral: 0.4 },
-  { label: "Inclina hacia arriba",  hint: "Levanta levemente el mentón",            rot: -10, poseReq: "arriba",    umbral: 0.3 },
+const PASOS: { label: string; hint: string; poseReq: Pose; umbral: number }[] = [
+  { label: "Mira de frente",        hint: "Mantén la cabeza recta y centrada",       poseReq: "frente",    umbral: 0.6 },
+  { label: "Gira a tu izquierda",   hint: "Gira el rostro levemente a la izquierda", poseReq: "izquierda", umbral: 0.4 },
+  { label: "Gira a tu derecha",     hint: "Gira el rostro levemente a la derecha",   poseReq: "derecha",   umbral: 0.4 },
 ];
+
+// Única fuente de verdad para ícono + texto de cada dirección: así el ícono y
+// el texto nunca pueden contradecirse (antes eran strings sueltos con "→"
+// tipeado a mano en varios lugares, y no siempre coincidía con la dirección real).
+const DIRECCION_INFO: Record<Pose, { Icon: LucideIcon; texto: string }> = {
+  frente:    { Icon: Locate,     texto: "Centra la cabeza mirando directamente a la cámara" },
+  izquierda: { Icon: ArrowLeft,  texto: "Gira tu cabeza hacia la izquierda" },
+  derecha:   { Icon: ArrowRight, texto: "Gira tu cabeza hacia la derecha" },
+};
 
 const HOLD_FRAMES   = 6;   // frames consecutivos con pose válida para capturar
 const BEST_SAMPLES  = 3;   // muestras a promediar por paso para el mejor momento
@@ -116,15 +119,16 @@ export default function EntrenarPage() {
     setMsg("Guardando tu rostro...");
     if (loopRef.current) clearTimeout(loopRef.current);
 
-    // Promedio ponderado de todos los descriptores
-    const promedio = todas[0].map((_, i) =>
-      todas.reduce((s, d) => s + d[i], 0) / todas.length
-    );
+    // Se guarda el descriptor de frente (paso 0): es el único ángulo contra el
+    // que se compara al marcar asistencia. Los demás ángulos (izquierda,
+    // derecha, arriba) solo sirven para confirmar que es un rostro real en 3D;
+    // promediarlos aquí degradaba la precisión del reconocimiento posterior.
+    const descriptorFinal = todas[0];
 
     const res = await fetch("/api/formativa/entrenar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ descriptor: promedio }),
+      body: JSON.stringify({ descriptor: descriptorFinal }),
     });
 
     streamRef.current?.getTracks().forEach(t => t.stop());
@@ -145,7 +149,7 @@ export default function EntrenarPage() {
       if (!videoRef.current || !canvasRef.current) return;
       try {
         const det = await faceapi
-          .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }))
+          .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 416 }))
           .withFaceLandmarks()
           .withFaceDescriptor();
 
@@ -287,8 +291,9 @@ export default function EntrenarPage() {
     window.location.reload();
   }
 
-  const paso     = PASOS[pasoIdx];
-  const progreso = (cuenta / HOLD_FRAMES) * 100;
+  const paso      = PASOS[pasoIdx];
+  const progreso  = (cuenta / HOLD_FRAMES) * 100;
+  const direccion = DIRECCION_INFO[paso.poseReq];
 
   // Color del óvalo: verde=pose ok, amarillo=cara detectada pero pose incorrecta, gris=sin cara
   const ovalColor = poseOk ? "#4ade80" : faceOk ? "#fbbf24" : "rgba(255,255,255,0.5)";
@@ -311,11 +316,10 @@ export default function EntrenarPage() {
           style={{ transform: "scaleX(-1)" }} muted playsInline />
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
 
-        {/* Óvalo SVG con rotación según el paso */}
+        {/* Óvalo guía — siempre en la misma posición, no rota entre pasos */}
         {estado === "activo" && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <svg viewBox="0 0 200 260" className="w-[65%] h-[78%]"
-              style={{ marginTop: "-5%", transition: "transform 0.4s ease", transform: `rotate(${paso.rot}deg)` }}>
+            <svg viewBox="0 0 200 260" className="w-[65%] h-[78%]" style={{ marginTop: "-5%" }}>
               {/* Óvalo base (siempre visible) */}
               <ellipse cx="100" cy="130" rx="90" ry="120" fill="none" strokeWidth="3"
                 stroke={ovalColor} strokeDasharray={poseOk ? "none" : faceOk ? "none" : "12 6"}
@@ -332,6 +336,13 @@ export default function EntrenarPage() {
           </div>
         )}
 
+        {/* Flecha grande de dirección — aparece solo cuando hay que girar/inclinar */}
+        {estado === "activo" && faceOk && !poseOk && paso.poseReq !== "frente" && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <direccion.Icon className="w-16 h-16 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)] animate-pulse" strokeWidth={3} />
+          </div>
+        )}
+
         {/* Indicador pose */}
         {estado === "activo" && (
           <div className={`absolute top-3 right-3 px-2 py-1 rounded-full text-[11px] font-bold transition-colors ${
@@ -343,14 +354,12 @@ export default function EntrenarPage() {
           </div>
         )}
 
-        {/* Pose actual detectada (debug suave) */}
+        {/* Guía hacia el paso objetivo (misma fuente que el panel de abajo: nunca se contradicen) */}
         {estado === "activo" && faceOk && poseInfo && !poseOk && (
           <div className="absolute bottom-8 left-0 right-0 flex justify-center">
-            <span className="bg-black/60 text-white/80 text-[10px] px-2 py-0.5 rounded-full">
-              {poseInfo.pose === "frente"    ? "↑ Centra la cabeza"         : ""}
-              {poseInfo.pose === "izquierda" && paso.poseReq !== "izquierda" ? "← Gira más a la izquierda" : ""}
-              {poseInfo.pose === "derecha"   && paso.poseReq !== "derecha"   ? "→ Gira más a la derecha"   : ""}
-              {poseInfo.pose === "arriba"    && paso.poseReq !== "arriba"    ? "↑ Levanta el mentón"        : ""}
+            <span className="bg-black/60 text-white/80 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+              <direccion.Icon className="w-3 h-3" />
+              {direccion.texto}
             </span>
           </div>
         )}
@@ -398,11 +407,9 @@ export default function EntrenarPage() {
           <p className="text-white font-bold text-base">{paso.label}</p>
           <p className="text-gray-400 text-xs">{paso.hint}</p>
           {!poseOk && faceOk && (
-            <p className="text-amber-400 text-xs">
-              {paso.poseReq === "frente"    && "→ Centra la cabeza mirando directamente a la cámara"}
-              {paso.poseReq === "izquierda" && "→ Gira tu cabeza hacia la izquierda"}
-              {paso.poseReq === "derecha"   && "→ Gira tu cabeza hacia la derecha"}
-              {paso.poseReq === "arriba"    && "→ Levanta el mentón hacia arriba"}
+            <p className="text-amber-400 text-xs flex items-center gap-1">
+              <direccion.Icon className="w-3 h-3 shrink-0" />
+              {direccion.texto}
             </p>
           )}
         </div>
