@@ -156,6 +156,13 @@ export default async function AsistenciasPage({
 }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
+
+  // Aspirantes y postulantes solo ven su propia asistencia, en /formativa/inicio
+  const categoria = session.user.categoria ?? "BOMBERO";
+  if (session.user.rol === "BOMBERO" && ["ASPIRANTE", "POSTULANTE"].includes(categoria)) {
+    redirect("/formativa/inicio");
+  }
+
   const esBombero = session.user.rol === "BOMBERO";
   const bomberoId = session.user.bomberoId ?? null;
 

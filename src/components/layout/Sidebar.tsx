@@ -79,6 +79,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Mi progreso",          href: "/formativa/inicio",            icon: Home,          roles: ["BOMBERO"] },
       { label: "Registrar rostro",     href: "/formativa/entrenar",          icon: GraduationCap, roles: ["BOMBERO"] },
       { label: "Marcar asistencia",    href: "/formativa/asistencia",        icon: CalendarCheck, roles: ["BOMBERO"] },
+      { label: "Asistencias de Aspirantes", href: "/formativa/reporte",      icon: CalendarCheck, roles: ["JEFE_COMPANIA", "ADMINISTRACION", "INSTRUCCION"] },
       { label: "Ranking Instructores", href: "/instruccion/cursos",          icon: Award,         roles: ["JEFE_COMPANIA", "SEGUNDO_JEFE", "ADMINISTRACION", "INSTRUCCION"] },
       { label: "Asistencia a Cursos",  href: "/instruccion/certificaciones", icon: BookOpen,      roles: ["JEFE_COMPANIA", "SEGUNDO_JEFE", "ADMINISTRACION", "INSTRUCCION"] },
     ],
