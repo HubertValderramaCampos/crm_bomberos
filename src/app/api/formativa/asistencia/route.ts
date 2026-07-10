@@ -3,8 +3,9 @@ import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 
-const CUARTEL_LAT = -11.86734;
-const CUARTEL_LNG = -77.0787266;
+// Cía. de Bomberos Voluntarios N.° 150 — Av. José Gálvez Circunvalación 315/320, Puente Piedra 15118
+const CUARTEL_LAT = -11.867292;
+const CUARTEL_LNG = -77.078888;
 const RADIO_METROS = 50;
 
 function distanciaMetros(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -74,8 +75,8 @@ export async function POST(req: Request) {
   if (!["ASPIRANTE", "POSTULANTE"].includes(categoria))
     return NextResponse.json({ error: "Solo aspirantes y postulantes" }, { status: 403 });
 
-  const { lat, lng, tipo, motivo } = await req.json() as {
-    lat: number; lng: number; tipo: "entrada" | "salida"; motivo?: string;
+  const { lat, lng, tipo, motivo, fotoUrl } = await req.json() as {
+    lat: number; lng: number; tipo: "entrada" | "salida"; motivo?: string; fotoUrl?: string | null;
   };
 
   const dist = distanciaMetros(lat, lng, CUARTEL_LAT, CUARTEL_LNG);
@@ -110,9 +111,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Ya registraste tu entrada hoy." }, { status: 409 });
 
     await pool.query(
-      `INSERT INTO asistencia_formativa (bombero_id, lat, lng, tipo, motivo)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [session.user.bomberoId, lat, lng, tipoAsistencia, motivo ?? null]
+      `INSERT INTO asistencia_formativa (bombero_id, lat, lng, tipo, motivo, foto_entrada_url)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [session.user.bomberoId, lat, lng, tipoAsistencia, motivo ?? null, fotoUrl ?? null]
     );
     return NextResponse.json({ ok: true, tipo: "entrada", tipo_asistencia: tipoAsistencia });
   }
@@ -128,7 +129,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Ya registraste tu salida hoy." }, { status: 409 });
 
     await pool.query(
-      `UPDATE asistencia_formativa SET hora_salida = NOW() WHERE id = $1`, [reg[0].id]
+      `UPDATE asistencia_formativa SET hora_salida = NOW(), foto_salida_url = $2 WHERE id = $1`,
+      [reg[0].id, fotoUrl ?? null]
     );
     return NextResponse.json({ ok: true, tipo: "salida" });
   }

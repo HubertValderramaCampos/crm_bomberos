@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { MapPin, Camera, CheckCircle2, Loader2, AlertCircle, CalendarDays, Clock, LogIn, LogOut, Info } from "lucide-react";
+import { capturarFrame, subirEvidencia } from "@/lib/cloudinary";
 
 type FaceApi = typeof import("@vladmandic/face-api");
 const MODEL_URL = "/models";
@@ -170,10 +171,14 @@ export default function AsistenciaPage() {
         return;
       }
 
+      setMsg("Guardando evidencia...");
+      const frame = await capturarFrame(videoRef.current);
+      const fotoUrl = frame ? await subirEvidencia(frame) : null;
+
       const res = await fetch("/api/formativa/asistencia", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lat: posicion.lat, lng: posicion.lng, tipo, motivo: motivo || undefined }),
+        body: JSON.stringify({ lat: posicion.lat, lng: posicion.lng, tipo, motivo: motivo || undefined, fotoUrl }),
       });
       const data = await res.json();
 
