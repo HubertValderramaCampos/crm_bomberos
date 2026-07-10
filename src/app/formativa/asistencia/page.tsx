@@ -25,6 +25,40 @@ interface HorarioProg {
 }
 const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 
+// Replica en el cliente la misma regla que usa el servidor (misma función en
+// api/formativa/asistencia/route.ts) para saber SI VA A HACER FALTA un
+// motivo, antes de pedir cámara/ubicación — así no hay que verificar el
+// rostro dos veces. Prueba cada horario en ayer/hoy/mañana y compara marcas
+// de tiempo reales (no solo "hora del día") para que alguien que llega o
+// sale muy temprano/tarde cerca de la medianoche, o un turno que cruza la
+// medianoche (ej. 22:00–06:00), se valide igual. El servidor sigue siendo
+// quien decide de verdad (por si el reloj del teléfono está desfasado);
+// esto es solo para evitar el caso común de tener que verificar dos veces.
+function esDiaProgramadoLocal(horarios: HorarioProg[]): boolean {
+  const ahora = new Date();
+  return horarios.some(h => {
+    const [hI, mI] = h.hora_inicio.split(":").map(Number);
+    const [hF, mF] = h.hora_fin.split(":").map(Number);
+
+    for (const offsetDias of [-1, 0, 1]) {
+      const base = new Date(ahora);
+      base.setDate(base.getDate() + offsetDias);
+      if (base.getDay() !== h.dia_semana) continue;
+
+      const inicio = new Date(base);
+      inicio.setHours(hI, mI, 0, 0);
+      const fin = new Date(base);
+      fin.setHours(hF, mF, 0, 0);
+      if (fin <= inicio) fin.setDate(fin.getDate() + 1); // turno que cruza medianoche
+
+      const desde = new Date(inicio.getTime() - 2 * 60 * 60 * 1000);
+      const hasta = new Date(fin.getTime() + 2 * 60 * 60 * 1000);
+      if (ahora >= desde && ahora <= hasta) return true;
+    }
+    return false;
+  });
+}
+
 export default function AsistenciaPage() {
   const videoRef      = useRef<HTMLVideoElement>(null);
   const faceApiRef    = useRef<FaceApi | null>(null);
@@ -81,6 +115,18 @@ export default function AsistenciaPage() {
   }, []);
 
   function pedirUbicacion(tipoMarca: "entrada" | "salida") {
+    // Si hoy no es un día programado, pedir el motivo ANTES de tocar cámara
+    // o ubicación — evita verificar el rostro dos veces para una entrada extra.
+    if (tipoMarca === "entrada" && !esDiaProgramadoLocal(horarios)) {
+      setPendiente(tipoMarca);
+      setMotivo("");
+      setFase("motivo");
+      return;
+    }
+    iniciarFlujoUbicacion(tipoMarca);
+  }
+
+  function iniciarFlujoUbicacion(tipoMarca: "entrada" | "salida") {
     setPendiente(tipoMarca);
     if (!navigator.geolocation) {
       setFase("error");
@@ -308,9 +354,14 @@ export default function AsistenciaPage() {
           <button
             onClick={() => {
               if (!motivo.trim()) return;
-              // Reanudar la cámara con el motivo
-              setFase("camara");
-              iniciarCamara();
+              if (tipo && posicion) {
+                // Ya se había verificado el rostro antes (fallback del servidor): reanudar cámara
+                setFase("camara");
+                iniciarCamara();
+              } else if (pendiente) {
+                // Pre-chequeo: recién ahora se pide ubicación/cámara, una sola vez
+                iniciarFlujoUbicacion(pendiente);
+              }
             }}
             disabled={!motivo.trim()}
             className="w-full py-3 bg-amber-500 text-white font-semibold rounded-xl hover:bg-amber-600 disabled:opacity-40 transition-colors"

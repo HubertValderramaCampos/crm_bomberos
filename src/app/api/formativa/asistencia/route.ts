@@ -18,29 +18,40 @@ function distanciaMetros(lat1: number, lng1: number, lat2: number, lng2: number)
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Determina si la hora/día actual corresponde a un horario programado
+// Determina si la hora/día actual corresponde a un horario programado, con
+// ±2h de flexibilidad. Se evalúa en JS (no en SQL) porque la comparación de
+// "hora del día" simple no alcanza: un turno puede cruzar la medianoche
+// (ej. 22:00–06:00), o alguien puede llegar/salir del otro lado de la
+// medianoche respecto al día programado (ej. 1h30 antes de un turno que
+// empieza a las 00:30). Por eso se prueba la ocurrencia de cada horario en
+// ayer/hoy/mañana y se compara con marcas de tiempo reales, no solo horas.
 async function esDiaProgramado(): Promise<boolean> {
-  const now = new Date();
-  const diaSemana = now.getDay(); // 0=Dom...6=Sáb
-  const horaActual = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-
-  const { rows } = await pool.query(
-    `SELECT id FROM formativa_horario
-     WHERE activo = true AND dia_semana = $1
-       AND hora_inicio <= $2 AND hora_fin >= $2`,
-    [diaSemana, horaActual]
+  const { rows } = await pool.query<{ dia_semana: number; hora_inicio: string; hora_fin: string }>(
+    `SELECT dia_semana, hora_inicio::text, hora_fin::text FROM formativa_horario WHERE activo = true`
   );
-  // También considerar ±2 horas del horario para flexibilidad de registro
-  if (rows.length > 0) return true;
 
-  const { rows: cerca } = await pool.query(
-    `SELECT id FROM formativa_horario
-     WHERE activo = true AND dia_semana = $1
-       AND hora_inicio::time - INTERVAL '2 hours' <= $2::time
-       AND hora_fin::time + INTERVAL '2 hours' >= $2::time`,
-    [diaSemana, horaActual]
-  );
-  return cerca.length > 0;
+  const ahora = new Date();
+  return rows.some(h => {
+    const [hI, mI] = h.hora_inicio.split(":").map(Number);
+    const [hF, mF] = h.hora_fin.split(":").map(Number);
+
+    for (const offsetDias of [-1, 0, 1]) {
+      const base = new Date(ahora);
+      base.setDate(base.getDate() + offsetDias);
+      if (base.getDay() !== h.dia_semana) continue;
+
+      const inicio = new Date(base);
+      inicio.setHours(hI, mI, 0, 0);
+      const fin = new Date(base);
+      fin.setHours(hF, mF, 0, 0);
+      if (fin <= inicio) fin.setDate(fin.getDate() + 1); // turno que cruza medianoche
+
+      const desde = new Date(inicio.getTime() - 2 * 60 * 60 * 1000);
+      const hasta = new Date(fin.getTime() + 2 * 60 * 60 * 1000);
+      if (ahora >= desde && ahora <= hasta) return true;
+    }
+    return false;
+  });
 }
 
 export async function GET() {
