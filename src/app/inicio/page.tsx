@@ -8,7 +8,7 @@ import { ProgresoCard } from "@/components/ui-custom/ProgresoCard";
 import { PerformanceHeroInicio } from "@/components/ui-custom/PerformanceHeroInicio";
 import { HORAS_REGLAMENTO } from "@/lib/reglamento";
 import { calcularRacha } from "@/lib/racha";
-import { toISO, rangoPeriodo, labelPeriodo, getPerformanceData, linkWhatsappRequena } from "@/lib/performanceCia";
+import { type Periodo, toISO, rangoPeriodo, labelPeriodo, getPerformanceData, linkWhatsappRequena } from "@/lib/performanceCia";
 import {
   Users, Siren, Clock, Truck, ShieldCheck,
   CalendarCheck, AlertTriangle, Award,
@@ -145,7 +145,11 @@ async function getInicioData(_usuarioId: string, bomberoId: number | null) {
     };
 }
 
-export default async function InicioPage() {
+export default async function InicioPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ periodo?: string; fecha?: string }>;
+}) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
 
@@ -159,7 +163,11 @@ export default async function InicioPage() {
   const esBombero  = rol === "BOMBERO";
   const esOperativo = rol === "JEFE_COMPANIA" || rol === "SEGUNDO_JEFE" || rol === "OPERACIONES";
 
-  const { inicio: inicioSemana, fin: finSemana, inicioISO, finISO } = rangoPeriodo("semana", toISO(new Date()));
+  const sp = await searchParams;
+  const perfPeriodo: Periodo = (["dia", "semana", "mes"].includes(sp.periodo ?? "") ? sp.periodo : "semana") as Periodo;
+  const perfFecha = sp.fecha && /^\d{4}-\d{2}-\d{2}$/.test(sp.fecha) ? sp.fecha : toISO(new Date());
+
+  const { inicio: inicioPerf, fin: finPerf, inicioISO, finISO } = rangoPeriodo(perfPeriodo, perfFecha);
 
   const [data, racha, performance] = await Promise.all([
     getInicioData(session.user.id, bomberoId ?? null).catch(() => null),
@@ -167,7 +175,7 @@ export default async function InicioPage() {
     getPerformanceData(inicioISO, finISO).catch(() => ({ unidades: [], requena: null })),
   ]);
 
-  const performanceLabel = labelPeriodo("semana", inicioSemana, finSemana);
+  const performanceLabel = labelPeriodo(perfPeriodo, inicioPerf, finPerf);
   const linkWaPerformance = linkWhatsappRequena(performance.requena);
 
   // Nombre para el saludo: primero apellido real de DB, fallback a token
@@ -251,6 +259,8 @@ export default async function InicioPage() {
       {/* ── OPERATIVIDAD DE LA COMPAÑÍA — hero ── */}
       <PerformanceHeroInicio
         unidades={performance.unidades}
+        periodo={perfPeriodo}
+        fecha={perfFecha}
         periodoLabel={performanceLabel}
         linkWa={linkWaPerformance}
       />
