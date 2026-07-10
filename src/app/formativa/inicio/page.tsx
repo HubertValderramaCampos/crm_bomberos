@@ -23,7 +23,9 @@ export default async function InicioFormativoPage() {
 
   // Asistencias recientes
   const asistRes = await pool.query<{ id: number; fecha: string; hora_entrada: string; hora_salida: string | null }>(
-    `SELECT id, fecha::text, hora_entrada::text, hora_salida::text
+    `SELECT id, fecha::text,
+            (hora_entrada AT TIME ZONE 'America/Lima')::text AS hora_entrada,
+            (hora_salida  AT TIME ZONE 'America/Lima')::text AS hora_salida
      FROM asistencia_formativa
      WHERE bombero_id = $1
      ORDER BY fecha DESC, hora_entrada DESC

@@ -36,7 +36,9 @@ export async function GET(req: Request) {
 
     // Detalle de asistencias
     pool.query(`
-      SELECT af.id, af.fecha::text, af.hora_entrada::text, af.hora_salida::text,
+      SELECT af.id, af.fecha::text,
+             (af.hora_entrada AT TIME ZONE 'America/Lima')::text AS hora_entrada,
+             (af.hora_salida  AT TIME ZONE 'America/Lima')::text AS hora_salida,
              af.tipo, af.motivo,
              b.apellidos, b.nombres, b.grado, b.codigo
       FROM asistencia_formativa af
@@ -65,7 +67,7 @@ export async function GET(req: Request) {
 
     // Horarios programados
     pool.query(`
-      SELECT dia_semana, hora_inicio::text, hora_fin::text, descripcion
+      SELECT id, dia_semana, hora_inicio::text, hora_fin::text, descripcion, activo
       FROM formativa_horario WHERE activo = true ORDER BY dia_semana, hora_inicio
     `),
 

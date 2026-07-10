@@ -59,7 +59,10 @@ export async function GET() {
   if (!session?.user?.bomberoId) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { rows } = await pool.query(
-    `SELECT id, fecha::text, hora_entrada::text, hora_salida::text, tipo, motivo
+    `SELECT id, fecha::text,
+            (hora_entrada AT TIME ZONE 'America/Lima')::text AS hora_entrada,
+            (hora_salida  AT TIME ZONE 'America/Lima')::text AS hora_salida,
+            tipo, motivo
      FROM asistencia_formativa
      WHERE bombero_id = $1
      ORDER BY fecha DESC, hora_entrada DESC
