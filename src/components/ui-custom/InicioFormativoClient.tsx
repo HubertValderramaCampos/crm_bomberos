@@ -41,13 +41,19 @@ export function InicioFormativoClient({
   const [notaAbierta, setNotaAbierta] = useState<number | null>(null);
   const cat = CATEGORIA_COLOR[categoria] ?? CATEGORIA_COLOR["ASPIRANTE"];
 
+  // Fecha local YYYY-MM-DD — toISOString() da la fecha en UTC, que después de
+  // las 7pm hora de Perú ya muestra "mañana" y rompe estas comparaciones.
+  function fechaLocal(fecha: Date) {
+    return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}-${String(fecha.getDate()).padStart(2, "0")}`;
+  }
+
   // Calcular racha simple de días consecutivos
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = fechaLocal(new Date());
   const fechasSet = new Set(asistencias.map(a => a.fecha));
   let racha = 0;
-  let d = new Date();
+  const d = new Date();
   while (true) {
-    const key = d.toISOString().slice(0, 10);
+    const key = fechaLocal(d);
     if (fechasSet.has(key)) { racha++; d.setDate(d.getDate() - 1); }
     else break;
   }

@@ -18,6 +18,23 @@ function distanciaMetros(lat1: number, lng1: number, lat2: number, lng2: number)
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Perú no usa horario de verano: un offset fijo de -5h sobre UTC es exacto
+// todo el año. Esto hace falta porque el proceso del servidor (Vercel) corre
+// en UTC, no en hora de Lima — new Date() con sus getters normales (locales)
+// da la hora del servidor, no la de Perú. Por eso todo el manejo de "ahora"
+// en este archivo pasa por ahoraLima() y usa SIEMPRE sus getters/setters UTC
+// (nunca los locales): tras restar 5h, esos getters "UTC" ya representan la
+// hora real de Lima.
+const OFFSET_LIMA_MS = 5 * 60 * 60 * 1000;
+
+function ahoraLima(): Date {
+  return new Date(Date.now() - OFFSET_LIMA_MS);
+}
+
+function fechaLima(d: Date): string {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
 // Determina si la hora/día actual corresponde a un horario programado, con
 // ±2h de flexibilidad. Se evalúa en JS (no en SQL) porque la comparación de
 // "hora del día" simple no alcanza: un turno puede cruzar la medianoche
@@ -30,21 +47,21 @@ async function esDiaProgramado(): Promise<boolean> {
     `SELECT dia_semana, hora_inicio::text, hora_fin::text FROM formativa_horario WHERE activo = true`
   );
 
-  const ahora = new Date();
+  const ahora = ahoraLima();
   return rows.some(h => {
     const [hI, mI] = h.hora_inicio.split(":").map(Number);
     const [hF, mF] = h.hora_fin.split(":").map(Number);
 
     for (const offsetDias of [-1, 0, 1]) {
       const base = new Date(ahora);
-      base.setDate(base.getDate() + offsetDias);
-      if (base.getDay() !== h.dia_semana) continue;
+      base.setUTCDate(base.getUTCDate() + offsetDias);
+      if (base.getUTCDay() !== h.dia_semana) continue;
 
       const inicio = new Date(base);
-      inicio.setHours(hI, mI, 0, 0);
+      inicio.setUTCHours(hI, mI, 0, 0);
       const fin = new Date(base);
-      fin.setHours(hF, mF, 0, 0);
-      if (fin <= inicio) fin.setDate(fin.getDate() + 1); // turno que cruza medianoche
+      fin.setUTCHours(hF, mF, 0, 0);
+      if (fin <= inicio) fin.setUTCDate(fin.getUTCDate() + 1); // turno que cruza medianoche
 
       const desde = new Date(inicio.getTime() - 2 * 60 * 60 * 1000);
       const hasta = new Date(fin.getTime() + 2 * 60 * 60 * 1000);
@@ -106,7 +123,7 @@ export async function POST(req: Request) {
   if (!bRows[0]?.face_descriptor)
     return NextResponse.json({ error: "Primero registra tu rostro en Entrenamiento." }, { status: 400 });
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = fechaLima(ahoraLima());
 
   // Determinar si es asistencia regular o extra
   const esProgramado = await esDiaProgramado();
@@ -125,17 +142,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Ya registraste tu entrada hoy." }, { status: 409 });
 
     await pool.query(
-      `INSERT INTO asistencia_formativa (bombero_id, lat, lng, tipo, motivo, foto_entrada_url)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [session.user.bomberoId, lat, lng, tipoAsistencia, motivo ?? null, fotoUrl ?? null]
+      `INSERT INTO asistencia_formativa (bombero_id, fecha, lat, lng, tipo, motivo, foto_entrada_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [session.user.bomberoId, today, lat, lng, tipoAsistencia, motivo ?? null, fotoUrl ?? null]
     );
     return NextResponse.json({ ok: true, tipo: "entrada", tipo_asistencia: tipoAsistencia });
   }
 
   if (tipo === "salida") {
+    // Busca la entrada abierta más reciente de hoy O ayer (no solo "hoy"
+    // exacto): alguien puede entrar antes de medianoche y recién intentar
+    // salir después — con turnos hasta las 23:00 y ±2h de margen, esto es
+    // un caso real, no un borde teórico. Si ya hay una entrada de hoy
+    // (abierta o cerrada), esa es siempre la que corresponde.
+    const ayer = fechaLima(new Date(ahoraLima().getTime() - 24 * 60 * 60 * 1000));
     const { rows: reg } = await pool.query(
-      `SELECT id, hora_salida FROM asistencia_formativa WHERE bombero_id = $1 AND fecha = $2`,
-      [session.user.bomberoId, today]
+      `SELECT id, hora_salida FROM asistencia_formativa
+       WHERE bombero_id = $1 AND fecha IN ($2, $3)
+       ORDER BY fecha DESC, hora_entrada DESC LIMIT 1`,
+      [session.user.bomberoId, today, ayer]
     );
     if (reg.length === 0)
       return NextResponse.json({ error: "Primero debes registrar tu entrada." }, { status: 400 });

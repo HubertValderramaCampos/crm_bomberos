@@ -16,6 +16,12 @@ interface Nota {
 
 const inputCls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400";
 
+// Fecha local YYYY-MM-DD — toISOString() da la fecha en UTC (5h adelantada a Perú)
+function fechaLocalHoy() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export default function NotasFormativasPage() {
   const { data: session } = useSession();
   const esAdmin = ROLES_JEFE.includes(session?.user?.rol ?? "");
@@ -29,7 +35,7 @@ export default function NotasFormativasPage() {
   const [notaAbierta,  setNotaAbierta]  = useState<number | null>(null);
   const [busq,         setBusq]         = useState("");
 
-  const [form, setForm] = useState({ titulo: "", contenido: "", calificacion: "", fecha: new Date().toISOString().slice(0, 10) });
+  const [form, setForm] = useState({ titulo: "", contenido: "", calificacion: "", fecha: fechaLocalHoy() });
   const [guardando, setGuardando] = useState(false);
   const [error,     setError]     = useState("");
 
@@ -54,7 +60,7 @@ export default function NotasFormativasPage() {
 
   function abrirCrear() {
     setEditando(null);
-    setForm({ titulo: "", contenido: "", calificacion: "", fecha: new Date().toISOString().slice(0, 10) });
+    setForm({ titulo: "", contenido: "", calificacion: "", fecha: fechaLocalHoy() });
     setError("");
     setModal(true);
   }

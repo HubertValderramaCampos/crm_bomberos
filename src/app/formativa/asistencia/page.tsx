@@ -262,11 +262,24 @@ export default function AsistenciaPage() {
     setPendiente(null);
   }
 
-  // Determinar estado del día actual
-  const hoy = new Date().toISOString().slice(0, 10);
+  // Determinar estado del día actual — con getters LOCALES, no toISOString()
+  // (que siempre da la fecha en UTC: después de las 7pm hora de Perú ya
+  // "es mañana" en UTC, y esto hacía creer que no había entrada registrada
+  // hoy, bloqueando la salida).
+  const ahoraLocal = new Date();
+  const hoy = `${ahoraLocal.getFullYear()}-${String(ahoraLocal.getMonth() + 1).padStart(2, "0")}-${String(ahoraLocal.getDate()).padStart(2, "0")}`;
+  const ayerLocal = new Date(ahoraLocal); ayerLocal.setDate(ayerLocal.getDate() - 1);
+  const ayer = `${ayerLocal.getFullYear()}-${String(ayerLocal.getMonth() + 1).padStart(2, "0")}-${String(ayerLocal.getDate()).padStart(2, "0")}`;
+
   const registroHoy = historial.find(a => a.fecha === hoy);
+  // Sesión abierta de hoy O de ayer: si alguien entró antes de medianoche y
+  // recién intenta salir después, su entrada sigue con fecha de ayer — el
+  // botón de salida debe seguir habilitado para ese caso (igual que ya lo
+  // maneja el servidor).
+  const registroAbierto = historial.find(a => (a.fecha === hoy || a.fecha === ayer) && !a.hora_salida);
   const tieneEntrada = !!registroHoy;
   const tieneSalida  = !!registroHoy?.hora_salida;
+  const puedeMarcarSalida = !!registroAbierto;
 
   function formatFecha(iso: string) {
     return new Date(iso + "T00:00:00").toLocaleDateString("es-PE", { weekday: "short", day: "2-digit", month: "short" });
@@ -288,13 +301,15 @@ export default function AsistenciaPage() {
       {/* Estado del día */}
       {fase !== "init" && fase !== "camara" && fase !== "verificando" && historial.length >= 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Hoy</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
+            Hoy{registroAbierto && !registroHoy ? " · sesión abierta desde ayer" : ""}
+          </p>
           <div className="grid grid-cols-2 gap-3">
-            <div className={`rounded-lg p-3 flex flex-col items-center gap-1 border ${tieneEntrada ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
-              <LogIn className={`w-5 h-5 ${tieneEntrada ? "text-green-600" : "text-gray-300"}`} />
+            <div className={`rounded-lg p-3 flex flex-col items-center gap-1 border ${registroAbierto || registroHoy ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+              <LogIn className={`w-5 h-5 ${registroAbierto || registroHoy ? "text-green-600" : "text-gray-300"}`} />
               <p className="text-xs font-semibold text-gray-600">Entrada</p>
-              <p className={`text-sm font-bold ${tieneEntrada ? "text-green-700" : "text-gray-300"}`}>
-                {tieneEntrada ? formatHora(registroHoy!.hora_entrada) : "—"}
+              <p className={`text-sm font-bold ${registroAbierto || registroHoy ? "text-green-700" : "text-gray-300"}`}>
+                {formatHora((registroAbierto ?? registroHoy)?.hora_entrada ?? null)}
               </p>
             </div>
             <div className={`rounded-lg p-3 flex flex-col items-center gap-1 border ${tieneSalida ? "bg-blue-50 border-blue-200" : "bg-gray-50 border-gray-200"}`}>
@@ -385,7 +400,7 @@ export default function AsistenciaPage() {
           </button>
           <button
             onClick={() => pedirUbicacion("salida")}
-            disabled={!tieneEntrada || tieneSalida}
+            disabled={!puedeMarcarSalida}
             className="flex flex-col items-center gap-2 py-4 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all"
           >
             <LogOut className="w-6 h-6" />
