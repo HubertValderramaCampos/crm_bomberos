@@ -57,12 +57,25 @@ function CeldaTooltip({ active, payload }: { active?: boolean; payload?: { paylo
   if (!active || !payload?.length) return null;
   const u = payload[0].payload;
   const c = colorEstado(u.disponibilidadPct);
+
+  const motivos = [
+    { label: "Taller",    horas: u.horasTaller },
+    { label: "Mecánico",  horas: u.horasMecanico },
+    { label: "Personal",  horas: u.horasPersonal },
+    { label: "Otro",      horas: u.horasOtro },
+  ].filter(m => m.horas >= 0.05);
+
   return (
     <div className="bg-gray-900 text-white rounded-lg px-3 py-2 shadow-xl text-xs space-y-1">
       <p className="font-bold font-mono">{u.codigo}</p>
       <p className={c.textSuave}>
-        {u.disponibilidadPct.toFixed(0)}% de tiempo en servicio
+        {u.disponibilidadPct.toFixed(0)}% de tiempo operativo
       </p>
+      {motivos.length > 0 && (
+        <p className="text-white/60">
+          Fuera por: {motivos.map(m => `${m.label} ${fmtHoras(m.horas)}`).join(" · ")}
+        </p>
+      )}
       <p className="text-white/60">Resp. promedio: {fmtMin(u.minRespuesta)}</p>
       <p className="text-white/60">{u.total} servicio{u.total === 1 ? "" : "s"} en el período</p>
       {esCaida(u) && <p className="text-red-400 font-semibold">⚠ Fuera de servicio ahora {u.motivo ? `(${u.motivo})` : ""}</p>}
@@ -79,7 +92,7 @@ export function PerformanceHeroInicio({ unidades, periodo, fecha, periodoLabel, 
   const caidas = unidades.filter(esCaida);
 
   const totalServicios = unidades.reduce((s, u) => s + u.total, 0);
-  const totalHorasFuera = unidades.reduce((s, u) => s + u.horasFuera, 0);
+  const totalHorasNoOperativo = unidades.reduce((s, u) => s + u.horasNoOperativo, 0);
   // Performance de la compañía = promedio del indicador de cada unidad, que solo
   // baja por horas fuera de servicio (ver disponibilidadPct en performanceCia.ts).
   const performancePct = totalUnidades > 0
@@ -100,7 +113,7 @@ export function PerformanceHeroInicio({ unidades, periodo, fecha, periodoLabel, 
   const kpis = [
     { icon: Percent, label: "Performance", value: `${performancePct.toFixed(0)}%`, sub: "promedio de la flota", color: colorEstado(performancePct).text },
     { icon: Clock, label: "Resp. promedio", value: fmtMin(respuestaProm), sub: "despacho → llegada", color: "text-gray-900" },
-    { icon: AlertTriangle, label: "Horas fuera", value: fmtHoras(totalHorasFuera), sub: "suma de toda la flota", color: "text-gray-900" },
+    { icon: AlertTriangle, label: "No operativo", value: fmtHoras(totalHorasNoOperativo), sub: "suma de toda la flota", color: "text-gray-900" },
     { icon: Siren, label: "Servicios", value: String(totalServicios), sub: "atendidos en el período", color: "text-gray-900" },
   ];
 
@@ -194,7 +207,7 @@ export function PerformanceHeroInicio({ unidades, periodo, fecha, periodoLabel, 
 
         {datos.length > 0 && (
           <div>
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-2">% de tiempo de servicio por unidad</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-2">% de tiempo operativo por unidad</p>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={datos} margin={{ top: 20, right: 8, left: -20, bottom: 0 }} barCategoryGap="28%">
                 <defs>
