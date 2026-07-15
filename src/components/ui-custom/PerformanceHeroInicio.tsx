@@ -19,7 +19,15 @@ interface Props {
   linkWa: string | null;
 }
 
-const UMBRAL_ALERTA = 70;
+// Semáforo de disponibilidad: 76-100% verde, 51-75% amarillo, ≤50% rojo
+const UMBRAL_VERDE = 76;
+const UMBRAL_AMARILLO = 51;
+
+function colorEstado(pct: number): { fill: string; text: string; textSuave: string } {
+  if (pct >= UMBRAL_VERDE) return { fill: "url(#perfVerde)", text: "text-green-600", textSuave: "text-green-400" };
+  if (pct >= UMBRAL_AMARILLO) return { fill: "url(#perfAmarillo)", text: "text-amber-600", textSuave: "text-amber-400" };
+  return { fill: "url(#perfRojo)", text: "text-red-600", textSuave: "text-red-400" };
+}
 
 // Orden fijo de unidades pedido por la compañía (no alfabético / no por métrica)
 const ORDEN_UNIDADES = ["M150-1", "M150-3", "AMB-150", "RESLIG-150", "CIST-150"];
@@ -48,11 +56,11 @@ function esCaida(u: UnidadPerf) {
 function CeldaTooltip({ active, payload }: { active?: boolean; payload?: { payload: UnidadPerf }[] }) {
   if (!active || !payload?.length) return null;
   const u = payload[0].payload;
-  const alerta = u.disponibilidadPct < UMBRAL_ALERTA;
+  const c = colorEstado(u.disponibilidadPct);
   return (
     <div className="bg-gray-900 text-white rounded-lg px-3 py-2 shadow-xl text-xs space-y-1">
       <p className="font-bold font-mono">{u.codigo}</p>
-      <p className={alerta ? "text-red-400" : "text-white"}>
+      <p className={c.textSuave}>
         {u.disponibilidadPct.toFixed(0)}% de tiempo en servicio
       </p>
       <p className="text-white/60">Resp. promedio: {fmtMin(u.minRespuesta)}</p>
@@ -90,10 +98,10 @@ export function PerformanceHeroInicio({ unidades, periodo, fecha, periodoLabel, 
   });
 
   const kpis = [
-    { icon: Percent, label: "Performance", value: `${performancePct.toFixed(0)}%`, sub: "promedio de la flota", alerta: performancePct < UMBRAL_ALERTA },
-    { icon: Clock, label: "Resp. promedio", value: fmtMin(respuestaProm), sub: "despacho → llegada", alerta: false },
-    { icon: AlertTriangle, label: "Horas fuera", value: fmtHoras(totalHorasFuera), sub: "suma de toda la flota", alerta: false },
-    { icon: Siren, label: "Servicios", value: String(totalServicios), sub: "atendidos en el período", alerta: false },
+    { icon: Percent, label: "Performance", value: `${performancePct.toFixed(0)}%`, sub: "promedio de la flota", color: colorEstado(performancePct).text },
+    { icon: Clock, label: "Resp. promedio", value: fmtMin(respuestaProm), sub: "despacho → llegada", color: "text-gray-900" },
+    { icon: AlertTriangle, label: "Horas fuera", value: fmtHoras(totalHorasFuera), sub: "suma de toda la flota", color: "text-gray-900" },
+    { icon: Siren, label: "Servicios", value: String(totalServicios), sub: "atendidos en el período", color: "text-gray-900" },
   ];
 
   function ir(nuevoPeriodo: Periodo, nuevaFecha: string) {
@@ -172,13 +180,13 @@ export function PerformanceHeroInicio({ unidades, periodo, fecha, periodoLabel, 
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-gray-100 border border-gray-100 rounded-lg overflow-hidden mb-5">
-          {kpis.map(({ icon: Icon, label, value, sub, alerta }) => (
+          {kpis.map(({ icon: Icon, label, value, sub, color }) => (
             <div key={label} className="bg-white px-3.5 py-3">
               <div className="flex items-center gap-1.5 mb-1">
                 <Icon className="w-3 h-3 text-gray-400" />
                 <p className="text-[9px] text-gray-400 uppercase tracking-widest font-semibold">{label}</p>
               </div>
-              <p className={`text-xl font-bold tabular-nums ${alerta ? "text-red-600" : "text-gray-900"}`}>{value}</p>
+              <p className={`text-xl font-bold tabular-nums ${color}`}>{value}</p>
               <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>
             </div>
           ))}
@@ -190,11 +198,15 @@ export function PerformanceHeroInicio({ unidades, periodo, fecha, periodoLabel, 
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={datos} margin={{ top: 20, right: 8, left: -20, bottom: 0 }} barCategoryGap="28%">
                 <defs>
-                  <linearGradient id="perfNormal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#475569" />
-                    <stop offset="100%" stopColor="#0f172a" />
+                  <linearGradient id="perfVerde" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#4ade80" />
+                    <stop offset="100%" stopColor="#15803d" />
                   </linearGradient>
-                  <linearGradient id="perfAlerta" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="perfAmarillo" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#fbbf24" />
+                    <stop offset="100%" stopColor="#b45309" />
+                  </linearGradient>
+                  <linearGradient id="perfRojo" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#f87171" />
                     <stop offset="100%" stopColor="#b91c1c" />
                   </linearGradient>
@@ -206,7 +218,7 @@ export function PerformanceHeroInicio({ unidades, periodo, fecha, periodoLabel, 
                 <Bar dataKey="disponibilidadPct" radius={[6, 6, 0, 0]} maxBarSize={56}>
                   <LabelList dataKey="disponibilidadPct" position="top" formatter={(v: string | number | boolean | null | undefined) => typeof v === "number" ? `${v.toFixed(0)}%` : ""} style={{ fontSize: 11, fontWeight: 700, fill: "#374151" }} />
                   {datos.map(u => (
-                    <Cell key={u.id} fill={u.disponibilidadPct < UMBRAL_ALERTA ? "url(#perfAlerta)" : "url(#perfNormal)"} />
+                    <Cell key={u.id} fill={colorEstado(u.disponibilidadPct).fill} />
                   ))}
                 </Bar>
               </BarChart>
