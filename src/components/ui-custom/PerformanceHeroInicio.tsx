@@ -58,22 +58,15 @@ function CeldaTooltip({ active, payload }: { active?: boolean; payload?: { paylo
   const u = payload[0].payload;
   const c = colorEstado(u.disponibilidadPct);
 
-  const motivos = [
-    { label: "Taller",    horas: u.horasTaller },
-    { label: "Mecánico",  horas: u.horasMecanico },
-    { label: "Personal",  horas: u.horasPersonal },
-    { label: "Otro",      horas: u.horasOtro },
-  ].filter(m => m.horas >= 0.05);
-
   return (
-    <div className="bg-gray-900 text-white rounded-lg px-3 py-2 shadow-xl text-xs space-y-1">
+    <div className="bg-gray-900 text-white rounded-lg px-3 py-2 shadow-xl text-xs space-y-1 max-w-[220px]">
       <p className="font-bold font-mono">{u.codigo}</p>
       <p className={c.textSuave}>
         {u.disponibilidadPct.toFixed(0)}% de tiempo operativo
       </p>
-      {motivos.length > 0 && (
+      {u.detalleNoOperativo.length > 0 && (
         <p className="text-white/60">
-          Fuera por: {motivos.map(m => `${m.label} ${fmtHoras(m.horas)}`).join(" · ")}
+          Fuera por: {u.detalleNoOperativo.map(m => `${m.razon} ${fmtHoras(m.horas)}`).join(" · ")}
         </p>
       )}
       <p className="text-white/60">Resp. promedio: {fmtMin(u.minRespuesta)}</p>
@@ -236,6 +229,34 @@ export function PerformanceHeroInicio({ unidades, periodo, fecha, periodoLabel, 
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        )}
+
+        {datos.some(u => u.detalleNoOperativo.length > 0) && (
+          <div className="mt-5 pt-4 border-t border-gray-100">
+            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold mb-2.5">Detalle de tiempo fuera de servicio</p>
+            <div className="flex flex-col gap-2.5">
+              {datos.filter(u => u.detalleNoOperativo.length > 0).map(u => {
+                const c = colorEstado(u.disponibilidadPct);
+                return (
+                  <div key={u.id} className="flex items-start gap-3 text-xs">
+                    <span className="w-20 shrink-0 font-mono font-bold text-gray-700 pt-0.5">{u.codigo}</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {u.detalleNoOperativo.map(m => (
+                        <span key={m.razon} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium ${
+                          m.razon === "En taller" ? "bg-red-50 border-red-200 text-red-700" : "bg-gray-50 border-gray-200 text-gray-600"
+                        }`}>
+                          {m.razon} <span className="tabular-nums opacity-70">{fmtHoras(m.horas)}</span>
+                        </span>
+                      ))}
+                      <span className={`inline-flex items-center px-2 py-0.5 text-[11px] font-bold tabular-nums ${c.text}`}>
+                        {u.disponibilidadPct.toFixed(0)}% operativo
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

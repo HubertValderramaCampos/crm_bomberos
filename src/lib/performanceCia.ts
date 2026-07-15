@@ -5,6 +5,8 @@ const DIAS_ES  = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","S�
 
 export type Periodo = "dia" | "semana" | "mes";
 
+export interface RazonFuera { razon: string; horas: number }
+
 export interface UnidadPerf {
   id: number;
   codigo: string;
@@ -15,12 +17,22 @@ export interface UnidadPerf {
   minRespuesta: number | null;  // minutos promedio despacho → llegada
   horasPeriodo: number;         // horas del período cubiertas por historial de estado
   horasNoOperativo: number;     // horas NO operativa en el período (taller + motivos de falla)
-  horasTaller: number;          // desglose: horas con estado EN TALLER
-  horasMecanico: number;        // desglose: desperfectos mecánicos / equipamiento / combustible
-  horasPersonal: number;        // desglose: falta de piloto / paramédico
-  horasOtro: number;            // desglose: pruebas, asepsia, etc.
+  detalleNoOperativo: RazonFuera[]; // desglose por motivo exacto, de mayor a menor impacto
   disponibilidadPct: number;    // % del período que la unidad estuvo operativa
 }
+
+// Textos de la BD (fijos, ver el historial real en estado_compania_vehiculo)
+// traducidos a algo legible para mostrar en el detalle de cada unidad.
+const RAZON_LABEL: Record<string, string> = {
+  "EN TALLER":               "En taller",
+  "DESPERFECTOS MECANICOS":  "Desperfectos mecánicos",
+  "EQUIPAMIENTO":            "Equipamiento",
+  "COMBUSTIBLE":             "Combustible",
+  "PILOTO":                  "Falta de piloto",
+  "PARAMEDICO":              "Falta de paramédico",
+  "DE PRUEBA":               "Pruebas",
+  "ASEPSIA":                 "Asepsia / limpieza",
+};
 
 export interface RequenaContacto { apellidos: string; nombres: string; grado: string; telefono: string | null }
 
@@ -90,11 +102,9 @@ export async function getPerformanceData(inicioISO: string, finISO: string) {
       // ~15-30 min). "No operativo" = EN TALLER, o cualquier motivo de falla
       // puesto aunque esté EN BASE (desperfectos, falta de piloto/paramédico,
       // etc.) — DESPACHO A EMERGENCIA no cuenta, es el momento de salir a
-      // atender, no una falla.
-      client.query<{
-        vehiculo_id: number; horas_cubiertas: number; horas_no_operativo: number;
-        horas_taller: number; horas_mecanico: number; horas_personal: number; horas_otro: number;
-      }>(`
+      // atender, no una falla. Se agrupa por el motivo EXACTO (no en 4
+      // categorías) para poder mostrar el detalle de cada causa.
+      client.query<{ vehiculo_id: number; razon: string | null; horas: number }>(`
         WITH snaps AS (
           SELECT
             ecv.vehiculo_id, ec.created_at AS ts, ecv.estado,
@@ -115,23 +125,15 @@ export async function getPerformanceData(inicioISO: string, finISO: string) {
           SELECT *,
             EXTRACT(EPOCH FROM (hasta - desde)) / 3600 AS horas,
             CASE
-              WHEN estado = 'EN TALLER' THEN 'TALLER'
-              WHEN motivo IN ('DESPERFECTOS MECANICOS', 'EQUIPAMIENTO', 'COMBUSTIBLE') THEN 'MECANICO'
-              WHEN motivo IN ('PILOTO', 'PARAMEDICO') THEN 'PERSONAL'
-              WHEN motivo IN ('DE PRUEBA', 'ASEPSIA') THEN 'OTRO'
+              WHEN estado = 'EN TALLER' THEN 'EN TALLER'
+              WHEN motivo IN ('DESPERFECTOS MECANICOS', 'EQUIPAMIENTO', 'COMBUSTIBLE', 'PILOTO', 'PARAMEDICO', 'DE PRUEBA', 'ASEPSIA') THEN motivo
               ELSE NULL
-            END AS categoria
+            END AS razon
           FROM segmentos WHERE hasta > desde
         )
-        SELECT vehiculo_id,
-          COALESCE(SUM(horas), 0)::float AS horas_cubiertas,
-          COALESCE(SUM(horas) FILTER (WHERE categoria IS NOT NULL), 0)::float AS horas_no_operativo,
-          COALESCE(SUM(horas) FILTER (WHERE categoria = 'TALLER'), 0)::float AS horas_taller,
-          COALESCE(SUM(horas) FILTER (WHERE categoria = 'MECANICO'), 0)::float AS horas_mecanico,
-          COALESCE(SUM(horas) FILTER (WHERE categoria = 'PERSONAL'), 0)::float AS horas_personal,
-          COALESCE(SUM(horas) FILTER (WHERE categoria = 'OTRO'), 0)::float AS horas_otro
+        SELECT vehiculo_id, razon, SUM(horas)::float AS horas
         FROM clasificados
-        GROUP BY vehiculo_id
+        GROUP BY vehiculo_id, razon
       `, [inicioISO, finISO]),
 
       client.query<RequenaContacto>(`
@@ -141,12 +143,24 @@ export async function getPerformanceData(inicioISO: string, finISO: string) {
       `),
     ]);
 
-    const operativoPorVehiculo = new Map(operativoRes.rows.map(r => [r.vehiculo_id, r]));
+    // Agrupar las filas planas (vehiculo_id, razon, horas) por vehículo
+    const porVehiculo = new Map<number, { horasCubiertas: number; horasNoOperativo: number; detalle: RazonFuera[] }>();
+    for (const row of operativoRes.rows) {
+      const horas = Number(row.horas);
+      const acc = porVehiculo.get(row.vehiculo_id) ?? { horasCubiertas: 0, horasNoOperativo: 0, detalle: [] };
+      acc.horasCubiertas += horas;
+      if (row.razon) {
+        acc.horasNoOperativo += horas;
+        acc.detalle.push({ razon: RAZON_LABEL[row.razon] ?? row.razon, horas });
+      }
+      porVehiculo.set(row.vehiculo_id, acc);
+    }
 
     const unidades: UnidadPerf[] = serviciosRes.rows.map(u => {
-      const op = operativoPorVehiculo.get(u.id);
-      const horasPeriodo = Math.max(1, Number(op?.horas_cubiertas ?? 0));
-      const horasNoOperativo = Number(op?.horas_no_operativo ?? 0);
+      const op = porVehiculo.get(u.id);
+      const horasPeriodo = Math.max(1, op?.horasCubiertas ?? 0);
+      const horasNoOperativo = op?.horasNoOperativo ?? 0;
+      const detalleNoOperativo = (op?.detalle ?? []).sort((a, b) => b.horas - a.horas);
       return {
         id: u.id,
         codigo: u.codigo,
@@ -157,10 +171,7 @@ export async function getPerformanceData(inicioISO: string, finISO: string) {
         minRespuesta: u.min_respuesta != null ? Number(u.min_respuesta) : null,
         horasPeriodo,
         horasNoOperativo,
-        horasTaller: Number(op?.horas_taller ?? 0),
-        horasMecanico: Number(op?.horas_mecanico ?? 0),
-        horasPersonal: Number(op?.horas_personal ?? 0),
-        horasOtro: Number(op?.horas_otro ?? 0),
+        detalleNoOperativo,
         disponibilidadPct: Math.max(0, Math.min(100, 100 - (horasNoOperativo / horasPeriodo) * 100)),
       };
     });
