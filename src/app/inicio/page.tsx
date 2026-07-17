@@ -164,7 +164,7 @@ export default async function InicioPage({
   const esOperativo = rol === "JEFE_COMPANIA" || rol === "SEGUNDO_JEFE" || rol === "OPERACIONES";
 
   const sp = await searchParams;
-  const perfPeriodo: Periodo = (["dia", "semana", "mes"].includes(sp.periodo ?? "") ? sp.periodo : "semana") as Periodo;
+  const perfPeriodo: Periodo = (["dia", "semana", "mes"].includes(sp.periodo ?? "") ? sp.periodo : "dia") as Periodo;
   const perfFecha = sp.fecha && /^\d{4}-\d{2}-\d{2}$/.test(sp.fecha) ? sp.fecha : toISO(new Date());
 
   const { inicio: inicioPerf, fin: finPerf, inicioISO, finISO } = rangoPeriodo(perfPeriodo, perfFecha);
