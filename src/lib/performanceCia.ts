@@ -25,6 +25,7 @@ export interface UnidadPerf {
 // traducidos a algo legible para mostrar en el detalle de cada unidad.
 const RAZON_LABEL: Record<string, string> = {
   "EN TALLER":               "En taller",
+  "FUERA DE SERVICIO":       "Fuera de servicio",
   "DESPERFECTOS MECANICOS":  "Desperfectos mecánicos",
   "EQUIPAMIENTO":            "Equipamiento",
   "COMBUSTIBLE":             "Combustible",
@@ -99,11 +100,12 @@ export async function getPerformanceData(inicioISO: string, finISO: string) {
 
       // Rendimiento = % del período que la unidad estuvo operativa, reconstruido
       // del historial real de estado (estado_compania_vehiculo, una foto cada
-      // ~15-30 min). "No operativo" = EN TALLER, o cualquier motivo de falla
-      // puesto aunque esté EN BASE (desperfectos, falta de piloto/paramédico,
-      // etc.) — DESPACHO A EMERGENCIA no cuenta, es el momento de salir a
-      // atender, no una falla. Se agrupa por el motivo EXACTO (no en 4
-      // categorías) para poder mostrar el detalle de cada causa.
+      // ~15-30 min). "No operativo" = cualquier motivo de falla puesto aunque
+      // esté EN BASE (desperfectos, falta de piloto/paramédico, etc.), o
+      // cualquier estado que no sea EN BASE / EN EMERGENCIA (EN TALLER,
+      // FUERA DE SERVICIO, etc.) — DESPACHO A EMERGENCIA no cuenta, es el
+      // momento de salir a atender, no una falla. Se agrupa por el motivo
+      // EXACTO (no en 4 categorías) para poder mostrar el detalle de cada causa.
       client.query<{ vehiculo_id: number; razon: string | null; horas: number }>(`
         WITH snaps AS (
           SELECT
@@ -125,8 +127,8 @@ export async function getPerformanceData(inicioISO: string, finISO: string) {
           SELECT *,
             EXTRACT(EPOCH FROM (hasta - desde)) / 3600 AS horas,
             CASE
-              WHEN estado = 'EN TALLER' THEN 'EN TALLER'
               WHEN motivo IN ('DESPERFECTOS MECANICOS', 'EQUIPAMIENTO', 'COMBUSTIBLE', 'PILOTO', 'PARAMEDICO', 'DE PRUEBA', 'ASEPSIA') THEN motivo
+              WHEN estado NOT IN ('EN BASE', 'EN EMERGENCIA') THEN estado
               ELSE NULL
             END AS razon
           FROM segmentos WHERE hasta > desde
