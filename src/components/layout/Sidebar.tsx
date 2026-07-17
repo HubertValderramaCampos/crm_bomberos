@@ -9,7 +9,7 @@ import {
   GraduationCap, CalendarCheck, BookOpen, Stethoscope, Clock,
   LogOut, ChevronRight, ShieldCheck, TrendingUp,
   Scroll, Gift, CalendarDays, Building2, ScanLine, ChevronDown, Lock,
-  Briefcase, Tag, Heart, ClipboardList, Award,
+  Briefcase, Tag, Heart, ClipboardList, Award, BedDouble,
 } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
 import { ROLES_JEFE } from "@/lib/roles";
@@ -17,7 +17,7 @@ import { ROLES_JEFE } from "@/lib/roles";
 type NavItem = { label: string; href: string; icon: React.ElementType; roles: string[]; seccion?: string; rachaMin?: number };
 type NavSection = { title: string; roles?: string[]; items: NavItem[] };
 
-const TODOS = ["JEFE_COMPANIA","SEGUNDO_JEFE","ADMINISTRACION","SERVICIOS_GENERALES","INSTRUCCION","SANIDAD","OPERACIONES","IMAGEN","BOMBERO"];
+const TODOS = ["JEFE_COMPANIA","SEGUNDO_JEFE","ADMINISTRACION","SERVICIOS_GENERALES","INSTRUCCION","SANIDAD","OPERACIONES","IMAGEN","BOMBERO","JEFE_GUARDIA"];
 const OPERATIVOS = ["JEFE_COMPANIA","SEGUNDO_JEFE","OPERACIONES"];
 // Para items con permisos individuales: todos los roles pueden verlos si tienen el permiso
 const OPERATIVOS_Y_BOMBERO = TODOS;
@@ -31,6 +31,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: "__root__",
     items: [
       { label: "Inicio",        href: "/inicio",                      icon: Home,        roles: TODOS },
+      { label: "Guardias Nocturnas", href: "/guardias",               icon: BedDouble,   roles: TODOS },
       { label: "Mi Perfil",     href: "/perfil",                      icon: UserCircle,  roles: ["BOMBERO"] },
       { label: "Programación",  href: "/administracion/programacion", icon: CalendarDays, roles: TODOS, seccion: "programacion" },
     ],

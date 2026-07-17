@@ -9,6 +9,7 @@ export const ROLES = {
   OPERACIONES:         "OPERACIONES",
   IMAGEN:              "IMAGEN",
   BOMBERO:             "BOMBERO",
+  JEFE_GUARDIA:        "JEFE_GUARDIA",
 } as const;
 
 export type Rol = (typeof ROLES)[keyof typeof ROLES];
@@ -23,6 +24,7 @@ export const ROL_LABELS: Record<Rol, string> = {
   OPERACIONES:         "Área de Operaciones",
   IMAGEN:              "Área de Imagen",
   BOMBERO:             "Efectivo",
+  JEFE_GUARDIA:        "Jefe de Guardia",
 };
 
 export const PATH_AREA_MAP: Record<string, string[]> = {
@@ -53,6 +55,7 @@ export function getDefaultPath(rol: string): string {
     OPERACIONES:         "/operaciones",
     IMAGEN:              "/imagen",
     BOMBERO:             "/mi-perfil",
+    JEFE_GUARDIA:        "/guardias",
   };
   return map[rol] ?? "/dashboard";
 }

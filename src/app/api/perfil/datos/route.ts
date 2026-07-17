@@ -16,6 +16,7 @@ export async function PUT(req: NextRequest) {
     contacto_emergencia_nombre?: string;
     contacto_emergencia_telefono?: string;
     perfil_completado?: boolean;
+    sexo?: string;
   };
   try {
     body = await req.json();
@@ -23,11 +24,14 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  const { fecha_nacimiento, correo, telefono, contacto_emergencia_nombre, contacto_emergencia_telefono, perfil_completado } = body;
+  const { fecha_nacimiento, correo, telefono, contacto_emergencia_nombre, contacto_emergencia_telefono, perfil_completado, sexo } = body;
 
   // Validar correo básico si viene
   if (correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
     return NextResponse.json({ error: "Correo inválido" }, { status: 400 });
+  }
+  if (sexo && sexo !== "M" && sexo !== "F") {
+    return NextResponse.json({ error: "Sexo inválido" }, { status: 400 });
   }
 
   const client = await pool.connect();
@@ -39,7 +43,8 @@ export async function PUT(req: NextRequest) {
         telefono                     = COALESCE($3, telefono),
         contacto_emergencia_nombre   = COALESCE($4, contacto_emergencia_nombre),
         contacto_emergencia_telefono = COALESCE($5, contacto_emergencia_telefono),
-        perfil_completado            = CASE WHEN $6 = true THEN true ELSE perfil_completado END
+        perfil_completado            = CASE WHEN $6 = true THEN true ELSE perfil_completado END,
+        sexo                         = COALESCE($8, sexo)
       WHERE id = $7
     `, [
       fecha_nacimiento || null,
@@ -49,6 +54,7 @@ export async function PUT(req: NextRequest) {
       contacto_emergencia_telefono || null,
       perfil_completado ?? false,
       session.user.bomberoId,
+      sexo || null,
     ]);
 
     return NextResponse.json({ ok: true });
