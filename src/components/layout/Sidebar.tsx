@@ -31,7 +31,6 @@ const NAV_SECTIONS: NavSection[] = [
     title: "__root__",
     items: [
       { label: "Inicio",        href: "/inicio",                      icon: Home,        roles: TODOS },
-      { label: "Guardias Nocturnas", href: "/guardias",               icon: BedDouble,   roles: TODOS },
       { label: "Mi Perfil",     href: "/perfil",                      icon: UserCircle,  roles: ["BOMBERO"] },
       { label: "Programación",  href: "/administracion/programacion", icon: CalendarDays, roles: TODOS, seccion: "programacion" },
     ],
@@ -47,6 +46,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Asistencias",          href: "/operaciones/asistencias",  icon: CalendarCheck, roles: OPERATIVOS_Y_BOMBERO,   seccion: "asistencias" },
       { label: "Análisis",             href: "/operaciones/analisis",     icon: BarChart3,     roles: OPERATIVOS_Y_BOMBERO,   seccion: "analisis" },
       { label: "Eval. de Emergencias",  href: "/operaciones/aph",          icon: Stethoscope,   roles: TODOS, seccion: "aph" },
+      { label: "Guardias Nocturnas",    href: "/guardias",                 icon: BedDouble,     roles: TODOS },
     ],
   },
   {

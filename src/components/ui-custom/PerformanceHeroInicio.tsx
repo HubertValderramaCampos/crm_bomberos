@@ -2,8 +2,9 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useTransition } from "react";
+import Link from "next/link";
 import {
-  Gauge, AlertTriangle, MessageCircle, Siren, Clock, Percent,
+  Gauge, AlertTriangle, BedDouble, Siren, Clock, Percent,
   ChevronLeft, ChevronRight, CalendarDays,
 } from "lucide-react";
 import {
@@ -16,7 +17,6 @@ interface Props {
   periodo: Periodo;
   fecha: string;
   periodoLabel: string;
-  linkWa: string | null;
 }
 
 // Semáforo de disponibilidad: 76-100% verde, 51-75% amarillo, ≤50% rojo
@@ -76,7 +76,7 @@ function CeldaTooltip({ active, payload }: { active?: boolean; payload?: { paylo
   );
 }
 
-export function PerformanceHeroInicio({ unidades, periodo, fecha, periodoLabel, linkWa }: Props) {
+export function PerformanceHeroInicio({ unidades, periodo, fecha, periodoLabel }: Props) {
   const router   = useRouter();
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
@@ -260,21 +260,17 @@ export function PerformanceHeroInicio({ unidades, periodo, fecha, periodoLabel, 
           </div>
         )}
 
-        {linkWa && (
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-5 pt-4 border-t border-gray-100">
-            <a
-              href={linkWa}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-lg transition-colors shrink-0"
-            >
-              <MessageCircle className="w-4 h-4" /> Reservar guardia
-            </a>
-            <p className="text-xs text-gray-400 leading-snug">
-              Más guardias cubiertas significan más unidades disponibles y mejor tiempo de respuesta.
-            </p>
-          </div>
-        )}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-5 pt-4 border-t border-gray-100">
+          <Link
+            href="/guardias"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-lg transition-colors shrink-0"
+          >
+            <BedDouble className="w-4 h-4" /> Pedir guardia
+          </Link>
+          <p className="text-xs text-gray-400 leading-snug">
+            Más guardias cubiertas significan más unidades disponibles y mejor tiempo de respuesta.
+          </p>
+        </div>
       </div>
     </div>
   );

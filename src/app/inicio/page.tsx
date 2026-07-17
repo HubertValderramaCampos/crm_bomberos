@@ -8,7 +8,7 @@ import { ProgresoCard } from "@/components/ui-custom/ProgresoCard";
 import { PerformanceHeroInicio } from "@/components/ui-custom/PerformanceHeroInicio";
 import { HORAS_REGLAMENTO } from "@/lib/reglamento";
 import { calcularRacha } from "@/lib/racha";
-import { type Periodo, toISO, rangoPeriodo, labelPeriodo, getPerformanceData, linkWhatsappRequena } from "@/lib/performanceCia";
+import { type Periodo, toISO, rangoPeriodo, labelPeriodo, getPerformanceData } from "@/lib/performanceCia";
 import {
   Users, Siren, Clock, Truck, ShieldCheck,
   CalendarCheck, AlertTriangle, Award,
@@ -176,7 +176,6 @@ export default async function InicioPage({
   ]);
 
   const performanceLabel = labelPeriodo(perfPeriodo, inicioPerf, finPerf);
-  const linkWaPerformance = linkWhatsappRequena(performance.requena);
 
   // Nombre para el saludo: primero apellido real de DB, fallback a token
   const primerApellido = data?.nombreMostrar
@@ -262,7 +261,6 @@ export default async function InicioPage({
         periodo={perfPeriodo}
         fecha={perfFecha}
         periodoLabel={performanceLabel}
-        linkWa={linkWaPerformance}
       />
 
       {/* ── SECCIÓN BOMBERO — layout 2 columnas ── */}
