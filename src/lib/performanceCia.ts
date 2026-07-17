@@ -31,6 +31,7 @@ const RAZON_LABEL: Record<string, string> = {
   "COMBUSTIBLE":             "Combustible",
   "PILOTO":                  "Falta de piloto",
   "PARAMEDICO":              "Falta de paramédico",
+  "SIN PERSONAL":            "Sin personal disponible",
   "DE PRUEBA":               "Pruebas",
   "ASEPSIA":                 "Asepsia / limpieza",
 };
@@ -127,7 +128,7 @@ export async function getPerformanceData(inicioISO: string, finISO: string) {
           SELECT *,
             EXTRACT(EPOCH FROM (hasta - desde)) / 3600 AS horas,
             CASE
-              WHEN motivo IN ('DESPERFECTOS MECANICOS', 'EQUIPAMIENTO', 'COMBUSTIBLE', 'PILOTO', 'PARAMEDICO', 'DE PRUEBA', 'ASEPSIA') THEN motivo
+              WHEN motivo IN ('DESPERFECTOS MECANICOS', 'EQUIPAMIENTO', 'COMBUSTIBLE', 'PILOTO', 'PARAMEDICO', 'DE PRUEBA', 'ASEPSIA', 'SIN PERSONAL') THEN motivo
               WHEN estado NOT IN ('EN BASE', 'EN EMERGENCIA') THEN estado
               ELSE NULL
             END AS razon
