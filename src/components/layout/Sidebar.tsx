@@ -9,7 +9,7 @@ import {
   GraduationCap, CalendarCheck, BookOpen, Stethoscope, Clock,
   LogOut, ChevronRight, ShieldCheck, TrendingUp,
   Scroll, Gift, CalendarDays, Building2, ScanLine, ChevronDown, Lock,
-  Briefcase, Tag, Heart, ClipboardList, Award, BedDouble,
+  Briefcase, Tag, Heart, ClipboardList, Award, BedDouble, ClipboardCheck,
 } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
 import { ROLES_JEFE } from "@/lib/roles";
@@ -47,6 +47,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Análisis",             href: "/operaciones/analisis",     icon: BarChart3,     roles: OPERATIVOS_Y_BOMBERO,   seccion: "analisis" },
       { label: "Eval. de Emergencias",  href: "/operaciones/aph",          icon: Stethoscope,   roles: TODOS, seccion: "aph" },
       { label: "Guardias Nocturnas",    href: "/guardias",                 icon: BedDouble,     roles: TODOS },
+      { label: "Checklist de Unidades", href: "/checklist",                icon: ClipboardCheck, roles: TODOS },
     ],
   },
   {
@@ -107,7 +108,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
 
     // Aspirantes y postulantes solo ven Gestión Formativa (no las demás secciones)
     if (esFormativo) {
-      const rutasFormativas = ["/formativa/inicio", "/formativa/entrenar", "/formativa/asistencia"];
+      const rutasFormativas = ["/formativa/inicio", "/formativa/entrenar", "/formativa/asistencia", "/checklist"];
       return rutasFormativas.includes(item.href);
     }
 
