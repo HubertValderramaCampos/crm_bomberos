@@ -6,6 +6,7 @@ import {
   ArrowLeft, CheckCircle2, XCircle, AlertTriangle, Circle,
   Loader2, ClipboardCheck, Camera, X,
 } from "lucide-react";
+import { EstructuraDistribucionM1501, slugSeccion } from "./EstructuraDistribucionM1501";
 
 type EstadoItem = "PENDIENTE" | "BUENO" | "MALO" | "FALTA";
 
@@ -213,9 +214,11 @@ export function ChecklistDetalleClient({ registroId }: { registroId: string }) {
         )}
       </div>
 
+      {registro.vehiculo_codigo === "M150-1" && <EstructuraDistribucionM1501 />}
+
       {/* Ítems por sección */}
       {secciones.map(([seccion, items]) => (
-        <div key={seccion} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div key={seccion} id={slugSeccion(seccion)} className="bg-white rounded-xl border border-gray-200 overflow-hidden scroll-mt-4">
           <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60">
             <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">{seccion}</h2>
           </div>
