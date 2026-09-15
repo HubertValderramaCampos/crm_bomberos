@@ -116,30 +116,34 @@ export function EstructuraDistribucionM1501() {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="px-5 py-3 flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-100">
+        <MapPinned className="w-3.5 h-3.5 text-red-700" />
+        Estructura de distribución funcional
+      </div>
+
+      <div className="px-5 pt-4 pb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {IMAGENES.map(img => (
+            <div key={img.src} className="space-y-1.5">
+              <div className="relative w-full aspect-[4/3] bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                <Image src={img.src} alt={img.alt} fill sizes="(max-width: 640px) 100vw, 33vw" className="object-contain" />
+              </div>
+              <p className="text-[11px] text-gray-400 text-center">{img.caption}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <button
         onClick={() => setAbierto(a => !a)}
-        className="w-full flex items-center justify-between gap-2 px-5 py-3 hover:bg-gray-50/60 transition-colors"
+        className="w-full flex items-center justify-between gap-2 px-5 py-2.5 border-t border-gray-100 hover:bg-gray-50/60 transition-colors"
       >
-        <span className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-          <MapPinned className="w-3.5 h-3.5 text-red-700" />
-          Estructura de distribución funcional
-        </span>
+        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Detalle de cada rack</span>
         <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${abierto ? "rotate-180" : ""}`} />
       </button>
 
       {abierto && (
-        <div className="px-5 pb-5 pt-1 space-y-4 border-t border-gray-100">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {IMAGENES.map(img => (
-              <div key={img.src} className="space-y-1.5">
-                <div className="relative w-full aspect-[4/3] bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
-                  <Image src={img.src} alt={img.alt} fill sizes="(max-width: 640px) 100vw, 33vw" className="object-contain" />
-                </div>
-                <p className="text-[11px] text-gray-400 text-center">{img.caption}</p>
-              </div>
-            ))}
-          </div>
-
+        <div className="px-5 pb-5 pt-1">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {ZONAS.map(z => (
               <button
