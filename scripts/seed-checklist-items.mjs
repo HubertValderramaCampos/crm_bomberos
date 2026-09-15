@@ -159,6 +159,60 @@ function extractItems(rows) {
   return items;
 }
 
+// Orden de secciones de M150-1 según "ESTRUCTURA DE DISTRIBUCION MAQ150-1 2026.pdf"
+// (CABINA -> RACK 01..09 -> ROOF). El xlsx trae, además, "RACK IZQ"/"RACK DER" que
+// no existen en el PDF, y algunos ítems catalogados en un rack cuya descripción en
+// el PDF no les corresponde.
+const SECCION_ORDEN_M150_1 = [
+  "CABINA, EPRAS Y MALETIN DE ABORDAJE",
+  "RACK N° 01",
+  "RACK N° 02",
+  "RACK N° 03",
+  "RACK N° 04",
+  "RACK N° 05",
+  "RACK N° 06",
+  "RACK N° 07",
+  "RACK N° 08",
+  "RACK N° 09",
+  "ROOF, MANGUERAS Y VARIOS",
+];
+
+// Reasignaciones puntuales (seccion original||articulo -> seccion destino) para que
+// cada ítem quede en el rack cuya descripción del PDF le corresponde.
+const RESECCIONAR_M150_1 = new Map([
+  ["RACK N° 03||ESLINGA DE 1.5 M", "RACK N° 05"],
+  ["RACK N° 03||ESLINGA DE 2 M", "RACK N° 05"],
+  ["RACK N° 03||ESLINGA DE 2.5 M", "RACK N° 05"],
+  ["RACK N° 03||ESLINGA DE 6 M", "RACK N° 05"],
+  ["RACK N° 03||ESLINGA DE 9 M", "RACK N° 05"],
+  ["RACK N° 03||ESLINGA DELGADA", "RACK N° 05"],
+  ["RACK N° 03||GRILLETES PEQUEÑOS", "RACK N° 05"],
+  ["RACK N° 03||GRILLETE GRANDE", "RACK N° 05"],
+  ["RACK N° 03||CADENA DE 3/8 CON DOBLE GANCHO", "RACK N° 05"],
+  ["RACK N° 05||MANGUERA DE 2 1/2\"", "ROOF, MANGUERAS Y VARIOS"],
+  ["RACK N° 08||GUANTES DIELECTRICOS (BOLSA + SOBREGUANTES)", "RACK N° 09"],
+  ["RACK N° 08||PRENSA PARA MANGUERA CON LINEA A TIERRA", "RACK N° 09"],
+  ["RACK N° 08||ESTABILIZADORES VERTICALES (MARCA HURST) FUNDA COLOR AZUL", "RACK N° 09"],
+  ["RACK N° 08||ESTABILIZADORES VERTICALES (MARCA HOLMATRO) FUNDA COLOR ANARANJADO", "RACK N° 09"],
+]);
+
+function normalizarSeccionesM150_1(items) {
+  const CABINA = "CABINA, EPRAS Y MALETIN DE ABORDAJE";
+  for (const it of items) {
+    const seccionOriginal = it.seccion;
+    if (seccionOriginal === "RACK IZQ" || seccionOriginal === "RACK DER") it.seccion = CABINA;
+    const destino = RESECCIONAR_M150_1.get(`${seccionOriginal}||${it.articulo}`);
+    if (destino) it.seccion = destino;
+  }
+  items.sort((a, b) => {
+    const ia = SECCION_ORDEN_M150_1.indexOf(a.seccion);
+    const ib = SECCION_ORDEN_M150_1.indexOf(b.seccion);
+    if (ia !== ib) return ia - ib;
+    return a.orden - b.orden; // conserva el orden relativo original dentro de cada sección
+  });
+  items.forEach((it, i) => { it.orden = i + 1; });
+}
+
 function assertIntegro(items, maxItem, codigo) {
   if (items.length !== maxItem) {
     throw new Error(`${codigo}: se esperaban ${maxItem} ítems, se extrajeron ${items.length}`);
@@ -183,6 +237,7 @@ async function main() {
     const sharedStrings = parseSharedStrings(dir);
     const rows = parseSheetRows(dir, sharedStrings);
     const items = extractItems(rows);
+    if (codigo === "M150-1") normalizarSeccionesM150_1(items);
     assertIntegro(items, maxItem, codigo);
     fs.rmSync(dir, { recursive: true, force: true });
 
@@ -212,6 +267,11 @@ async function main() {
       if (vRes.rows.length === 0) throw new Error(`No existe vehiculo con codigo ${codigo}`);
       const vehiculoId = vRes.rows[0].id;
 
+      // OJO: esto borra y reinserta con ids nuevos. Si ya existen checklist_registro
+      // para este vehículo, checklist_registro_item.item_id quedará apuntando a ids
+      // que ya no existen (la FK lo va a rechazar y hace ROLLBACK, no corrompe nada,
+      // pero el --apply va a fallar). Para corregir secciones/orden sin perder el
+      // historial hay que hacer UPDATE por id en vez de DELETE+INSERT.
       await client.query("BEGIN");
       await client.query(`DELETE FROM checklist_item WHERE vehiculo_id = $1`, [vehiculoId]);
       for (const it of items) {
