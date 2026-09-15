@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, CheckCircle2, XCircle, AlertTriangle, Circle,
-  Loader2, ClipboardCheck, Camera, X,
+  Loader2, ClipboardCheck, Camera, X, ChevronLeft, ChevronRight,
 } from "lucide-react";
-import { EstructuraDistribucionM1501, slugSeccion } from "./EstructuraDistribucionM1501";
+import { ReferenciaSeccion } from "./EstructuraDistribucionM1501";
 
 type EstadoItem = "PENDIENTE" | "BUENO" | "MALO" | "FALTA";
 
@@ -40,12 +40,19 @@ const ESTADO_UI: Record<EstadoItem, { label: string; icon: typeof Circle; active
   FALTA:     { label: "Falta", icon: AlertTriangle, activeCls: "bg-amber-500 text-white border-amber-500" },
 };
 
+function estadoSeccion(items: RegistroItem[]): "pendiente" | "alerta" | "ok" {
+  if (items.some(i => i.estado === "PENDIENTE")) return "pendiente";
+  if (items.some(i => i.estado === "MALO" || i.estado === "FALTA")) return "alerta";
+  return "ok";
+}
+
 export function ChecklistDetalleClient({ registroId }: { registroId: string }) {
   const [detalle, setDetalle] = useState<Detalle | null>(null);
   const [error, setError] = useState("");
   const [completando, setCompletando] = useState(false);
   const [obsGeneral, setObsGeneral] = useState("");
   const [efectivoMando, setEfectivoMando] = useState("");
+  const [paso, setPaso] = useState(0);
 
   useEffect(() => {
     fetch(`/api/checklist/registros/${registroId}`)
@@ -161,6 +168,12 @@ export function ChecklistDetalleClient({ registroId }: { registroId: string }) {
   const faltas = detalle.items.filter(i => i.estado === "FALTA").length;
   const marcados = detalle.items.filter(i => i.estado !== "PENDIENTE").length;
 
+  const totalPasos = secciones.length;
+  const indiceActivo = Math.min(paso, Math.max(totalPasos - 1, 0));
+  const pasoActivo = secciones[indiceActivo];
+  const seccionActual = pasoActivo?.[0] ?? "";
+  const itemsActuales = pasoActivo?.[1] ?? [];
+
   return (
     <div className="space-y-5 max-w-3xl pb-10">
       <Link href="/checklist" className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 w-fit">
@@ -214,29 +227,72 @@ export function ChecklistDetalleClient({ registroId }: { registroId: string }) {
         )}
       </div>
 
-      {registro.vehiculo_codigo === "M150-1" && <EstructuraDistribucionM1501 />}
-
-      {/* Ítems por sección */}
-      {secciones.map(([seccion, items]) => (
-        <div key={seccion} id={slugSeccion(seccion)} className="bg-white rounded-xl border border-gray-200 overflow-hidden scroll-mt-4">
-          <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60">
-            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">{seccion}</h2>
+      {/* Ítems paso a paso, una sección a la vez */}
+      {totalPasos > 0 && (
+        <div className="space-y-3">
+          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-gray-400">Paso {indiceActivo + 1} de {totalPasos}</p>
+              <p className="text-xs font-bold text-gray-900 text-right">{seccionActual}</p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {secciones.map(([sec, items], i) => {
+                const activo = i === indiceActivo;
+                const est = estadoSeccion(items);
+                return (
+                  <button
+                    key={sec}
+                    onClick={() => setPaso(i)}
+                    title={sec}
+                    aria-label={`Ir a ${sec}`}
+                    className={`h-2 rounded-full transition-all ${activo ? "w-6 bg-red-700" : "w-2 " + (
+                      est === "ok" ? "bg-green-500" : est === "alerta" ? "bg-amber-400" : "bg-gray-200"
+                    )}`}
+                  />
+                );
+              })}
+            </div>
           </div>
-          <div className="divide-y divide-gray-50">
-            {items.map(it => (
-              <ItemRow
-                key={it.id}
-                item={it}
-                puedeEditar={puedeEditar}
-                onMarcar={estado => marcarItem(it.id, estado)}
-                onGuardarObs={obs => guardarObservacionItem(it.id, obs)}
-                onSubirFoto={file => subirFotoItem(it.id, file)}
-                onQuitarFoto={() => quitarFotoItem(it.id)}
-              />
-            ))}
+
+          <ReferenciaSeccion seccion={seccionActual} />
+
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60">
+              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">{seccionActual}</h2>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {itemsActuales.map(it => (
+                <ItemRow
+                  key={it.id}
+                  item={it}
+                  puedeEditar={puedeEditar}
+                  onMarcar={estado => marcarItem(it.id, estado)}
+                  onGuardarObs={obs => guardarObservacionItem(it.id, obs)}
+                  onSubirFoto={file => subirFotoItem(it.id, file)}
+                  onQuitarFoto={() => quitarFotoItem(it.id)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPaso(p => Math.max(0, p - 1))}
+              disabled={indiceActivo === 0}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-gray-600 disabled:opacity-30 hover:border-gray-300 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" /> Anterior
+            </button>
+            <button
+              onClick={() => setPaso(p => Math.min(totalPasos - 1, p + 1))}
+              disabled={indiceActivo === totalPasos - 1}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-gray-600 disabled:opacity-30 hover:border-gray-300 transition-colors"
+            >
+              Siguiente <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
-      ))}
+      )}
 
       {/* Observaciones generales */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-2">
