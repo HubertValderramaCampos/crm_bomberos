@@ -9,7 +9,7 @@ import {
   GraduationCap, CalendarCheck, BookOpen, Stethoscope, Clock,
   LogOut, ChevronRight, ShieldCheck, TrendingUp,
   Scroll, Gift, CalendarDays, Building2, ScanLine, ChevronDown, Lock,
-  Briefcase, Tag, Heart, ClipboardList, Award, BedDouble, ClipboardCheck,
+  Briefcase, Tag, Heart, ClipboardList, Award, BedDouble, ClipboardCheck, ListChecks,
 } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
 import { ROLES_JEFE } from "@/lib/roles";
@@ -48,6 +48,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Eval. de Emergencias",  href: "/operaciones/aph",          icon: Stethoscope,   roles: TODOS, seccion: "aph" },
       { label: "Guardias Nocturnas",    href: "/guardias",                 icon: BedDouble,     roles: TODOS },
       { label: "Checklist de Unidades", href: "/checklist",                icon: ClipboardCheck, roles: TODOS },
+      { label: "Evaluación de Práctica", href: "/evaluacion-practica",     icon: ListChecks,    roles: TODOS },
     ],
   },
   {
