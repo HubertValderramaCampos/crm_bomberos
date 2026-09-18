@@ -10,6 +10,13 @@ import { AsistenciasCharts } from "@/components/ui-custom/AsistenciasCharts";
 const MESES_ES = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const MESES_CORTO = ["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
+// Semáforo de cumplimiento: 0-50% rojo, 51-85% amarillo, 86-100% verde.
+function nivelCumplimiento(pct: number) {
+  if (pct <= 50) return { text: "text-red-600",   bar: "bg-red-500",   bg: "bg-red-50",   border: "border-red-200",   iconBg: "bg-red-600"   };
+  if (pct <= 85) return { text: "text-amber-600", bar: "bg-amber-400", bg: "bg-amber-50", border: "border-amber-200", iconBg: "bg-amber-500" };
+  return          { text: "text-green-600",  bar: "bg-green-500", bg: "bg-green-50", border: "border-green-200", iconBg: "bg-green-600" };
+}
+
 async function getAsistenciasData(mes: number, anio: number) {
   const client = await pool.connect();
   try {
@@ -227,14 +234,37 @@ export default async function AsistenciasPage({
         </div>
       </div>
 
+      {/* Cumplimiento reglamentario — destacado, tipo semáforo */}
+      {(() => {
+        const nivel = nivelCumplimiento(pctCumple);
+        return (
+          <div className={`rounded-2xl border-2 p-5 flex flex-col sm:flex-row sm:items-center gap-4 ${nivel.bg} ${nivel.border}`}>
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${nivel.iconBg}`}>
+              <TrendingUp className="w-8 h-8 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Cumplimiento Reglamentario</p>
+              <p className={`text-6xl font-black leading-none mt-1 ${nivel.text}`}>{pctCumple}%</p>
+              <p className="text-sm font-medium text-gray-600 mt-1.5">
+                {data.totalCumple} de {data.totalCumple + data.totalNoCumple} bomberos alcanzan la meta de horas — {MESES_ES[mes]} {anio}
+              </p>
+            </div>
+            <div className="flex sm:flex-col gap-3 sm:gap-1.5 text-xs font-semibold text-gray-500 shrink-0">
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> 0–50%</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400" /> 51–85%</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> 86–100%</span>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* KPIs del mes */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { icon: Users,        label: "Bomberos activos",   value: data.actual?.bomberos ?? "—",                           sub: `con registro ${MESES_ES[mes]}`,           color: "text-blue-600"   },
           { icon: Clock,        label: "Horas totales",       value: data.actual ? `${data.actual.totalHoras.toLocaleString()}h` : "—", sub: `promedio: ${data.actual?.promHoras ?? "—"}h`, color: "text-purple-600" },
           { icon: CalendarCheck,label: "Días de asistencia",  value: data.actual?.totalDias ?? "—",                          sub: "suma de todos los bomberos",             color: "text-amber-600"  },
           { icon: Siren,        label: "Emergencias",         value: data.actual?.totalEmerg ?? "—",                         sub: "partes reales del mes",                  color: "text-red-600"    },
-          { icon: TrendingUp,   label: "Cumple reglamento",   value: `${pctCumple}%`,                                        sub: `${data.totalCumple} de ${data.totalCumple + data.totalNoCumple}`, color: pctCumple >= 70 ? "text-green-600" : "text-amber-600" },
         ].map(({ icon: Icon, label, value, sub, color }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-200 px-4 py-3">
             <div className="flex items-center gap-1.5 mb-1">
@@ -287,9 +317,9 @@ export default async function AsistenciasPage({
             </thead>
             <tbody className="divide-y divide-gray-50">
               {data.detalleMes.map((b, i) => {
-                const meta = { "Seccionario": 30, "SubTeniente CBP": 20, "Teniente CBP": 20, "Capitán CBP": 10, "Tnte Brigadier": 5, "Brigadier": 1 }[b.grado] ?? 20;
-                const pct  = Math.min(100, Math.round((b.horas_acumuladas / meta) * 100));
-                const ok   = b.horas_acumuladas >= meta;
+                const meta  = { "Seccionario": 30, "SubTeniente CBP": 20, "Teniente CBP": 20, "Capitán CBP": 10, "Tnte Brigadier": 5, "Brigadier": 1 }[b.grado] ?? 20;
+                const pct   = Math.min(100, Math.round((b.horas_acumuladas / meta) * 100));
+                const nivel = nivelCumplimiento(pct);
                 return (
                   <tr key={b.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 text-xs text-gray-400 font-medium">{i + 1}</td>
@@ -307,14 +337,9 @@ export default async function AsistenciasPage({
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${ok ? "bg-green-500" : pct >= 60 ? "bg-amber-400" : "bg-red-500"}`}
-                            style={{ width: `${pct}%` }}
-                          />
+                          <div className={`h-full rounded-full ${nivel.bar}`} style={{ width: `${pct}%` }} />
                         </div>
-                        <span className={`text-xs font-semibold ${ok ? "text-green-600" : pct >= 60 ? "text-amber-600" : "text-red-500"}`}>
-                          {pct}%
-                        </span>
+                        <span className={`text-xs font-semibold ${nivel.text}`}>{pct}%</span>
                       </div>
                     </td>
                   </tr>

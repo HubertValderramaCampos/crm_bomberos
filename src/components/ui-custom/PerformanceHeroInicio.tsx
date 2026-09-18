@@ -19,14 +19,21 @@ interface Props {
   periodoLabel: string;
 }
 
-// Semáforo de disponibilidad: 76-100% verde, 51-75% amarillo, ≤50% rojo
-const UMBRAL_VERDE = 76;
+// Semáforo de disponibilidad: 86-100% verde, 51-85% amarillo, 0-50% rojo
+const UMBRAL_VERDE = 86;
 const UMBRAL_AMARILLO = 51;
 
 function colorEstado(pct: number): { fill: string; text: string; textSuave: string } {
   if (pct >= UMBRAL_VERDE) return { fill: "url(#perfVerde)", text: "text-green-600", textSuave: "text-green-400" };
   if (pct >= UMBRAL_AMARILLO) return { fill: "url(#perfAmarillo)", text: "text-amber-600", textSuave: "text-amber-400" };
   return { fill: "url(#perfRojo)", text: "text-red-600", textSuave: "text-red-400" };
+}
+
+// Estilos de la tarjeta grande de Performance, a juego con el semáforo.
+function estiloHero(pct: number): { bg: string; border: string; iconBg: string; text: string } {
+  if (pct >= UMBRAL_VERDE) return { bg: "bg-green-50", border: "border-green-200", iconBg: "bg-green-600", text: "text-green-600" };
+  if (pct >= UMBRAL_AMARILLO) return { bg: "bg-amber-50", border: "border-amber-200", iconBg: "bg-amber-500", text: "text-amber-600" };
+  return { bg: "bg-red-50", border: "border-red-200", iconBg: "bg-red-600", text: "text-red-600" };
 }
 
 // Orden fijo de unidades pedido por la compañía (no alfabético / no por métrica)
@@ -104,11 +111,11 @@ export function PerformanceHeroInicio({ unidades, periodo, fecha, periodoLabel }
   });
 
   const kpis = [
-    { icon: Percent, label: "Performance", value: `${performancePct.toFixed(0)}%`, sub: "promedio de la flota", color: colorEstado(performancePct).text },
     { icon: Clock, label: "Resp. promedio", value: fmtMin(respuestaProm), sub: "despacho → llegada", color: "text-gray-900" },
     { icon: AlertTriangle, label: "No operativo", value: fmtHoras(totalHorasNoOperativo), sub: "suma de toda la flota", color: "text-gray-900" },
     { icon: Siren, label: "Servicios", value: String(totalServicios), sub: "atendidos en el período", color: "text-gray-900" },
   ];
+  const heroStyle = estiloHero(performancePct);
 
   function ir(nuevoPeriodo: Periodo, nuevaFecha: string) {
     const params = new URLSearchParams({ periodo: nuevoPeriodo, fecha: nuevaFecha });
@@ -185,7 +192,24 @@ export function PerformanceHeroInicio({ unidades, periodo, fecha, periodoLabel }
           </div>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-gray-100 border border-gray-100 rounded-lg overflow-hidden mb-5">
+        {/* Performance — destacado, tipo semáforo */}
+        <div className={`rounded-xl border-2 p-4 flex flex-col sm:flex-row sm:items-center gap-3 mb-4 ${heroStyle.bg} ${heroStyle.border}`}>
+          <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${heroStyle.iconBg}`}>
+            <Percent className="w-7 h-7 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Performance</p>
+            <p className={`text-5xl font-black leading-none mt-0.5 tabular-nums ${heroStyle.text}`}>{performancePct.toFixed(0)}%</p>
+            <p className="text-xs font-medium text-gray-500 mt-1">promedio de la flota</p>
+          </div>
+          <div className="flex sm:flex-col gap-3 sm:gap-1 text-[11px] font-semibold text-gray-500 shrink-0">
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500" /> 0–50%</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400" /> 51–85%</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-500" /> 86–100%</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-px bg-gray-100 border border-gray-100 rounded-lg overflow-hidden mb-5">
           {kpis.map(({ icon: Icon, label, value, sub, color }) => (
             <div key={label} className="bg-white px-3.5 py-3">
               <div className="flex items-center gap-1.5 mb-1">
