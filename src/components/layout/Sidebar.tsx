@@ -10,6 +10,7 @@ import {
   LogOut, ChevronRight, ShieldCheck, TrendingUp,
   Scroll, Gift, CalendarDays, Building2, ScanLine, ChevronDown, Lock,
   Briefcase, Tag, Heart, ClipboardList, Award, BedDouble, ClipboardCheck, ListChecks,
+  AlertTriangle, Gauge,
 } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
 import { ROLES_JEFE } from "@/lib/roles";
@@ -49,6 +50,8 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Guardias Nocturnas",    href: "/guardias",                 icon: BedDouble,     roles: TODOS },
       { label: "Checklist de Unidades", href: "/checklist",                icon: ClipboardCheck, roles: TODOS },
       { label: "Evaluación de Práctica", href: "/evaluacion-practica",     icon: ListChecks,    roles: TODOS },
+      { label: "Registro de Incidencias", href: "/incidencias",            icon: AlertTriangle, roles: TODOS },
+      { label: "Reporte Diario de Pilotos", href: "/reporte-piloto",       icon: Gauge,         roles: TODOS },
     ],
   },
   {
