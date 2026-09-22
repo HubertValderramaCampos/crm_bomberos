@@ -42,7 +42,10 @@ export function AniversarioCelebracion() {
     const aniversarioEsteAnio = new Date(hoy.getFullYear(), FUNDACION_MES, FUNDACION_DIA);
     const diffDias = Math.round((inicioHoy.getTime() - aniversarioEsteAnio.getTime()) / 86400000);
 
-    // Se muestra siempre al iniciar, sin importar la fecha ni si ya se cerró antes.
+    // Se muestra una sola vez por persona (por navegador), sin importar la fecha.
+    const claveVisto = `bomberos150_aniversario_${hoy.getFullYear()}_visto`;
+    if (localStorage.getItem(claveVisto)) return;
+
     setAnios(hoy.getFullYear() - FUNDACION_ANIO);
     setFase(diffDias < 0 ? "antes" : diffDias === 0 ? "hoy" : "despues");
     setDiasFaltantes(Math.abs(diffDias));
@@ -52,6 +55,7 @@ export function AniversarioCelebracion() {
   function cerrar() {
     setCerrando(true);
     setTimeout(() => setVisible(false), 350);
+    localStorage.setItem(`bomberos150_aniversario_${new Date().getFullYear()}_visto`, "1");
   }
 
   if (!visible) return null;
