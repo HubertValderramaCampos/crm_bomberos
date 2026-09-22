@@ -38,3 +38,21 @@ CREATE INDEX IF NOT EXISTS idx_checklist_registro_vehiculo ON checklist_registro
 CREATE INDEX IF NOT EXISTS idx_checklist_registro_item_reg ON checklist_registro_item(registro_id);
 
 ALTER TABLE checklist_registro_item ADD COLUMN IF NOT EXISTS foto_key TEXT;
+
+-- Cualquier efectivo puede continuar un checklist que quedó EN_PROGRESO
+-- (no solo quien lo inició). Para mantener trazabilidad, quién lo completó
+-- se registra aparte de quién lo inició (bombero_id), y cada acción relevante
+-- queda en checklist_registro_historial.
+ALTER TABLE checklist_registro ADD COLUMN IF NOT EXISTS completado_por INTEGER REFERENCES bombero(id);
+
+CREATE TABLE IF NOT EXISTS checklist_registro_historial (
+  id             SERIAL PRIMARY KEY,
+  registro_id    INTEGER NOT NULL REFERENCES checklist_registro(id) ON DELETE CASCADE,
+  usuario_id     INTEGER NOT NULL REFERENCES usuario(id),
+  usuario_nombre VARCHAR(150) NOT NULL,
+  accion         VARCHAR(20) NOT NULL, -- INICIO | ITEM | COMPLETADO
+  detalle        TEXT,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_checklist_historial_registro ON checklist_registro_historial(registro_id, created_at);

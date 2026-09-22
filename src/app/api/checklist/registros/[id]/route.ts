@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { esRolJefe } from "@/lib/roles";
 import { obtenerUrlFirmada } from "@/lib/storage";
+import { registrarHistorialChecklist } from "@/lib/checklistHistorial";
 import pool from "@/lib/db";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -40,10 +40,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     foto_url: row.foto_key ? await obtenerUrlFirmada(row.foto_key, 3600).catch(() => null) : null,
   })));
 
-  const puedeEditar = registro.estado === "EN_PROGRESO" &&
-    (session.user.bomberoId === registro.bombero_id || esRolJefe(session.user.rol));
+  // Un checklist EN_PROGRESO puede ser continuado por cualquier efectivo, no
+  // solo por quien lo inició; queda trazabilidad completa en el historial.
+  const puedeEditar = registro.estado === "EN_PROGRESO";
 
-  return NextResponse.json({ registro, items, puedeEditar });
+  const historialRes = await pool.query(`
+    SELECT id, usuario_nombre, accion, detalle, created_at
+    FROM checklist_registro_historial
+    WHERE registro_id = $1
+    ORDER BY created_at ASC, id ASC
+  `, [id]);
+
+  return NextResponse.json({ registro, items, puedeEditar, historial: historialRes.rows });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -53,16 +61,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
   const body = await req.json();
 
-  const actualRes = await pool.query<{ bombero_id: number; estado: string }>(
-    `SELECT bombero_id, estado FROM checklist_registro WHERE id = $1`, [id]
+  const actualRes = await pool.query<{ estado: string }>(
+    `SELECT estado FROM checklist_registro WHERE id = $1`, [id]
   );
   if (actualRes.rows.length === 0) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   const actual = actualRes.rows[0];
 
-  const esDueno = session.user.bomberoId === actual.bombero_id;
-  if (!esDueno && !esRolJefe(session.user.rol)) {
-    return NextResponse.json({ error: "No puedes editar este checklist" }, { status: 403 });
-  }
+  // Cualquier efectivo autenticado puede continuar un checklist EN_PROGRESO
+  // (ver checklistHistorial.ts para la trazabilidad de quién hizo qué).
   if (actual.estado !== "EN_PROGRESO") {
     return NextResponse.json({ error: "Este checklist ya está completado" }, { status: 400 });
   }
@@ -74,7 +80,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.observaciones !== undefined)     { campos.push(`observaciones = $${i++}`);     valores.push(body.observaciones || null); }
   if (body.efectivoAlMando !== undefined)   { campos.push(`efectivo_al_mando = $${i++}`); valores.push(body.efectivoAlMando || null); }
   if (body.completar === true) {
-    campos.push(`estado = 'COMPLETADO'`, `completado_en = NOW()`);
+    campos.push(`estado = 'COMPLETADO'`, `completado_en = NOW()`, `completado_por = $${i++}`);
+    valores.push(session.user.bomberoId);
   }
   campos.push(`updated_at = NOW()`);
 
@@ -85,6 +92,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     `UPDATE checklist_registro SET ${campos.join(", ")} WHERE id = $${i} RETURNING id, estado`,
     valores
   );
+
+  if (body.completar === true) {
+    await registrarHistorialChecklist(Number(id), session.user.id, session.user.nombres, "COMPLETADO");
+  }
 
   return NextResponse.json(rows[0]);
 }

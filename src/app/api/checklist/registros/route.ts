@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { fechaLima } from "@/lib/fechaLima";
+import { registrarHistorialChecklist } from "@/lib/checklistHistorial";
 import pool from "@/lib/db";
 
 export async function GET(req: NextRequest) {
@@ -88,6 +89,9 @@ export async function POST(req: NextRequest) {
     );
 
     await client.query("COMMIT");
+
+    await registrarHistorialChecklist(registroId, session.user.id, session.user.nombres, "INICIO");
+
     return NextResponse.json({ id: registroId }, { status: 201 });
   } catch (e) {
     await client.query("ROLLBACK");

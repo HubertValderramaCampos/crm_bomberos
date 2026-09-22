@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, CheckCircle2, XCircle, AlertTriangle, Circle,
-  Loader2, ClipboardCheck, Camera, X, ChevronLeft, ChevronRight,
+  Loader2, ClipboardCheck, Camera, X, ChevronLeft, ChevronRight, History,
 } from "lucide-react";
 import { ReferenciaSeccion } from "./EstructuraDistribucionM1501";
 
@@ -31,7 +31,11 @@ interface Registro {
   bombero_id: number; bombero_codigo: string | null; grado: string | null;
   apellidos: string; nombres: string;
 }
-interface Detalle { registro: Registro; items: RegistroItem[]; puedeEditar: boolean }
+interface HistorialEntry {
+  id: number; usuario_nombre: string; accion: "INICIO" | "ITEM" | "COMPLETADO";
+  detalle: string | null; created_at: string;
+}
+interface Detalle { registro: Registro; items: RegistroItem[]; puedeEditar: boolean; historial: HistorialEntry[] }
 
 const ESTADO_UI: Record<EstadoItem, { label: string; icon: typeof Circle; activeCls: string }> = {
   PENDIENTE: { label: "—",     icon: Circle,        activeCls: "" },
@@ -307,6 +311,30 @@ export function ChecklistDetalleClient({ registroId }: { registroId: string }) {
           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none disabled:bg-gray-50 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-red-200"
         />
       </div>
+
+      {/* Historial: quién inició, editó ítems y completó el checklist */}
+      {detalle.historial.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-2.5">
+          <label className="text-xs font-semibold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+            <History className="w-3.5 h-3.5" /> Historial
+          </label>
+          <ul className="space-y-1.5">
+            {detalle.historial.map(h => (
+              <li key={h.id} className="text-xs text-gray-500 flex items-baseline gap-1.5">
+                <span className="text-gray-300 shrink-0 font-mono">
+                  {new Date(h.created_at).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}
+                </span>
+                <span className="min-w-0">
+                  <span className="font-semibold text-gray-700">{h.usuario_nombre}</span>{" "}
+                  {h.accion === "INICIO" && "inició el checklist"}
+                  {h.accion === "COMPLETADO" && "completó el checklist"}
+                  {h.accion === "ITEM" && <>marcó {h.detalle}</>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {puedeEditar && (
         <div className="sticky bottom-4">
