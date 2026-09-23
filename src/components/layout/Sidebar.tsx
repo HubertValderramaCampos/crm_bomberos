@@ -19,7 +19,7 @@ type NavItem = { label: string; href: string; icon: React.ElementType; roles: st
 type NavSection = { title: string; roles?: string[]; items: NavItem[] };
 
 const TODOS = ["JEFE_COMPANIA","SEGUNDO_JEFE","ADMINISTRACION","SERVICIOS_GENERALES","INSTRUCCION","SANIDAD","OPERACIONES","IMAGEN","BOMBERO","JEFE_GUARDIA"];
-// El rol PILOTO (choferes rentados) solo ve Inicio, Checklist, Registro de Incidencias y Asistencias.
+// El rol PILOTO (choferes rentados) solo ve Inicio, Checklist, Registro de Incidencias, Reporte Diario de Pilotos y Asistencias.
 const TODOS_Y_PILOTO = [...TODOS, "PILOTO"];
 const OPERATIVOS = ["JEFE_COMPANIA","SEGUNDO_JEFE","OPERACIONES"];
 // Para items con permisos individuales: todos los roles pueden verlos si tienen el permiso
@@ -53,7 +53,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Checklist de Unidades", href: "/checklist",                icon: ClipboardCheck, roles: TODOS_Y_PILOTO },
       { label: "Evaluación de Práctica", href: "/evaluacion-practica",     icon: ListChecks,    roles: TODOS },
       { label: "Registro de Incidencias", href: "/incidencias",            icon: AlertTriangle, roles: TODOS_Y_PILOTO },
-      { label: "Reporte Diario de Pilotos", href: "/reporte-piloto",       icon: Gauge,         roles: TODOS },
+      { label: "Reporte Diario de Pilotos", href: "/reporte-piloto",       icon: Gauge,         roles: TODOS_Y_PILOTO },
     ],
   },
   {

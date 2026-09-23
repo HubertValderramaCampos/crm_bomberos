@@ -25,15 +25,16 @@ export async function GET(req: NextRequest) {
   const { rows } = await pool.query(`
     SELECT
       r.id, r.fecha, r.kilometraje, r.combustible, r.aceite, r.refrigerante, r.created_at,
-      b.apellidos, b.nombres, b.grado,
+      COALESCE(b.apellidos, 'Piloto') AS apellidos, COALESCE(b.nombres, u.codigo) AS nombres, b.grado,
       v.codigo AS vehiculo_codigo,
       COUNT(f.id)::int AS fotos_total
     FROM reporte_piloto r
-    JOIN bombero b ON b.id = r.bombero_id
+    LEFT JOIN bombero b ON b.id = r.bombero_id
+    LEFT JOIN usuario u ON u.id = r.creado_por
     JOIN vehiculo v ON v.id = r.vehiculo_id
     LEFT JOIN reporte_piloto_foto f ON f.reporte_id = r.id
     ${where}
-    GROUP BY r.id, b.apellidos, b.nombres, b.grado, v.codigo
+    GROUP BY r.id, b.apellidos, b.nombres, b.grado, u.codigo, v.codigo
     ORDER BY r.created_at DESC
     LIMIT $${i}
   `, valores);
@@ -48,7 +49,9 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const fecha: string = body.fecha || fechaLima();
   const vehiculoId = Number(body.vehiculoId);
-  const bomberoId = Number(body.bomberoId);
+  // Las cuentas PILOTO no tienen ficha de bombero: el piloto de turno es la propia cuenta.
+  const esPiloto = session.user.rol === "PILOTO";
+  const bomberoId = esPiloto ? (session.user.bomberoId ?? null) : Number(body.bomberoId);
   const kilometraje = Number(body.kilometraje);
   const combustible: string = body.combustible;
   const aceite: string = body.aceite;
@@ -63,7 +66,7 @@ export async function POST(req: NextRequest) {
     : [];
 
   if (!vehiculoId) return NextResponse.json({ error: "Selecciona la unidad" }, { status: 400 });
-  if (!bomberoId) return NextResponse.json({ error: "Selecciona el piloto de turno" }, { status: 400 });
+  if (!bomberoId && !esPiloto) return NextResponse.json({ error: "Selecciona el piloto de turno" }, { status: 400 });
   if (!Number.isFinite(kilometraje) || kilometraje < 0)
     return NextResponse.json({ error: "Ingresa el kilometraje" }, { status: 400 });
   if (!(NIVELES_COMBUSTIBLE as readonly string[]).includes(combustible))

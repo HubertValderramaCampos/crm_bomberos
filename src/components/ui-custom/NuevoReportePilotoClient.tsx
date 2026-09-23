@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
   ArrowLeft, Gauge, Truck, Camera, X, Loader2, Plus, ImageOff, AlertTriangle,
@@ -40,6 +41,9 @@ export function NuevoReportePilotoClient() {
   const [vehiculos, setVehiculos] = useState<VehiculoOpcion[]>([]);
 
   const [fecha, setFecha] = useState(hoyLocal());
+  const { data: session } = useSession();
+  // Las cuentas PILOTO registran su propio reporte (el piloto de turno son ellos mismos).
+  const esPiloto = session?.user?.rol === "PILOTO";
   const [bomberoId, setBomberoId] = useState("");
   const [vehiculoId, setVehiculoId] = useState("");
   const [kilometraje, setKilometraje] = useState("");
@@ -57,9 +61,9 @@ export function NuevoReportePilotoClient() {
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
-    fetch("/api/bomberos").then(r => r.json()).then((data: Bombero[]) => setBomberos(Array.isArray(data) ? data : [])).catch(() => setBomberos([]));
+    if (!esPiloto) fetch("/api/bomberos").then(r => r.json()).then((data: Bombero[]) => setBomberos(Array.isArray(data) ? data : [])).catch(() => setBomberos([]));
     fetch("/api/vehiculos-b150").then(r => r.json()).then((data: VehiculoOpcion[]) => setVehiculos(Array.isArray(data) ? data : [])).catch(() => setVehiculos([]));
-  }, []);
+  }, [esPiloto]);
 
   async function agregarFotos(files: FileList | null) {
     if (!files) return;
@@ -102,7 +106,7 @@ export function NuevoReportePilotoClient() {
   async function enviar() {
     setError("");
     if (!fecha) return setError("Ingresa la fecha.");
-    if (!bomberoId) return setError("Selecciona el piloto de turno.");
+    if (!bomberoId && !esPiloto) return setError("Selecciona el piloto de turno.");
     if (!vehiculoId) return setError("Selecciona la unidad.");
     if (!kilometraje || Number(kilometraje) < 0) return setError("Ingresa el kilometraje.");
     if (!combustible) return setError("Selecciona el nivel de combustible.");
@@ -163,14 +167,18 @@ export function NuevoReportePilotoClient() {
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">Piloto de turno *</label>
-            <select value={bomberoId} onChange={e => setBomberoId(e.target.value)} className={inputCls}>
-              <option value="">Selecciona…</option>
-              {bomberos.map(b => (
-                <option key={b.id} value={b.id}>
-                  {b.grado ? `${b.grado} ` : ""}{b.apellidos}, {b.nombres}
-                </option>
-              ))}
-            </select>
+            {esPiloto ? (
+              <input value={session?.user?.nombres ?? ""} disabled className={inputCls} />
+            ) : (
+              <select value={bomberoId} onChange={e => setBomberoId(e.target.value)} className={inputCls}>
+                <option value="">Selecciona…</option>
+                {bomberos.map(b => (
+                  <option key={b.id} value={b.id}>
+                    {b.grado ? `${b.grado} ` : ""}{b.apellidos}, {b.nombres}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
 

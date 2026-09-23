@@ -13,7 +13,7 @@ function hasSessionCookie(req: NextRequest): boolean {
 }
 
 // El rol PILOTO (choferes rentados) solo puede ver estas rutas.
-const RUTAS_PERMITIDAS_PILOTO = ["/inicio", "/checklist", "/incidencias", "/operaciones/asistencias"];
+const RUTAS_PERMITIDAS_PILOTO = ["/inicio", "/checklist", "/incidencias", "/reporte-piloto", "/operaciones/asistencias"];
 const INICIO_PILOTO = "/inicio";
 
 export async function proxy(req: NextRequest) {
@@ -58,7 +58,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Pilotos: acceso restringido a Inicio, Checklist, Incidencias y Asistencias
+  // Pilotos: acceso restringido a Inicio, Checklist, Incidencias, Reporte Diario y Asistencias
   if (esPiloto && !RUTAS_PERMITIDAS_PILOTO.some((p) => pathname.startsWith(p))) {
     return NextResponse.redirect(new URL(INICIO_PILOTO, req.url));
   }

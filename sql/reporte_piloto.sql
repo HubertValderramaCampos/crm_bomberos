@@ -31,3 +31,7 @@ CREATE TABLE IF NOT EXISTS reporte_piloto_foto (
 
 CREATE INDEX IF NOT EXISTS idx_reporte_piloto_vehiculo_fecha ON reporte_piloto(vehiculo_id, fecha DESC);
 CREATE INDEX IF NOT EXISTS idx_reporte_piloto_foto           ON reporte_piloto_foto(reporte_id);
+
+-- Cuentas PILOTO (sin ficha de bombero) registran su propio reporte: en ese caso
+-- bombero_id queda NULL y el piloto de turno es la cuenta de creado_por.
+ALTER TABLE reporte_piloto ALTER COLUMN bombero_id DROP NOT NULL;
