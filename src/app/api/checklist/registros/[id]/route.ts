@@ -16,10 +16,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       r.id, r.vehiculo_id, r.fecha, r.estado, r.observaciones, r.efectivo_al_mando,
       r.created_at, r.updated_at, r.completado_en,
       v.codigo AS vehiculo_codigo, v.tipo AS vehiculo_tipo,
-      b.id AS bombero_id, b.codigo AS bombero_codigo, b.grado, b.apellidos, b.nombres
+      b.id AS bombero_id, COALESCE(b.codigo, u.codigo) AS bombero_codigo, b.grado,
+      COALESCE(b.apellidos, 'Piloto') AS apellidos, COALESCE(b.nombres, u.codigo) AS nombres
     FROM checklist_registro r
     JOIN vehiculo v ON v.id = r.vehiculo_id
-    JOIN bombero b ON b.id = r.bombero_id
+    LEFT JOIN bombero b ON b.id = r.bombero_id
+    LEFT JOIN usuario u ON u.id = r.usuario_id
     WHERE r.id = $1
   `, [id]);
 

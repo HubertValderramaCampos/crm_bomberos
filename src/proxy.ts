@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 
 function hasSessionCookie(req: NextRequest): boolean {
   // next-auth v4 puede usar cualquiera de estos nombres
@@ -10,6 +11,10 @@ function hasSessionCookie(req: NextRequest): boolean {
   ];
   return cookieNames.some((name) => req.cookies.has(name));
 }
+
+// El rol PILOTO (choferes rentados) solo puede ver estas rutas.
+const RUTAS_PERMITIDAS_PILOTO = ["/inicio", "/checklist", "/incidencias", "/operaciones/asistencias"];
+const INICIO_PILOTO = "/inicio";
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -26,21 +31,24 @@ export async function proxy(req: NextRequest) {
   }
 
   const hasSession = hasSessionCookie(req);
+  const token = hasSession
+    ? await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+    : null;
+  const esPiloto = token?.rol === "PILOTO";
 
   // Página de login
   if (pathname.startsWith("/login")) {
-    // Si ya tiene cookie de sesión, ir al dashboard
+    // Si ya tiene cookie de sesión, ir a su destino por defecto
     if (hasSession) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+      return NextResponse.redirect(new URL(esPiloto ? INICIO_PILOTO : "/dashboard", req.url));
     }
     return NextResponse.next();
   }
 
   // Raíz: redirigir según estado
   if (pathname === "/") {
-    return NextResponse.redirect(
-      new URL(hasSession ? "/dashboard" : "/login", req.url)
-    );
+    if (!hasSession) return NextResponse.redirect(new URL("/login", req.url));
+    return NextResponse.redirect(new URL(esPiloto ? INICIO_PILOTO : "/dashboard", req.url));
   }
 
   // Cualquier ruta protegida sin sesión → login
@@ -48,6 +56,11 @@ export async function proxy(req: NextRequest) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Pilotos: acceso restringido a Inicio, Checklist, Incidencias y Asistencias
+  if (esPiloto && !RUTAS_PERMITIDAS_PILOTO.some((p) => pathname.startsWith(p))) {
+    return NextResponse.redirect(new URL(INICIO_PILOTO, req.url));
   }
 
   // Con sesión: permitir todo (el RBAC lo maneja la página del servidor)

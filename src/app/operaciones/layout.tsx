@@ -6,7 +6,7 @@ import { DashboardShell } from "@/components/layout/DashboardShell";
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
-  const ROLES_OPERACIONES = ["JEFE_COMPANIA", "SEGUNDO_JEFE", "OPERACIONES", "BOMBERO"];
+  const ROLES_OPERACIONES = ["JEFE_COMPANIA", "SEGUNDO_JEFE", "OPERACIONES", "BOMBERO", "PILOTO"];
   if (!ROLES_OPERACIONES.includes(session.user.rol)) {
     redirect("/dashboard");
   }

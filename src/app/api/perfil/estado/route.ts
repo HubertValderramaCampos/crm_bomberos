@@ -5,7 +5,17 @@ import pool from "@/lib/db";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.bomberoId) return NextResponse.json({ perfil_completado: true });
+  if (!session?.user?.id) return NextResponse.json({ perfil_completado: true, debe_cambiar_password: false });
+
+  const usuarioRes = await pool.query<{ debe_cambiar_password: boolean }>(
+    `SELECT COALESCE(debe_cambiar_password, false) AS debe_cambiar_password FROM usuario WHERE id = $1`,
+    [session.user.id]
+  );
+  const debe_cambiar_password = usuarioRes.rows[0]?.debe_cambiar_password ?? false;
+
+  if (!session.user.bomberoId) {
+    return NextResponse.json({ perfil_completado: true, debe_cambiar_password });
+  }
 
   const { rows } = await pool.query<{
     perfil_completado: boolean;
@@ -23,6 +33,6 @@ export async function GET() {
     [session.user.bomberoId]
   );
 
-  if (!rows[0]) return NextResponse.json({ perfil_completado: true });
-  return NextResponse.json(rows[0]);
+  if (!rows[0]) return NextResponse.json({ perfil_completado: true, debe_cambiar_password });
+  return NextResponse.json({ ...rows[0], debe_cambiar_password });
 }

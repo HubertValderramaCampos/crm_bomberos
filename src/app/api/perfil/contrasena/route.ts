@@ -40,7 +40,10 @@ export async function PUT(req: NextRequest) {
     if (!match) return NextResponse.json({ error: "Contraseña actual incorrecta" }, { status: 400 });
 
     const hash = await bcrypt.hash(nueva, 12);
-    await client.query("UPDATE usuario SET password_hash = $1 WHERE id = $2", [hash, session.user.id]);
+    await client.query(
+      "UPDATE usuario SET password_hash = $1, debe_cambiar_password = false WHERE id = $2",
+      [hash, session.user.id]
+    );
 
     return NextResponse.json({ ok: true });
   } finally {

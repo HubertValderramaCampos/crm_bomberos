@@ -7,7 +7,7 @@ import pool from "@/lib/db";
 const ROLES_VALIDOS = [
   "JEFE_COMPANIA", "ADMINISTRACION", "OPERACIONES",
   "SERVICIOS_GENERALES", "INSTRUCCION", "SANIDAD", "IMAGEN", "BOMBERO",
-  "JEFE_GUARDIA",
+  "JEFE_GUARDIA", "PILOTO",
 ];
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

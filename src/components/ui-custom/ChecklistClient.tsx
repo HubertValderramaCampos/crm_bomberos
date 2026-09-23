@@ -31,6 +31,8 @@ function fmtFecha(iso: string) {
 export function ChecklistClient() {
   const { data: session } = useSession();
   const esJefe = ROLES_JEFE.includes(session?.user?.rol ?? "");
+  // Los pilotos no tienen ficha de bombero pero sí pueden iniciar checklists.
+  const puedeIniciar = !!session?.user?.bomberoId || session?.user?.rol === "PILOTO";
 
   const [vehiculos, setVehiculos] = useState<Vehiculo[] | null>(null);
   const [vehiculoId, setVehiculoId] = useState<number | null>(null);
@@ -174,7 +176,7 @@ export function ChecklistClient() {
                 <p className="text-sm text-gray-400">Nadie ha revisado esta unidad hoy.</p>
                 <button
                   onClick={iniciarChecklist}
-                  disabled={iniciando || !session?.user?.bomberoId}
+                  disabled={iniciando || !puedeIniciar}
                   className="flex items-center gap-1.5 px-4 py-2 bg-red-700 text-white text-sm font-semibold rounded-lg hover:bg-red-800 disabled:opacity-40 transition-colors shrink-0"
                 >
                   {iniciando ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlusCircle className="w-4 h-4" />}
@@ -183,7 +185,7 @@ export function ChecklistClient() {
               </div>
             )}
             {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
-            {!session?.user?.bomberoId && (
+            {!puedeIniciar && (
               <p className="text-xs text-gray-400 mt-2">Tu cuenta no está vinculada a un efectivo, no puedes iniciar un checklist.</p>
             )}
           </div>

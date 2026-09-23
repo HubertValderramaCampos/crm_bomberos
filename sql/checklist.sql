@@ -56,3 +56,7 @@ CREATE TABLE IF NOT EXISTS checklist_registro_historial (
 );
 
 CREATE INDEX IF NOT EXISTS idx_checklist_historial_registro ON checklist_registro_historial(registro_id, created_at);
+
+-- Pilotos (cuentas sin ficha de bombero) también pueden iniciar un checklist.
+ALTER TABLE checklist_registro ALTER COLUMN bombero_id DROP NOT NULL;
+ALTER TABLE checklist_registro ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario(id);

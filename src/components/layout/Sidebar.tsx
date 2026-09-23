@@ -19,6 +19,8 @@ type NavItem = { label: string; href: string; icon: React.ElementType; roles: st
 type NavSection = { title: string; roles?: string[]; items: NavItem[] };
 
 const TODOS = ["JEFE_COMPANIA","SEGUNDO_JEFE","ADMINISTRACION","SERVICIOS_GENERALES","INSTRUCCION","SANIDAD","OPERACIONES","IMAGEN","BOMBERO","JEFE_GUARDIA"];
+// El rol PILOTO (choferes rentados) solo ve Inicio, Checklist, Registro de Incidencias y Asistencias.
+const TODOS_Y_PILOTO = [...TODOS, "PILOTO"];
 const OPERATIVOS = ["JEFE_COMPANIA","SEGUNDO_JEFE","OPERACIONES"];
 // Para items con permisos individuales: todos los roles pueden verlos si tienen el permiso
 const OPERATIVOS_Y_BOMBERO = TODOS;
@@ -31,26 +33,26 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "__root__",
     items: [
-      { label: "Inicio",        href: "/inicio",                      icon: Home,        roles: TODOS },
+      { label: "Inicio",        href: "/inicio",                      icon: Home,        roles: TODOS_Y_PILOTO },
       { label: "Mi Perfil",     href: "/perfil",                      icon: UserCircle,  roles: ["BOMBERO"] },
       { label: "Programación",  href: "/administracion/programacion", icon: CalendarDays, roles: TODOS, seccion: "programacion" },
     ],
   },
   {
     title: "Gestión Operativa",
-    roles: TODOS,
+    roles: TODOS_Y_PILOTO,
     items: [
       { label: "Operatividad",         href: "/dashboard",                icon: Radio,         roles: OPERATIVOS_Y_BOMBERO,   seccion: "dashboard" },
       { label: "Estadísticas",         href: "/operaciones/estadisticas", icon: TrendingUp,    roles: OPERATIVOS_Y_BOMBERO,   seccion: "estadisticas" },
       { label: "Partes de Emergencia", href: "/operaciones/partes",       icon: FileText,      roles: OPERATIVOS_Y_BOMBERO,   seccion: "partes" },
       { label: "Bomberos",             href: "/operaciones/personal",     icon: Users,         roles: OPERATIVOS,             seccion: "personal" },
-      { label: "Asistencias",          href: "/operaciones/asistencias",  icon: CalendarCheck, roles: OPERATIVOS_Y_BOMBERO,   seccion: "asistencias" },
+      { label: "Asistencias",          href: "/operaciones/asistencias",  icon: CalendarCheck, roles: [...OPERATIVOS_Y_BOMBERO, "PILOTO"],   seccion: "asistencias" },
       { label: "Análisis",             href: "/operaciones/analisis",     icon: BarChart3,     roles: OPERATIVOS_Y_BOMBERO,   seccion: "analisis" },
       { label: "Eval. de Emergencias",  href: "/operaciones/aph",          icon: Stethoscope,   roles: TODOS, seccion: "aph" },
       { label: "Guardias Nocturnas",    href: "/guardias",                 icon: BedDouble,     roles: TODOS },
-      { label: "Checklist de Unidades", href: "/checklist",                icon: ClipboardCheck, roles: TODOS },
+      { label: "Checklist de Unidades", href: "/checklist",                icon: ClipboardCheck, roles: TODOS_Y_PILOTO },
       { label: "Evaluación de Práctica", href: "/evaluacion-practica",     icon: ListChecks,    roles: TODOS },
-      { label: "Registro de Incidencias", href: "/incidencias",            icon: AlertTriangle, roles: TODOS },
+      { label: "Registro de Incidencias", href: "/incidencias",            icon: AlertTriangle, roles: TODOS_Y_PILOTO },
       { label: "Reporte Diario de Pilotos", href: "/reporte-piloto",       icon: Gauge,         roles: TODOS },
     ],
   },

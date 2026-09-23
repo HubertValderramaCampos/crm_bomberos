@@ -27,17 +27,19 @@ export async function GET(req: NextRequest) {
       r.id, r.vehiculo_id, r.fecha, r.estado, r.observaciones, r.efectivo_al_mando,
       r.created_at, r.completado_en,
       v.codigo AS vehiculo_codigo,
-      b.id AS bombero_id, b.codigo AS bombero_codigo, b.grado, b.apellidos, b.nombres,
+      b.id AS bombero_id, COALESCE(b.codigo, u.codigo) AS bombero_codigo, b.grado,
+      COALESCE(b.apellidos, 'Piloto') AS apellidos, COALESCE(b.nombres, u.codigo) AS nombres,
       COUNT(ri.id) FILTER (WHERE ri.estado != 'PENDIENTE')::int AS items_marcados,
       COUNT(ri.id)::int AS items_total,
       COUNT(ri.id) FILTER (WHERE ri.estado = 'MALO')::int AS items_malos,
       COUNT(ri.id) FILTER (WHERE ri.estado = 'FALTA')::int AS items_faltantes
     FROM checklist_registro r
     JOIN vehiculo v ON v.id = r.vehiculo_id
-    JOIN bombero b ON b.id = r.bombero_id
+    LEFT JOIN bombero b ON b.id = r.bombero_id
+    LEFT JOIN usuario u ON u.id = r.usuario_id
     LEFT JOIN checklist_registro_item ri ON ri.registro_id = r.id
     ${where}
-    GROUP BY r.id, v.codigo, b.id, b.codigo, b.grado, b.apellidos, b.nombres
+    GROUP BY r.id, v.codigo, b.id, b.codigo, b.grado, b.apellidos, b.nombres, u.codigo
     ORDER BY r.created_at DESC
     LIMIT $${i}
   `, valores);
@@ -48,7 +50,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  if (!session.user.bomberoId) {
+  if (!session.user.bomberoId && session.user.rol !== "PILOTO") {
     return NextResponse.json({ error: "Solo un efectivo puede iniciar un checklist" }, { status: 403 });
   }
 
@@ -70,10 +72,10 @@ export async function POST(req: NextRequest) {
     }
 
     const regRes = await client.query<{ id: number }>(`
-      INSERT INTO checklist_registro (vehiculo_id, fecha, bombero_id, efectivo_al_mando)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO checklist_registro (vehiculo_id, fecha, bombero_id, efectivo_al_mando, usuario_id)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING id
-    `, [vehiculoId, fechaLima(), session.user.bomberoId, efectivoAlMando]);
+    `, [vehiculoId, fechaLima(), session.user.bomberoId ?? null, efectivoAlMando, Number(session.user.id)]);
     const registroId = regRes.rows[0].id;
 
     const values: string[] = [];

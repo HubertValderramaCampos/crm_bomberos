@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ShieldCheck, ChevronDown, Save, Loader2, Users, Flame } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
 
-type Rol = "JEFE_COMPANIA" | "SEGUNDO_JEFE" | "ADMINISTRACION" | "OPERACIONES" | "SERVICIOS_GENERALES" | "INSTRUCCION" | "SANIDAD" | "IMAGEN" | "BOMBERO";
+type Rol = "JEFE_COMPANIA" | "SEGUNDO_JEFE" | "ADMINISTRACION" | "OPERACIONES" | "SERVICIOS_GENERALES" | "INSTRUCCION" | "SANIDAD" | "IMAGEN" | "BOMBERO" | "PILOTO";
 type CuentaArea = { id: number; rol: Rol; activo: boolean; codigo: string };
 
 const ROL_COLOR: Record<Rol, string> = {
@@ -16,6 +16,7 @@ const ROL_COLOR: Record<Rol, string> = {
   SANIDAD:             "bg-pink-100 text-pink-800 border-pink-200",
   IMAGEN:              "bg-indigo-100 text-indigo-800 border-indigo-200",
   BOMBERO:             "bg-gray-100 text-gray-700 border-gray-200",
+  PILOTO:              "bg-teal-100 text-teal-800 border-teal-200",
 };
 
 /* ── Secciones ─────────────────────────────────────────────────────── */

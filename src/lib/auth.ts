@@ -22,13 +22,14 @@ export const authOptions: NextAuthOptions = {
           rol: string;
           activo: boolean;
           bombero_id: number | null;
+          usuario_codigo: string;
           nombres: string | null;
           apellidos: string | null;
           codigo: string | null;
           grado: string | null;
         }>(`
           SELECT u.id, u.password_hash, u.rol, u.activo,
-                 u.bombero_id,
+                 u.bombero_id, u.codigo AS usuario_codigo,
                  b.nombres, b.apellidos, b.codigo, b.grado, b.categoria
           FROM usuario u
           LEFT JOIN bombero b ON b.id = u.bombero_id
@@ -42,16 +43,19 @@ export const authOptions: NextAuthOptions = {
         const valid = await bcrypt.compare(credentials.password, user.password_hash);
         if (!valid) return null;
 
+        // Cuentas sin ficha de bombero (áreas, pilotos): usar su propio código de login como respaldo.
+        const codigoRespaldo = user.codigo ?? user.usuario_codigo;
+
         const nombres = user.nombres && user.apellidos
           ? `${user.apellidos}, ${user.nombres}`
-          : user.codigo ?? String(user.id);
+          : codigoRespaldo ?? String(user.id);
 
         return {
           id:        String(user.id),
-          email:     `${user.codigo ?? user.id}@b150.pe`,
+          email:     `${codigoRespaldo ?? user.id}@b150.pe`,
           rol:       user.rol,
           nombres,
-          cip:       user.codigo ?? null,
+          cip:       codigoRespaldo ?? null,
           grado:     user.grado ?? null,
           bomberoId: user.bombero_id ?? null,
           categoria: user.categoria ?? "BOMBERO",
