@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   const { rows } = await pool.query(`
     SELECT
       r.id, r.fecha, r.kilometraje, r.combustible, r.aceite, r.refrigerante, r.created_at,
-      COALESCE(b.apellidos, 'Piloto') AS apellidos, COALESCE(b.nombres, u.codigo) AS nombres, b.grado,
+      COALESCE(b.apellidos, 'Piloto') AS apellidos, COALESCE(b.nombres, INITCAP(u.codigo)) AS nombres, b.grado,
       v.codigo AS vehiculo_codigo,
       COUNT(f.id)::int AS fotos_total
     FROM reporte_piloto r

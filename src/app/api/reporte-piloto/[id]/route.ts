@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       r.id, r.fecha, r.kilometraje, r.combustible, r.aceite, r.refrigerante,
       r.estado_neumaticos, r.estado_carroceria, r.estado_suspension, r.estado_espejos_vidrios, r.estado_cabina,
       r.created_at,
-      b.id AS bombero_id, COALESCE(b.apellidos, 'Piloto') AS apellidos, COALESCE(b.nombres, u.codigo) AS nombres,
+      b.id AS bombero_id, COALESCE(b.apellidos, 'Piloto') AS apellidos, COALESCE(b.nombres, INITCAP(u.codigo)) AS nombres,
       b.grado, COALESCE(b.codigo, u.codigo) AS bombero_codigo,
       v.id AS vehiculo_id, v.codigo AS vehiculo_codigo, v.tipo AS vehiculo_tipo
     FROM reporte_piloto r

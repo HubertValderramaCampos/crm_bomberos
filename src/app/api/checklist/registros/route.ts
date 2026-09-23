@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       r.created_at, r.completado_en,
       v.codigo AS vehiculo_codigo,
       b.id AS bombero_id, COALESCE(b.codigo, u.codigo) AS bombero_codigo, b.grado,
-      COALESCE(b.apellidos, 'Piloto') AS apellidos, COALESCE(b.nombres, u.codigo) AS nombres,
+      COALESCE(b.apellidos, 'Piloto') AS apellidos, COALESCE(b.nombres, INITCAP(u.codigo)) AS nombres,
       COUNT(ri.id) FILTER (WHERE ri.estado != 'PENDIENTE')::int AS items_marcados,
       COUNT(ri.id)::int AS items_total,
       COUNT(ri.id) FILTER (WHERE ri.estado = 'MALO')::int AS items_malos,

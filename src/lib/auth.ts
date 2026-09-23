@@ -3,6 +3,11 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import pool from "./db";
 
+// "alberto" → "Alberto": nombre visible de las cuentas sin ficha de bombero (pilotos).
+function capitalizar(texto: string): string {
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -48,7 +53,9 @@ export const authOptions: NextAuthOptions = {
 
         const nombres = user.nombres && user.apellidos
           ? `${user.apellidos}, ${user.nombres}`
-          : codigoRespaldo ?? String(user.id);
+          : user.rol === "PILOTO" && user.usuario_codigo
+            ? capitalizar(user.usuario_codigo)
+            : codigoRespaldo ?? String(user.id);
 
         return {
           id:        String(user.id),
@@ -75,6 +82,12 @@ export const authOptions: NextAuthOptions = {
         token.grado     = u.grado;
         token.bomberoId = u.bomberoId;
         token.categoria = u.categoria;
+      } else if (token.rol === "PILOTO" && /^\d+$/.test(String(token.nombres ?? ""))) {
+        // Sesiones de pilotos iniciadas antes de tener nombre guardaban su id (ej. "195").
+        const { rows } = await pool.query<{ codigo: string }>(
+          `SELECT codigo FROM usuario WHERE id = $1`, [token.id]
+        );
+        if (rows[0]?.codigo) token.nombres = capitalizar(rows[0].codigo);
       }
       return token;
     },
