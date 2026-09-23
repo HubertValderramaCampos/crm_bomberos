@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
-  ArrowLeft, Gauge, Truck, Camera, X, Loader2, Plus, ImageOff, AlertTriangle,
+  ArrowLeft, Gauge, Truck, Camera, X, Loader2, ImagePlus, ImageOff, AlertTriangle,
 } from "lucide-react";
 import {
   NIVELES_COMBUSTIBLE, NIVEL_COMBUSTIBLE_LABEL,
@@ -25,6 +25,24 @@ function archivoABase64(file: File): Promise<string> {
     r.onerror = reject;
     r.readAsDataURL(file);
   });
+}
+
+// Las fotos del celular pesan varios MB y superan el límite de subida del servidor:
+// se reducen a JPEG de máximo 1600 px antes de enviarlas.
+const LADO_MAXIMO_FOTO = 1600;
+async function comprimirImagen(file: File): Promise<string> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const escala = Math.min(1, LADO_MAXIMO_FOTO / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * escala);
+    canvas.height = Math.round(bitmap.height * escala);
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    return canvas.toDataURL("image/jpeg", 0.8);
+  } catch {
+    return archivoABase64(file);
+  }
 }
 
 function hoyLocal() {
@@ -72,26 +90,25 @@ export function NuevoReportePilotoClient() {
     const seleccion = Array.from(files).slice(0, disponibles);
 
     for (const file of seleccion) {
-      if (!file.type.startsWith("image/")) continue;
-      if (file.size > MAX_MB_POR_FOTO_PILOTO * 1024 * 1024) {
-        setError(`"${file.name}" supera los ${MAX_MB_POR_FOTO_PILOTO} MB permitidos.`);
-        continue;
-      }
+      if (file.type && !file.type.startsWith("image/")) continue;
       const placeholder: Foto = { key: "", url: URL.createObjectURL(file), nombre: file.name, subiendo: true };
       setFotos(prev => [...prev, placeholder]);
 
       try {
-        const base64 = await archivoABase64(file);
-        const subida = await fetch("/api/upload-imagen", {
+        const base64 = await comprimirImagen(file);
+        if (base64.length > MAX_MB_POR_FOTO_PILOTO * 1024 * 1024) throw new Error("muy pesada");
+        const res = await fetch("/api/upload-imagen", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imagen: base64 }),
-        }).then(r => r.json());
+        });
+        const subida = res.ok ? await res.json() : {};
+        if (!subida.key) throw new Error("sin key");
 
+        // Se mantiene la vista previa local (la URL remota firmada no es necesaria aquí).
         setFotos(prev => prev.map(f =>
-          f.url === placeholder.url ? { key: subida.key ?? "", url: subida.url ?? f.url, nombre: file.name, subiendo: false } : f
+          f.url === placeholder.url ? { ...f, key: subida.key, subiendo: false } : f
         ));
-        if (!subida.key) setError(`No se pudo subir "${file.name}".`);
       } catch {
         setFotos(prev => prev.filter(f => f.url !== placeholder.url));
         setError(`No se pudo subir "${file.name}".`);
@@ -326,7 +343,7 @@ export function NuevoReportePilotoClient() {
 
         <div className="border-t border-gray-100 pt-4">
           <label className="block text-xs font-semibold text-gray-700 mb-1.5">Registro fotográfico</label>
-          <p className="text-[11px] text-gray-400 mb-2">Sube hasta {MAX_FOTOS_REPORTE_PILOTO} imágenes · máximo {MAX_MB_POR_FOTO_PILOTO} MB por archivo</p>
+          <p className="text-[11px] text-gray-400 mb-2">Toma o sube hasta {MAX_FOTOS_REPORTE_PILOTO} fotos</p>
           <div className="flex gap-2 flex-wrap">
             {fotos.map(f => (
               <div key={f.url} className="relative w-20 h-20 rounded-lg border border-gray-200 overflow-hidden bg-gray-50">
@@ -352,11 +369,18 @@ export function NuevoReportePilotoClient() {
               </div>
             ))}
             {fotos.length < MAX_FOTOS_REPORTE_PILOTO && (
-              <label className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-500 cursor-pointer transition-colors">
-                <Camera className="w-5 h-5 mb-0.5" />
-                <Plus className="w-3 h-3" />
-                <input type="file" accept="image/*" multiple className="hidden" onChange={e => agregarFotos(e.target.files)} />
-              </label>
+              <>
+                <label className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-gray-400 hover:text-gray-500 cursor-pointer transition-colors">
+                  <Camera className="w-5 h-5" />
+                  <span className="text-[10px] font-semibold">Tomar foto</span>
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { agregarFotos(e.target.files); e.target.value = ""; }} />
+                </label>
+                <label className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-gray-400 hover:text-gray-500 cursor-pointer transition-colors">
+                  <ImagePlus className="w-5 h-5" />
+                  <span className="text-[10px] font-semibold">Galería</span>
+                  <input type="file" accept="image/*" multiple className="hidden" onChange={e => { agregarFotos(e.target.files); e.target.value = ""; }} />
+                </label>
+              </>
             )}
           </div>
         </div>
