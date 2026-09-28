@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import pool from "@/lib/db";
 import { MascotaHero } from "@/components/ui-custom/MascotaHero";
+import { MascotasShowcase3D } from "@/components/ui-custom/MascotasShowcase3D";
 import { RankingCard } from "@/components/ui-custom/RankingCard";
 import { ProgresoCard } from "@/components/ui-custom/ProgresoCard";
 import { PerformanceHeroInicio } from "@/components/ui-custom/PerformanceHeroInicio";
@@ -386,6 +387,15 @@ export default async function InicioPage({
       {!esBombero && !esOperativo && data && (
         <RankingCard ranking={data.ranking} mes={data.mes} anio={data.anioMes} miPosicion={0} />
       )}
+
+      {/* ── NUESTRAS MASCOTAS ── */}
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-900 text-xs uppercase tracking-widest">Nuestras Mascotas</h2>
+          <p className="text-[11px] text-gray-400 mt-0.5">Fénix, Kayan y Valky — arrastra o toca cada una para conocerla</p>
+        </div>
+        <MascotasShowcase3D />
+      </div>
 
     </div>
   );
