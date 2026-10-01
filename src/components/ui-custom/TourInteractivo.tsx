@@ -3,14 +3,14 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   ChevronRight, ChevronLeft, X, Flame, Shield, Zap,
-  BarChart3, Users, Siren, Truck, Star,
+  BarChart3, Users, Siren, Truck, Star, type LucideIcon,
 } from "lucide-react";
 
 interface Paso {
   target: string;        // data-tour="..."
   titulo: string;
   desc: string;
-  icon: React.ElementType;
+  icon: LucideIcon;
   pos?: "top" | "bottom" | "left" | "right";
 }
 

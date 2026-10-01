@@ -1,6 +1,6 @@
 "use client";
 
-import { Flame, Lock, CheckCircle, Clock, Shield, TrendingUp } from "lucide-react";
+import { Flame, Lock, CheckCircle, Clock, Shield, TrendingUp, type LucideIcon } from "lucide-react";
 import type { RachaData } from "@/lib/racha";
 
 interface Props {
@@ -12,7 +12,7 @@ interface Props {
 
 interface Recompensa {
   id: string;
-  icon: React.ElementType;
+  icon: LucideIcon;
   label: string;
   descripcion: string;
   requisito: string;

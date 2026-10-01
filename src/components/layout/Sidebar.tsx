@@ -10,12 +10,12 @@ import {
   LogOut, ChevronRight, ShieldCheck, TrendingUp,
   Scroll, Gift, CalendarDays, Building2, ScanLine, ChevronDown, Lock,
   Briefcase, Tag, Heart, ClipboardList, Award, BedDouble, ClipboardCheck, ListChecks,
-  AlertTriangle, Gauge,
+  AlertTriangle, Gauge, type LucideIcon,
 } from "lucide-react";
 import { ROL_LABELS } from "@/lib/permissions";
 import { ROLES_JEFE } from "@/lib/roles";
 
-type NavItem = { label: string; href: string; icon: React.ElementType; roles: string[]; seccion?: string; rachaMin?: number };
+type NavItem = { label: string; href: string; icon: LucideIcon; roles: string[]; seccion?: string; rachaMin?: number };
 type NavSection = { title: string; roles?: string[]; items: NavItem[] };
 
 const TODOS = ["JEFE_COMPANIA","SEGUNDO_JEFE","ADMINISTRACION","SERVICIOS_GENERALES","INSTRUCCION","SANIDAD","OPERACIONES","IMAGEN","BOMBERO","JEFE_GUARDIA"];

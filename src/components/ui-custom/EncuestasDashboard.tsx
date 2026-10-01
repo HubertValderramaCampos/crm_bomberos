@@ -7,7 +7,7 @@ import {
 } from "recharts";
 import {
   ClipboardList, Users, ThumbsUp, ThumbsDown, Star,
-  Filter, TrendingUp, AlertTriangle, RefreshCw,
+  Filter, TrendingUp, AlertTriangle, RefreshCw, type LucideIcon,
 } from "lucide-react";
 
 /* ── tipos ───────────────────────────────────────────── */
@@ -408,7 +408,7 @@ export function EncuestasDashboard({ entidades }: { entidades: Entidad[] }) {
 }
 
 function KpiCard({ icon: Icon, label, value, color, bg }: {
-  icon: React.ElementType; label: string; value: number; color: string; bg: string;
+  icon: LucideIcon; label: string; value: number; color: string; bg: string;
 }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 px-4 py-3">

@@ -4,7 +4,7 @@ import { useState } from "react";
 import {
   Flame, Shield, Truck, Star, Award, ChevronRight, ChevronLeft,
   CheckCircle, Lock, Zap, Users, Phone, Calendar, Mail,
-  UserCheck, Heart, ArrowRight, Sparkles, TrendingUp, X
+  UserCheck, Heart, ArrowRight, Sparkles, TrendingUp, X, type LucideIcon,
 } from "lucide-react";
 
 interface Props {
@@ -24,7 +24,7 @@ const PASOS = ["bienvenida", "sistema", "racha", "logros", "datos", "listo"] as 
 type Paso = typeof PASOS[number];
 
 interface Recompensa {
-  icon: React.ElementType;
+  icon: LucideIcon;
   label: string;
   descripcion: string;
   requisito: string;

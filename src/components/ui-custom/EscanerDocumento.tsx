@@ -6,7 +6,7 @@ import {
   Building2, Phone, Mail, User, CalendarDays, Clock,
   MapPin, Users, FileText, RotateCcw, Sparkles, Send,
   Check, ScanLine, MessageSquare, ChevronDown, ChevronUp,
-  InboxIcon, Pencil, FileCheck, FileClock, FileX, Tag,
+  InboxIcon, Pencil, FileCheck, FileClock, FileX, Tag, type LucideIcon,
 } from "lucide-react";
 
 type TipoDoc = "solicitud_capacitacion" | "oficio" | "memorando" | "informe" | "solicitud" | "carta" | "otro";
@@ -94,7 +94,7 @@ async function subirImagenCliente(imagen: string): Promise<string | null> {
   } catch { return null; }
 }
 
-function Campo({ label, icon: Icon, children }: { label: string; icon: React.ElementType; children: React.ReactNode }) {
+function Campo({ label, icon: Icon, children }: { label: string; icon: LucideIcon; children: React.ReactNode }) {
   return (
     <div>
       <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 mb-1.5">
