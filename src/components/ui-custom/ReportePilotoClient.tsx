@@ -9,6 +9,7 @@ import {
   NIVEL_COMBUSTIBLE_LABEL, NIVEL_ACEITE_REFRIGERANTE_LABEL,
   type NivelCombustible, type NivelAceiteRefrigerante,
 } from "@/lib/reportePilotoCatalogo";
+import { ReportePilotoResumen } from "@/components/ui-custom/ReportePilotoResumen";
 
 interface VehiculoOpcion { id: number; codigo: string; tipo: string }
 interface ReporteRow {
@@ -50,7 +51,9 @@ export function ReportePilotoClient() {
   useEffect(() => { cargar(); }, [cargar]);
 
   return (
-    <div className="space-y-5 max-w-3xl">
+    <div className="space-y-6 max-w-5xl">
+      <ReportePilotoResumen />
+
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -67,7 +70,9 @@ export function ReportePilotoClient() {
         </Link>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
+      <div className="border-t border-gray-100 pt-5">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Historial de reportes</p>
+        <div className="flex gap-2 flex-wrap mb-4">
         <button
           onClick={() => setVehiculoId(null)}
           className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
@@ -134,6 +139,7 @@ export function ReportePilotoClient() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }
