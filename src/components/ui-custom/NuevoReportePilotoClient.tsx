@@ -16,7 +16,16 @@ import {
 
 interface Bombero { id: number; apellidos: string; nombres: string; grado: string; codigo: string }
 interface VehiculoOpcion { id: number; codigo: string; tipo: string }
-interface Foto { key: string; url: string; nombre: string; subiendo: boolean }
+interface Foto { key: string; url: string; nombre: string; subiendo: boolean; miniatura?: string }
+
+// Lo que se guarda en el navegador mientras el piloto escribe. Las fotos se guardan
+// solo como clave (ya están subidas) y una miniatura para mostrarlas al recuperar.
+interface BorradorGuardado {
+  fecha: string; bomberoId: string; vehiculoId: string; kilometraje: string;
+  combustible: NivelCombustible | ""; aceite: NivelAceiteRefrigerante | ""; refrigerante: NivelAceiteRefrigerante | "";
+  estadoNeumaticos: string; estadoCarroceria: string; estadoSuspension: string; estadoEspejosVidrios: string; estadoCabina: string;
+  fotos: { key: string; nombre: string; miniatura: string }[];
+}
 
 function archivoABase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -50,6 +59,22 @@ function hoyLocal() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// Un borrador por usuario y navegador, para que dos pilotos en el mismo celular no se mezclen.
+const claveBorrador = (userId: string) => `reporte-piloto-borrador:${userId}`;
+
+// Miniatura pequeña (≈160 px) para guardar en el borrador sin llenar el almacenamiento del navegador.
+async function miniatura(base64: string): Promise<string> {
+  const img = new Image();
+  img.src = base64;
+  await img.decode();
+  const escala = Math.min(1, 160 / Math.max(img.width, img.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(img.width * escala);
+  canvas.height = Math.round(img.height * escala);
+  canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.6);
+}
+
 const inputCls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30";
 
 export function NuevoReportePilotoClient() {
@@ -78,10 +103,65 @@ export function NuevoReportePilotoClient() {
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
 
+  const userId = session?.user?.id;
+  const [borradorListo, setBorradorListo] = useState(false);
+  const [borradorRecuperado, setBorradorRecuperado] = useState(false);
+
   useEffect(() => {
     if (!esPiloto) fetch("/api/bomberos").then(r => r.json()).then((data: Bombero[]) => setBomberos(Array.isArray(data) ? data : [])).catch(() => setBomberos([]));
     fetch("/api/vehiculos-b150").then(r => r.json()).then((data: VehiculoOpcion[]) => setVehiculos(Array.isArray(data) ? data : [])).catch(() => setVehiculos([]));
   }, [esPiloto]);
+
+  // Al tener la sesión, recupera el borrador guardado en este navegador (una sola vez).
+  useEffect(() => {
+    if (!userId || borradorListo) return;
+    try {
+      const raw = localStorage.getItem(claveBorrador(userId));
+      if (raw) {
+        const b = JSON.parse(raw) as Partial<BorradorGuardado>;
+        setFecha(b.fecha || hoyLocal());
+        setBomberoId(b.bomberoId ?? "");
+        setVehiculoId(b.vehiculoId ?? "");
+        setKilometraje(b.kilometraje ?? "");
+        setCombustible(b.combustible ?? "");
+        setAceite(b.aceite ?? "");
+        setRefrigerante(b.refrigerante ?? "");
+        setEstadoNeumaticos(b.estadoNeumaticos ?? "");
+        setEstadoCarroceria(b.estadoCarroceria ?? "");
+        setEstadoSuspension(b.estadoSuspension ?? "");
+        setEstadoEspejosVidrios(b.estadoEspejosVidrios ?? "");
+        setEstadoCabina(b.estadoCabina ?? "");
+        setFotos((b.fotos ?? []).map(f => ({ key: f.key, url: f.miniatura, nombre: f.nombre, subiendo: false, miniatura: f.miniatura })));
+        setBorradorRecuperado(true);
+      }
+    } catch {
+      // Borrador dañado o almacenamiento bloqueado: se ignora y el formulario empieza vacío.
+    }
+    setBorradorListo(true);
+  }, [userId, borradorListo]);
+
+  // Guarda cada cambio en este navegador, para que no se pierda si se recarga o se cierra la página.
+  useEffect(() => {
+    if (!userId || !borradorListo) return;
+    try {
+      const borrador: BorradorGuardado = {
+        fecha, bomberoId, vehiculoId, kilometraje, combustible, aceite, refrigerante,
+        estadoNeumaticos, estadoCarroceria, estadoSuspension, estadoEspejosVidrios, estadoCabina,
+        fotos: fotos.filter(f => f.key).map(f => ({ key: f.key, nombre: f.nombre, miniatura: f.miniatura ?? "" })),
+      };
+      localStorage.setItem(claveBorrador(userId), JSON.stringify(borrador));
+    } catch {
+      // Sin espacio o almacenamiento bloqueado: el formulario sigue funcionando sin borrador.
+    }
+  }, [userId, borradorListo, fecha, bomberoId, vehiculoId, kilometraje, combustible, aceite, refrigerante,
+      estadoNeumaticos, estadoCarroceria, estadoSuspension, estadoEspejosVidrios, estadoCabina, fotos]);
+
+  function descartarBorrador() {
+    if (userId) {
+      try { localStorage.removeItem(claveBorrador(userId)); } catch { /* nada que limpiar */ }
+    }
+    window.location.reload();
+  }
 
   async function agregarFotos(files: FileList | null) {
     if (!files) return;
@@ -106,8 +186,9 @@ export function NuevoReportePilotoClient() {
         if (!subida.key) throw new Error("sin key");
 
         // Se mantiene la vista previa local (la URL remota firmada no es necesaria aquí).
+        const mini = await miniatura(base64).catch(() => undefined);
         setFotos(prev => prev.map(f =>
-          f.url === placeholder.url ? { ...f, key: subida.key, subiendo: false } : f
+          f.url === placeholder.url ? { ...f, key: subida.key, subiendo: false, miniatura: mini } : f
         ));
       } catch {
         setFotos(prev => prev.filter(f => f.url !== placeholder.url));
@@ -150,6 +231,9 @@ export function NuevoReportePilotoClient() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "No se pudo registrar el reporte."); setEnviando(false); return; }
+      if (userId) {
+        try { localStorage.removeItem(claveBorrador(userId)); } catch { /* el borrador queda; no afecta al reporte guardado */ }
+      }
       router.push(`/reporte-piloto/${data.id}`);
     } catch {
       setError("Error de conexión.");
@@ -174,6 +258,15 @@ export function NuevoReportePilotoClient() {
 
       <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-5">
         {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{error}</div>}
+
+        {borradorRecuperado && (
+          <div className="flex items-start justify-between gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">
+            <span>Recuperamos lo que habías escrito en este dispositivo. Se borra al enviar el reporte.</span>
+            <button type="button" onClick={descartarBorrador} className="shrink-0 font-semibold underline hover:text-blue-900">
+              Descartar
+            </button>
+          </div>
+        )}
 
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Datos generales</p>
 
