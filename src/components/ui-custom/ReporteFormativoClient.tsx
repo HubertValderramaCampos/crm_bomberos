@@ -8,7 +8,7 @@ import {
 import {
   CalendarCheck, Users, TrendingUp, ChevronDown, ChevronUp,
   LogIn, LogOut, Search, Filter, Clock, Plus, Trash2, Pencil,
-  X, Save, Loader2, Settings,
+  X, Save, Loader2, Settings, Moon,
 } from "lucide-react";
 
 const DIAS      = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
@@ -18,11 +18,11 @@ const DIA_COLOR = ["bg-gray-100 text-gray-600","bg-blue-100 text-blue-700","bg-b
 
 interface BomberoResumen {
   id: number; apellidos: string; nombres: string; grado: string; categoria: string;
-  total: number; regulares: number; extras: number; con_salida: number;
+  total: number; regulares: number; extras: number; con_salida: number; guardias_nocturnas: number;
 }
 interface DetalleRow {
   id: number; fecha: string; hora_entrada: string; hora_salida: string | null;
-  tipo: string; motivo: string | null;
+  tipo: string; motivo: string | null; guardia_nocturna: boolean;
   apellidos: string; nombres: string; grado: string; codigo: string;
 }
 interface Horario { id: number; dia_semana: number; hora_inicio: string; hora_fin: string; descripcion: string | null; activo: boolean; }
@@ -69,9 +69,10 @@ export function ReporteFormativoClient() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  const totalAsistencias = resumen.reduce((s, b) => s + b.total, 0);
-  const totalRegulares   = resumen.reduce((s, b) => s + b.regulares, 0);
-  const totalExtras      = resumen.reduce((s, b) => s + b.extras, 0);
+  const totalAsistencias      = resumen.reduce((s, b) => s + b.total, 0);
+  const totalRegulares        = resumen.reduce((s, b) => s + b.regulares, 0);
+  const totalExtras           = resumen.reduce((s, b) => s + b.extras, 0);
+  const totalGuardiasNocturnas = resumen.reduce((s, b) => s + b.guardias_nocturnas, 0);
 
   // Datos para gráfica por día
   const chartDia = [1,2,3,4,5,6,0].map(d => ({
@@ -279,12 +280,13 @@ export function ReporteFormativoClient() {
       ) : (
         <>
           {/* KPIs */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {[
-              { label: "Efectivos",     value: resumen.length,   color: "text-gray-900"   },
-              { label: "Asistencias",   value: totalAsistencias, color: "text-blue-700"   },
-              { label: "Regulares",     value: totalRegulares,   color: "text-green-700"  },
-              { label: "Extras",        value: totalExtras,      color: "text-amber-600"  },
+              { label: "Efectivos",         value: resumen.length,        color: "text-gray-900"   },
+              { label: "Asistencias",       value: totalAsistencias,      color: "text-blue-700"   },
+              { label: "Regulares",         value: totalRegulares,        color: "text-green-700"  },
+              { label: "Extras",            value: totalExtras,           color: "text-amber-600"  },
+              { label: "Guardias noct.",    value: totalGuardiasNocturnas, color: "text-indigo-600" },
             ].map(k => (
               <div key={k.label} className="bg-white rounded-xl border border-gray-200 px-4 py-3">
                 <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{k.label}</p>
@@ -364,7 +366,7 @@ export function ReporteFormativoClient() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-100">
-                        {["Efectivo", "Categoría", "Total", "Regular", "Extra", "Con salida", ""].map(h => (
+                        {["Efectivo", "Categoría", "Total", "Regular", "Extra", "Guardia noct.", "Con salida", ""].map(h => (
                           <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -385,6 +387,7 @@ export function ReporteFormativoClient() {
                               <td className="px-4 py-2.5 text-sm font-bold text-gray-900">{b.total}</td>
                               <td className="px-4 py-2.5 text-xs text-green-700 font-medium">{b.regulares}</td>
                               <td className="px-4 py-2.5 text-xs text-amber-600 font-medium">{b.extras}</td>
+                              <td className="px-4 py-2.5 text-xs text-indigo-600 font-medium">{b.guardias_nocturnas}</td>
                               <td className="px-4 py-2.5 text-xs text-gray-500">{b.con_salida}/{b.total}</td>
                               <td className="px-4 py-2.5">
                                 {expandido === b.id ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
@@ -392,7 +395,7 @@ export function ReporteFormativoClient() {
                             </tr>
                             {expandido === b.id && detalleB.length > 0 && (
                               <tr key={`det-${b.id}`}>
-                                <td colSpan={7} className="px-4 pb-3 pt-0 bg-gray-50">
+                                <td colSpan={8} className="px-4 pb-3 pt-0 bg-gray-50">
                                   <div className="rounded-lg border border-gray-200 overflow-hidden">
                                     <table className="w-full text-xs">
                                       <thead>
@@ -411,7 +414,14 @@ export function ReporteFormativoClient() {
                                             <td className="px-3 py-2 flex items-center gap-1"><LogIn className="w-3 h-3 text-green-500" />{fmtH(d.hora_entrada)}</td>
                                             <td className="px-3 py-2"><LogOut className="w-3 h-3 text-blue-500 inline mr-1" />{fmtH(d.hora_salida)}</td>
                                             <td className="px-3 py-2">
-                                              <span className={`font-bold px-1.5 py-0.5 rounded-full ${d.tipo === "regular" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>{d.tipo}</span>
+                                              <div className="flex items-center gap-1 flex-wrap">
+                                                <span className={`font-bold px-1.5 py-0.5 rounded-full ${d.tipo === "regular" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>{d.tipo}</span>
+                                                {d.guardia_nocturna && (
+                                                  <span className="flex items-center gap-0.5 font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                                                    <Moon className="w-2.5 h-2.5" /> noct.
+                                                  </span>
+                                                )}
+                                              </div>
                                             </td>
                                             <td className="px-3 py-2 text-gray-500">{d.motivo ?? "—"}</td>
                                           </tr>

@@ -22,10 +22,11 @@ export async function GET(req: Request) {
     // Resumen por bombero
     pool.query(`
       SELECT b.id, b.apellidos, b.nombres, b.grado, b.categoria,
-             COUNT(af.id)::int                                          AS total,
-             COUNT(af.id) FILTER (WHERE af.tipo = 'regular')::int       AS regulares,
-             COUNT(af.id) FILTER (WHERE af.tipo = 'extra')::int          AS extras,
-             COUNT(af.id) FILTER (WHERE af.hora_salida IS NOT NULL)::int AS con_salida
+             COUNT(af.id)::int                                            AS total,
+             COUNT(af.id) FILTER (WHERE af.tipo = 'regular')::int         AS regulares,
+             COUNT(af.id) FILTER (WHERE af.tipo = 'extra')::int           AS extras,
+             COUNT(af.id) FILTER (WHERE af.hora_salida IS NOT NULL)::int  AS con_salida,
+             COUNT(af.id) FILTER (WHERE af.guardia_nocturna)::int         AS guardias_nocturnas
       FROM bombero b
       LEFT JOIN asistencia_formativa af ON af.bombero_id = b.id AND ${where.replace('af.bombero_id', 'b.id')}
       WHERE b.activo = true AND b.categoria IN ('ASPIRANTE', 'POSTULANTE')
@@ -39,7 +40,7 @@ export async function GET(req: Request) {
       SELECT af.id, af.fecha::text,
              (af.hora_entrada AT TIME ZONE 'America/Lima')::text AS hora_entrada,
              (af.hora_salida  AT TIME ZONE 'America/Lima')::text AS hora_salida,
-             af.tipo, af.motivo,
+             af.tipo, af.motivo, af.guardia_nocturna,
              b.apellidos, b.nombres, b.grado, b.codigo
       FROM asistencia_formativa af
       JOIN bombero b ON b.id = af.bombero_id

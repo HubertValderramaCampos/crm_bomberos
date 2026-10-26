@@ -22,10 +22,13 @@ export default async function InicioFormativoPage() {
   const bombero = bRes.rows[0];
 
   // Asistencias recientes
-  const asistRes = await pool.query<{ id: number; fecha: string; hora_entrada: string; hora_salida: string | null }>(
+  const asistRes = await pool.query<{
+    id: number; fecha: string; hora_entrada: string; hora_salida: string | null; guardia_nocturna: boolean;
+  }>(
     `SELECT id, fecha::text,
             (hora_entrada AT TIME ZONE 'America/Lima')::text AS hora_entrada,
-            (hora_salida  AT TIME ZONE 'America/Lima')::text AS hora_salida
+            (hora_salida  AT TIME ZONE 'America/Lima')::text AS hora_salida,
+            guardia_nocturna
      FROM asistencia_formativa
      WHERE bombero_id = $1
      ORDER BY fecha DESC, hora_entrada DESC

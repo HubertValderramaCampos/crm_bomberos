@@ -3,12 +3,13 @@
 import { useState } from "react";
 import {
   CalendarCheck, BookOpen, CheckCircle2, Clock,
-  LogIn, LogOut, Star, ChevronDown, ChevronUp, FileText,
+  LogIn, LogOut, Star, ChevronDown, ChevronUp, FileText, Moon,
 } from "lucide-react";
 import Link from "next/link";
 
 interface Asistencia {
   id: number; fecha: string; hora_entrada: string; hora_salida: string | null;
+  guardia_nocturna?: boolean;
 }
 
 interface Nota {
@@ -185,6 +186,11 @@ export function InicioFormativoClient({
               <div key={a.id} className="flex items-center gap-3 px-4 py-3">
                 <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
                 <p className="flex-1 text-sm font-medium text-gray-900">{formatFecha(a.fecha)}</p>
+                {a.guardia_nocturna && (
+                  <span className="flex items-center gap-1 text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-medium shrink-0">
+                    <Moon className="w-2.5 h-2.5" /> Nocturna
+                  </span>
+                )}
                 <div className="flex items-center gap-3 text-xs text-gray-400">
                   <span className="flex items-center gap-1"><LogIn className="w-3 h-3 text-green-500" />{formatHora(a.hora_entrada)}</span>
                   <span className="flex items-center gap-1"><LogOut className="w-3 h-3 text-blue-500" />{formatHora(a.hora_salida)}</span>

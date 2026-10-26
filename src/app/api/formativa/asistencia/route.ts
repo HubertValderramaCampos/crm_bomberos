@@ -79,7 +79,7 @@ export async function GET() {
     `SELECT id, fecha::text,
             (hora_entrada AT TIME ZONE 'America/Lima')::text AS hora_entrada,
             (hora_salida  AT TIME ZONE 'America/Lima')::text AS hora_salida,
-            tipo, motivo
+            tipo, motivo, guardia_nocturna
      FROM asistencia_formativa
      WHERE bombero_id = $1
      ORDER BY fecha DESC, hora_entrada DESC
@@ -106,8 +106,9 @@ export async function POST(req: Request) {
   if (!["ASPIRANTE", "POSTULANTE"].includes(categoria))
     return NextResponse.json({ error: "Solo aspirantes y postulantes" }, { status: 403 });
 
-  const { lat, lng, tipo, motivo, fotoUrl } = await req.json() as {
+  const { lat, lng, tipo, motivo, fotoUrl, guardiaNocturna } = await req.json() as {
     lat: number; lng: number; tipo: "entrada" | "salida"; motivo?: string; fotoUrl?: string | null;
+    guardiaNocturna?: boolean;
   };
 
   const dist = distanciaMetros(lat, lng, CUARTEL_LAT, CUARTEL_LNG);
@@ -124,48 +125,55 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Primero registra tu rostro en Entrenamiento." }, { status: 400 });
 
   const today = fechaLima(ahoraLima());
+  const ayer = fechaLima(new Date(ahoraLima().getTime() - 24 * 60 * 60 * 1000));
 
   // Determinar si es asistencia regular o extra
   const esProgramado = await esDiaProgramado();
   const tipoAsistencia = esProgramado ? "regular" : "extra";
 
-  // Si es extra y no tiene motivo, requerirlo
-  if (tipoAsistencia === "extra" && tipo === "entrada" && !motivo?.trim())
+  // Si es extra y no tiene motivo, requerirlo — salvo que ya haya marcado
+  // "guardia nocturna", que de por sí explica el motivo.
+  if (tipoAsistencia === "extra" && tipo === "entrada" && !motivo?.trim() && !guardiaNocturna)
     return NextResponse.json({ requiere_motivo: true, mensaje: "¿A qué viniste hoy? Indica el motivo." }, { status: 200 });
 
   if (tipo === "entrada") {
-    const { rows: exists } = await pool.query(
-      `SELECT id FROM asistencia_formativa WHERE bombero_id = $1 AND fecha = $2`,
-      [session.user.bomberoId, today]
+    // Bloquea una 2ª entrada solo si hay una sesión SIN CERRAR de hoy o ayer
+    // (mismo margen que usa la salida más abajo). No se usa "existe fila
+    // para esta fecha" a secas: eso impedía reentrar la misma noche tras
+    // salir y volver (ej. guardia nocturna que sale un momento y regresa a
+    // quedarse de corrido). Tampoco se mira más atrás de ayer: hay filas
+    // viejas nunca cerradas (el usuario olvidó marcar salida hace semanas)
+    // que no deben bloquear una entrada nueva hoy.
+    const { rows: abierta } = await pool.query(
+      `SELECT id FROM asistencia_formativa
+       WHERE bombero_id = $1 AND fecha IN ($2, $3) AND hora_salida IS NULL`,
+      [session.user.bomberoId, today, ayer]
     );
-    if (exists.length > 0)
-      return NextResponse.json({ error: "Ya registraste tu entrada hoy." }, { status: 409 });
+    if (abierta.length > 0)
+      return NextResponse.json({ error: "Ya tienes una entrada sin cerrar. Marca tu salida primero." }, { status: 409 });
 
     await pool.query(
-      `INSERT INTO asistencia_formativa (bombero_id, fecha, lat, lng, tipo, motivo, foto_entrada_url)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [session.user.bomberoId, today, lat, lng, tipoAsistencia, motivo ?? null, fotoUrl ?? null]
+      `INSERT INTO asistencia_formativa (bombero_id, fecha, lat, lng, tipo, motivo, foto_entrada_url, guardia_nocturna)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [session.user.bomberoId, today, lat, lng, tipoAsistencia,
+       motivo?.trim() || (guardiaNocturna ? "Guardia nocturna" : null), fotoUrl ?? null, !!guardiaNocturna]
     );
     return NextResponse.json({ ok: true, tipo: "entrada", tipo_asistencia: tipoAsistencia });
   }
 
   if (tipo === "salida") {
-    // Busca la entrada abierta más reciente de hoy O ayer (no solo "hoy"
+    // Busca la sesión abierta más reciente de hoy O ayer (no solo "hoy"
     // exacto): alguien puede entrar antes de medianoche y recién intentar
     // salir después — con turnos hasta las 23:00 y ±2h de margen, esto es
-    // un caso real, no un borde teórico. Si ya hay una entrada de hoy
-    // (abierta o cerrada), esa es siempre la que corresponde.
-    const ayer = fechaLima(new Date(ahoraLima().getTime() - 24 * 60 * 60 * 1000));
+    // un caso real, no un borde teórico.
     const { rows: reg } = await pool.query(
-      `SELECT id, hora_salida FROM asistencia_formativa
-       WHERE bombero_id = $1 AND fecha IN ($2, $3)
+      `SELECT id FROM asistencia_formativa
+       WHERE bombero_id = $1 AND fecha IN ($2, $3) AND hora_salida IS NULL
        ORDER BY fecha DESC, hora_entrada DESC LIMIT 1`,
       [session.user.bomberoId, today, ayer]
     );
     if (reg.length === 0)
       return NextResponse.json({ error: "Primero debes registrar tu entrada." }, { status: 400 });
-    if (reg[0].hora_salida)
-      return NextResponse.json({ error: "Ya registraste tu salida hoy." }, { status: 409 });
 
     await pool.query(
       `UPDATE asistencia_formativa SET hora_salida = NOW(), foto_salida_url = $2 WHERE id = $1`,

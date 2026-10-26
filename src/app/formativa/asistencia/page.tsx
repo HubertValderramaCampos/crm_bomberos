@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { MapPin, Camera, CheckCircle2, Loader2, AlertCircle, CalendarDays, Clock, LogIn, LogOut, Info } from "lucide-react";
-import { capturarFrame, subirEvidencia } from "@/lib/cloudinary";
+import { MapPin, Camera, CheckCircle2, Loader2, AlertCircle, CalendarDays, Clock, LogIn, LogOut, Info, Moon } from "lucide-react";
 
 type FaceApi = typeof import("@vladmandic/face-api");
 const MODEL_URL = "/models";
@@ -18,7 +17,7 @@ async function cargarModelos(faceapi: FaceApi) {
 
 interface Asistencia {
   id: number; fecha: string; hora_entrada: string; hora_salida: string | null;
-  tipo: string; motivo: string | null;
+  tipo: string; motivo: string | null; guardia_nocturna: boolean;
 }
 interface HorarioProg {
   dia_semana: number; hora_inicio: string; hora_fin: string; descripcion: string | null;
@@ -73,6 +72,7 @@ export default function AsistenciaPage() {
   const [tipo,      setTipo]      = useState<"entrada"|"salida"|null>(null);
   const [pendiente, setPendiente] = useState<"entrada"|"salida"|null>(null);
   const [motivo,    setMotivo]    = useState("");
+  const [guardiaNocturna, setGuardiaNocturna] = useState(false);
 
   const cargarHistorial = useCallback(async () => {
     const res = await fetch("/api/formativa/asistencia");
@@ -117,7 +117,9 @@ export default function AsistenciaPage() {
   function pedirUbicacion(tipoMarca: "entrada" | "salida") {
     // Si hoy no es un día programado, pedir el motivo ANTES de tocar cámara
     // o ubicación — evita verificar el rostro dos veces para una entrada extra.
-    if (tipoMarca === "entrada" && !esDiaProgramadoLocal(horarios)) {
+    // Si ya marcó "Guardia nocturna" esa marca explica el motivo, así que no
+    // hace falta pedir texto libre.
+    if (tipoMarca === "entrada" && !esDiaProgramadoLocal(horarios) && !guardiaNocturna) {
       setPendiente(tipoMarca);
       setMotivo("");
       setFase("motivo");
@@ -217,14 +219,14 @@ export default function AsistenciaPage() {
         return;
       }
 
-      setMsg("Guardando evidencia...");
-      const frame = await capturarFrame(videoRef.current);
-      const fotoUrl = frame ? await subirEvidencia(frame) : null;
-
       const res = await fetch("/api/formativa/asistencia", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lat: posicion.lat, lng: posicion.lng, tipo, motivo: motivo || undefined, fotoUrl }),
+        body: JSON.stringify({
+          lat: posicion.lat, lng: posicion.lng, tipo,
+          motivo: motivo || undefined,
+          guardiaNocturna: tipo === "entrada" ? guardiaNocturna : undefined,
+        }),
       });
       const data = await res.json();
 
@@ -252,7 +254,7 @@ export default function AsistenciaPage() {
       setFase("camara");
       setMsg("Error al procesar. Intenta de nuevo.");
     }
-  }, [posicion, tipo, cargarHistorial]);
+  }, [posicion, tipo, motivo, guardiaNocturna, cargarHistorial]);
 
   function reintentar() {
     detenerCamara();
@@ -260,6 +262,7 @@ export default function AsistenciaPage() {
     setMsg("");
     setTipo(null);
     setPendiente(null);
+    setGuardiaNocturna(false);
   }
 
   // Determinar estado del día actual — con getters LOCALES, no toISOString()
@@ -277,9 +280,12 @@ export default function AsistenciaPage() {
   // botón de salida debe seguir habilitado para ese caso (igual que ya lo
   // maneja el servidor).
   const registroAbierto = historial.find(a => (a.fecha === hoy || a.fecha === ayer) && !a.hora_salida);
-  const tieneEntrada = !!registroHoy;
   const tieneSalida  = !!registroHoy?.hora_salida;
-  const puedeMarcarSalida = !!registroAbierto;
+  const puedeMarcarSalida  = !!registroAbierto;
+  // Permite volver a marcar entrada el mismo día si la sesión anterior ya
+  // cerró (salió y volvió a entrar, ej. guardia nocturna) — solo bloquea
+  // mientras haya una sesión sin cerrar.
+  const puedeMarcarEntrada = !registroAbierto;
 
   function formatFecha(iso: string) {
     return new Date(iso + "T00:00:00").toLocaleDateString("es-PE", { weekday: "short", day: "2-digit", month: "short" });
@@ -389,23 +395,37 @@ export default function AsistenciaPage() {
 
       {/* Botones entrada / salida */}
       {fase === "ubicacion" && (
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => pedirUbicacion("entrada")}
-            disabled={tieneEntrada}
-            className="flex flex-col items-center gap-2 py-4 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all"
-          >
-            <LogIn className="w-6 h-6" />
-            <span className="text-sm">Registrar entrada</span>
-          </button>
-          <button
-            onClick={() => pedirUbicacion("salida")}
-            disabled={!puedeMarcarSalida}
-            className="flex flex-col items-center gap-2 py-4 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all"
-          >
-            <LogOut className="w-6 h-6" />
-            <span className="text-sm">Registrar salida</span>
-          </button>
+        <div className="space-y-3">
+          {puedeMarcarEntrada && (
+            <label className="flex items-center gap-2.5 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-xl cursor-pointer">
+              <input
+                type="checkbox"
+                checked={guardiaNocturna}
+                onChange={e => setGuardiaNocturna(e.target.checked)}
+                className="w-4 h-4 accent-indigo-600"
+              />
+              <Moon className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span className="text-sm font-medium text-indigo-700">Guardia nocturna — me quedo toda la noche</span>
+            </label>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => pedirUbicacion("entrada")}
+              disabled={!puedeMarcarEntrada}
+              className="flex flex-col items-center gap-2 py-4 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all"
+            >
+              <LogIn className="w-6 h-6" />
+              <span className="text-sm">Registrar entrada</span>
+            </button>
+            <button
+              onClick={() => pedirUbicacion("salida")}
+              disabled={!puedeMarcarSalida}
+              className="flex flex-col items-center gap-2 py-4 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all"
+            >
+              <LogOut className="w-6 h-6" />
+              <span className="text-sm">Registrar salida</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -480,6 +500,11 @@ export default function AsistenciaPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-gray-400 shrink-0">
+                    {a.guardia_nocturna && (
+                      <span className="flex items-center gap-1 text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-medium">
+                        <Moon className="w-2.5 h-2.5" /> Nocturna
+                      </span>
+                    )}
                     {a.tipo === "extra" && (
                       <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">Extra</span>
                     )}
