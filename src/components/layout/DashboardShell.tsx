@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { Menu, X } from "lucide-react";
 import { GuiaGlobal } from "@/components/ui-custom/GuiaGlobal";
-import { AniversarioCelebracion } from "@/components/ui-custom/AniversarioCelebracion";
 
 export function DashboardShell({ children, scrollable = false, wide = false }: { children: React.ReactNode; scrollable?: boolean; wide?: boolean }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -44,7 +43,6 @@ export function DashboardShell({ children, scrollable = false, wide = false }: {
         </div>
 
         <GuiaGlobal />
-        <AniversarioCelebracion />
 
         {/* Content */}
         <main className={`flex-1 ${scrollable ? "overflow-y-auto" : "overflow-hidden"}`}>
