@@ -16,3 +16,11 @@ export const ROLES_GUARDIA: string[] = [..._ROLES_JEFE, "JEFE_GUARDIA"];
 export function esRolGuardia(rol: string | undefined | null): boolean {
   return ROLES_GUARDIA.includes(rol ?? "");
 }
+
+// Quién supervisa a aspirantes y postulantes (p. ej. ver quiénes están en la
+// compañía en tiempo real): los jefes de siempre más el área de Instrucción.
+export const ROLES_SUPERVISION_FORMATIVA: string[] = [..._ROLES_JEFE, "INSTRUCCION"];
+
+export function esRolSupervisionFormativa(rol: string | undefined | null): boolean {
+  return ROLES_SUPERVISION_FORMATIVA.includes(rol ?? "");
+}
