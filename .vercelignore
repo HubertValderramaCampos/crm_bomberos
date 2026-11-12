@@ -1,0 +1,29 @@
+# Qué NO subir al desplegar con la CLI de Vercel (vercel --prod).
+# Cuando existe este archivo la CLI deja de mirar .gitignore, así que aquí
+# va todo lo que no debe viajar al servidor.
+
+# Dependencias y artefactos locales: Vercel instala y compila por su cuenta
+node_modules
+.next
+out
+build
+coverage
+*.tsbuildinfo
+next-env.d.ts
+.git
+
+# Secretos locales: las variables ya están definidas en el proyecto de Vercel
+.env*
+
+# Instaladores que quedaron dentro de public/ (744 MB; no son parte de la app)
+*.exe
+
+# Archivos sueltos en la raíz que no usa la app (hojas de cálculo, PDF, fotos, pruebas)
+/*.xlsx
+/*.pdf
+/*.jpeg
+/*.jpg
+/*.png
+/guia_bomberos.html
+/gen_pdf.mjs
+prisma/dev.db
